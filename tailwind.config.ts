@@ -47,6 +47,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        morning: {
+          DEFAULT: "hsl(var(--morning))",
+          foreground: "hsl(var(--morning-foreground))",
+        },
+        afternoon: {
+          DEFAULT: "hsl(var(--afternoon))",
+          foreground: "hsl(var(--afternoon-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
