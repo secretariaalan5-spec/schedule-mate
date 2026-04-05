@@ -14,7 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          patient_id: string
+          reason: string | null
+          slot: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          patient_id: string
+          reason?: string | null
+          slot: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          patient_id?: string
+          reason?: string | null
+          slot?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          created_at: string
+          dob: string | null
+          id: string
+          legacy_id: string | null
+          name: string
+          observations: string | null
+          psf: string | null
+          sus_card: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dob?: string | null
+          id?: string
+          legacy_id?: string | null
+          name: string
+          observations?: string | null
+          psf?: string | null
+          sus_card?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dob?: string | null
+          id?: string
+          legacy_id?: string | null
+          name?: string
+          observations?: string | null
+          psf?: string | null
+          sus_card?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      released_days: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
