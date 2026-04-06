@@ -1,0 +1,1 @@
+ALTER TABLE public.released_days ADD CONSTRAINT released_days_date_unique UNIQUE (date);
