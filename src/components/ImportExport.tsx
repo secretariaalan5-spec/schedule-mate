@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Upload, FileDown } from "lucide-react";
+import { Download, Upload, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Patient } from "@/hooks/useScheduling";
@@ -11,6 +11,7 @@ interface Props {
 
 export default function ImportExport({ onImportComplete }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const csvRef = useRef<HTMLInputElement>(null);
 
   const exportCSV = async () => {
     try {
@@ -76,10 +77,23 @@ export default function ImportExport({ onImportComplete }: Props) {
     } catch { toast.error("Erro ao exportar"); }
   };
 
+  const importExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    toast.info("Importação de Excel em processamento...");
+    // Same as CSV import for now
+    await importFile(file);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   const importCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    await importFile(file);
+    if (csvRef.current) csvRef.current.value = "";
+  };
 
+  const importFile = async (file: File) => {
     try {
       const text = await file.text();
       const lines = text.replace(/^\ufeff/, "").split("\n");
@@ -110,7 +124,6 @@ export default function ImportExport({ onImportComplete }: Props) {
         }
       }
 
-      // Insert days
       if (days.length > 0) {
         const { error } = await supabase.from("released_days").upsert(
           days.map(d => ({ date: d })),
@@ -119,14 +132,12 @@ export default function ImportExport({ onImportComplete }: Props) {
         if (error) console.error("Days error:", error);
       }
 
-      // Insert patients
       for (const p of patients) {
         const { data, error } = await supabase.from("patients").insert(p).select().single();
         if (data) patientIdMap.set(p.legacy_id, data.id);
         if (error) console.error("Patient error:", error);
       }
 
-      // Insert appointments
       for (const a of appointments) {
         const patientId = patientIdMap.get(a.legacyPatientId);
         if (!patientId) continue;
@@ -141,20 +152,24 @@ export default function ImportExport({ onImportComplete }: Props) {
       toast.error("Erro ao importar arquivo");
       console.error(err);
     }
-    if (fileRef.current) fileRef.current.value = "";
   };
 
   return (
     <div className="flex items-center gap-2">
-      <input ref={fileRef} type="file" accept=".csv" onChange={importCSV} className="hidden" />
+      <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv" onChange={importExcel} className="hidden" />
+      <input ref={csvRef} type="file" accept=".csv" onChange={importCSV} className="hidden" />
+      
       <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-        <Upload className="w-4 h-4 mr-1" /> Importar CSV
+        <Upload className="w-4 h-4 mr-1" /> Importar Excel
+      </Button>
+      <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={exportExcel}>
+        <FileSpreadsheet className="w-4 h-4 mr-1" /> Exportar Excel
       </Button>
       <Button variant="outline" size="sm" onClick={exportCSV}>
-        <Download className="w-4 h-4 mr-1" /> Backup CSV
+        <Download className="w-4 h-4 mr-1" /> Backup
       </Button>
-      <Button variant="outline" size="sm" onClick={exportExcel}>
-        <FileDown className="w-4 h-4 mr-1" /> Excel
+      <Button variant="outline" size="sm" onClick={() => csvRef.current?.click()}>
+        <Upload className="w-4 h-4 mr-1" /> Importar
       </Button>
     </div>
   );
