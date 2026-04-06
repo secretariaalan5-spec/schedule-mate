@@ -75,30 +75,30 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
+      <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shadow-md">
         <div>
-          <h1 className="font-bold text-xl text-primary tracking-tight">SAÚDE DA MULHER</h1>
-          <p className="text-xs text-muted-foreground">Sistema de Agendamento — Camocim</p>
+          <h1 className="font-bold text-xl tracking-tight">SAÚDE DA MULHER</h1>
+          <p className="text-xs opacity-80">Sistema de Agendamento — Camocim</p>
         </div>
         <div className="flex items-center gap-2">
           <InviteLink />
           <ImportExport onImportComplete={handleRefresh} />
-          <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
+          <Button variant="ghost" size="icon" onClick={signOut} title="Sair" className="text-primary-foreground hover:bg-primary-foreground/10">
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
       </header>
 
       {/* Tab navigation */}
-      <nav className="bg-white border-b px-4 flex items-center gap-1">
+      <nav className="bg-card border-b px-4 flex items-center gap-1">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-t-md transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 ${
               tab === t.id
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:border-primary/30"
             }`}
           >
             {t.icon}
@@ -112,7 +112,7 @@ export default function Dashboard() {
         {tab === "agenda" && (
           <>
             {/* Calendar sidebar */}
-            <div className="w-[300px] border-r bg-white flex-shrink-0 flex flex-col overflow-auto p-4">
+            <div className="w-[300px] border-r bg-card flex-shrink-0 flex flex-col overflow-auto p-4">
               <CalendarUI
                 mode="single"
                 selected={calendarDate}
@@ -130,7 +130,7 @@ export default function Dashboard() {
             {/* Slots area */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {sched.selectedDate && (
-                <div className="px-6 py-3 bg-white border-b">
+                <div className="px-6 py-3 bg-card border-b">
                   <h2 className="font-semibold text-base capitalize">
                     {formatDateFull(sched.selectedDate)}
                   </h2>
@@ -192,15 +192,15 @@ export default function Dashboard() {
           <div className="flex-1 p-8">
             <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg border p-6 shadow-sm">
+              <div className="bg-card rounded-lg border p-6 shadow-sm">
                 <p className="text-sm text-muted-foreground">Total de Pacientes</p>
                 <p className="text-3xl font-bold text-primary">{sched.patients.length}</p>
               </div>
-              <div className="bg-white rounded-lg border p-6 shadow-sm">
+              <div className="bg-card rounded-lg border p-6 shadow-sm">
                 <p className="text-sm text-muted-foreground">Dias Liberados</p>
                 <p className="text-3xl font-bold text-primary">{sched.releasedDays.length}</p>
               </div>
-              <div className="bg-white rounded-lg border p-6 shadow-sm">
+              <div className="bg-card rounded-lg border p-6 shadow-sm">
                 <p className="text-sm text-muted-foreground">Consultas Hoje</p>
                 <p className="text-3xl font-bold text-primary">{totalOccupied}</p>
               </div>
@@ -223,7 +223,7 @@ export default function Dashboard() {
                 />
               </div>
               {searchResults.length > 0 && (
-                <div className="border rounded-lg divide-y bg-white">
+                <div className="border rounded-lg divide-y bg-card">
                   {searchResults.slice(0, 50).map(p => (
                     <div key={p.id} className="px-4 py-3 flex items-center justify-between">
                       <div>
@@ -247,20 +247,20 @@ export default function Dashboard() {
 
       {/* Status bar */}
       {tab === "agenda" && sched.selectedDate && (
-        <footer className="bg-white border-t px-4 py-2 flex items-center justify-between text-sm">
+        <footer className="bg-card border-t px-4 py-2 flex items-center justify-between text-sm">
           <div className="flex items-center gap-6">
-            <span className="font-semibold">{totalOccupied}/{totalSlots} Vagas Ocupadas</span>
+            <span className="font-semibold text-primary">{totalOccupied}/{totalSlots} Vagas Ocupadas</span>
             <span className="text-muted-foreground">
               {totalSlots - totalOccupied} Livres: {morningFree} Manhã, {afternoonFree} Tarde
             </span>
           </div>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-morning"></span>
               Rural
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-afternoon"></span>
               Cidade
             </span>
           </div>
