@@ -7,21 +7,19 @@ import ImportExport from "@/components/ImportExport";
 import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { LayoutDashboard, CalendarDays, Users, Search, LogOut } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { CalendarDays, Users, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const MORNING_SLOTS = Array.from({ length: 15 }, (_, i) => i + 1);
 const AFTERNOON_SLOTS = Array.from({ length: 17 }, (_, i) => i + 16);
 
-type Tab = "dashboard" | "agenda" | "pacientes" | "busca";
+type Tab = "agenda" | "pacientes";
 
 export default function Dashboard() {
   const { signOut } = useAuth();
   const sched = useScheduling();
   const [tab, setTab] = useState<Tab>("agenda");
-  const [globalSearch, setGlobalSearch] = useState("");
 
   const handleRefresh = () => {
     sched.fetchReleasedDays();
@@ -29,13 +27,11 @@ export default function Dashboard() {
     if (sched.selectedDate) sched.fetchAppointments(sched.selectedDate);
   };
 
-  // Calendar date from selectedDate
   const calendarDate = sched.selectedDate ? new Date(sched.selectedDate + "T12:00:00") : undefined;
 
   const handleCalendarSelect = (date: Date | undefined) => {
     if (!date) return;
     const dateStr = format(date, "yyyy-MM-dd");
-    // Auto-add as released day if not already released, then select
     const exists = sched.releasedDays.find(d => d.date === dateStr);
     if (!exists) {
       sched.addReleasedDay(dateStr);
@@ -43,13 +39,11 @@ export default function Dashboard() {
     sched.setSelectedDate(dateStr);
   };
 
-  // Released dates for highlighting on calendar
   const releasedDateObjects = useMemo(
     () => sched.releasedDays.map(d => new Date(d.date + "T12:00:00")),
     [sched.releasedDays]
   );
 
-  // Count occupied slots
   const morningOccupied = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).length;
   const afternoonOccupied = sched.appointments.filter(a => a.slot >= 16 && a.slot <= 32).length;
   const totalOccupied = morningOccupied + afternoonOccupied;
@@ -57,19 +51,9 @@ export default function Dashboard() {
   const morningFree = 15 - morningOccupied;
   const afternoonFree = 17 - afternoonOccupied;
 
-  // Global search results
-  const searchResults = globalSearch.trim()
-    ? sched.patients.filter(p =>
-        p.name.toUpperCase().includes(globalSearch.toUpperCase()) ||
-        p.sus_card?.includes(globalSearch)
-      )
-    : [];
-
-  const tabs: { id: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-4 h-4" /> },
     { id: "pacientes", label: `Pacientes (${sched.patients.length})`, icon: <Users className="w-4 h-4" /> },
-    { id: "busca", label: "Busca Global", icon: <Search className="w-4 h-4" /> },
   ];
 
   return (
@@ -122,9 +106,6 @@ export default function Dashboard() {
                 modifiersClassNames={{ released: "bg-primary/10 font-semibold" }}
                 className="w-full"
               />
-              <div className="mt-4 space-y-2">
-                <ImportExport onImportComplete={handleRefresh} />
-              </div>
             </div>
 
             {/* Slots area */}
@@ -185,62 +166,6 @@ export default function Dashboard() {
               onDelete={sched.deletePatient}
               onGetHistory={sched.getPatientHistory}
             />
-          </div>
-        )}
-
-        {tab === "dashboard" && (
-          <div className="flex-1 p-8">
-            <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-card rounded-lg border p-6 shadow-sm">
-                <p className="text-sm text-muted-foreground">Total de Pacientes</p>
-                <p className="text-3xl font-bold text-primary">{sched.patients.length}</p>
-              </div>
-              <div className="bg-card rounded-lg border p-6 shadow-sm">
-                <p className="text-sm text-muted-foreground">Dias Liberados</p>
-                <p className="text-3xl font-bold text-primary">{sched.releasedDays.length}</p>
-              </div>
-              <div className="bg-card rounded-lg border p-6 shadow-sm">
-                <p className="text-sm text-muted-foreground">Consultas Hoje</p>
-                <p className="text-3xl font-bold text-primary">{totalOccupied}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {tab === "busca" && (
-          <div className="flex-1 p-6">
-            <div className="max-w-2xl mx-auto space-y-4">
-              <h2 className="text-xl font-bold">Busca Global</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar paciente por nome ou cartão SUS..."
-                  value={globalSearch}
-                  onChange={e => setGlobalSearch(e.target.value)}
-                  className="pl-9"
-                  autoFocus
-                />
-              </div>
-              {searchResults.length > 0 && (
-                <div className="border rounded-lg divide-y bg-card">
-                  {searchResults.slice(0, 50).map(p => (
-                    <div key={p.id} className="px-4 py-3 flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{p.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {p.sus_card && `SUS: ${p.sus_card}`}
-                          {p.psf && ` • PSF: ${p.psf}`}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {globalSearch.trim() && searchResults.length === 0 && (
-                <p className="text-muted-foreground text-center py-8">Nenhum resultado encontrado</p>
-              )}
-            </div>
           </div>
         )}
       </div>
