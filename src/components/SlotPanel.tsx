@@ -22,12 +22,12 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
   const getAppointment = (slot: number) => appointments.find(a => a.slot === slot);
 
   const occupied = slots.filter(s => getAppointment(s)).length;
-  const dotColor = variant === "morning" ? "bg-green-500" : "bg-purple-500";
+  const dotColor = variant === "morning" ? "bg-morning" : "bg-afternoon";
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 py-3 flex items-center justify-between border-b bg-white">
+      <div className="px-4 py-3 flex items-center justify-between border-b bg-card">
         <div className="flex items-center gap-2">
           <span className={`w-3 h-3 rounded-full ${dotColor}`}></span>
           <h3 className="font-bold text-sm tracking-wide">{title}</h3>
