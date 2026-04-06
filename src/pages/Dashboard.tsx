@@ -131,6 +131,7 @@ export default function Dashboard() {
                         vacancies={15}
                         onAdd={sched.addAppointment}
                         onRemove={sched.removeAppointment}
+                        onPatientsChanged={sched.fetchPatients}
                       />
                     </div>
                     <div className="flex-1 overflow-auto border-l">
