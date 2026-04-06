@@ -1,24 +1,26 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
-import DateSidebar from "@/components/DateSidebar";
 import SlotPanel from "@/components/SlotPanel";
 import PatientManager from "@/components/PatientManager";
 import ImportExport from "@/components/ImportExport";
 import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Heart, LogOut, CalendarDays, Users, Search } from "lucide-react";
+import { Calendar as CalendarUI } from "@/components/ui/calendar";
+import { LayoutDashboard, CalendarDays, Users, Search, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const MORNING_SLOTS = Array.from({ length: 15 }, (_, i) => i + 1);
 const AFTERNOON_SLOTS = Array.from({ length: 17 }, (_, i) => i + 16);
 
+type Tab = "dashboard" | "agenda" | "pacientes" | "busca";
+
 export default function Dashboard() {
   const { signOut } = useAuth();
   const sched = useScheduling();
-  const [tab, setTab] = useState("agenda");
+  const [tab, setTab] = useState<Tab>("agenda");
   const [globalSearch, setGlobalSearch] = useState("");
 
   const handleRefresh = () => {
@@ -27,94 +29,138 @@ export default function Dashboard() {
     if (sched.selectedDate) sched.fetchAppointments(sched.selectedDate);
   };
 
-  // Global search across appointments
-  const searchResults = globalSearch
-    ? sched.appointments.filter(a =>
-        a.patients?.name.toUpperCase().includes(globalSearch.toUpperCase()) ||
-        a.patients?.sus_card?.includes(globalSearch)
+  // Calendar date from selectedDate
+  const calendarDate = sched.selectedDate ? new Date(sched.selectedDate + "T12:00:00") : undefined;
+
+  const handleCalendarSelect = (date: Date | undefined) => {
+    if (!date) return;
+    const dateStr = format(date, "yyyy-MM-dd");
+    // Auto-add as released day if not already released, then select
+    const exists = sched.releasedDays.find(d => d.date === dateStr);
+    if (!exists) {
+      sched.addReleasedDay(dateStr);
+    }
+    sched.setSelectedDate(dateStr);
+  };
+
+  // Released dates for highlighting on calendar
+  const releasedDateObjects = useMemo(
+    () => sched.releasedDays.map(d => new Date(d.date + "T12:00:00")),
+    [sched.releasedDays]
+  );
+
+  // Count occupied slots
+  const morningOccupied = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).length;
+  const afternoonOccupied = sched.appointments.filter(a => a.slot >= 16 && a.slot <= 32).length;
+  const totalOccupied = morningOccupied + afternoonOccupied;
+  const totalSlots = 32;
+  const morningFree = 15 - morningOccupied;
+  const afternoonFree = 17 - afternoonOccupied;
+
+  // Global search results
+  const searchResults = globalSearch.trim()
+    ? sched.patients.filter(p =>
+        p.name.toUpperCase().includes(globalSearch.toUpperCase()) ||
+        p.sus_card?.includes(globalSearch)
       )
     : [];
 
+  const tabs: { id: Tab; label: string; icon: React.ReactNode; count?: number }[] = [
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-4 h-4" /> },
+    { id: "pacientes", label: `Pacientes (${sched.patients.length})`, icon: <Users className="w-4 h-4" /> },
+    { id: "busca", label: "Busca Global", icon: <Search className="w-4 h-4" /> },
+  ];
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground px-4 py-2 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <Heart className="w-6 h-6" />
-          <h1 className="font-bold text-lg">Saúde da Mulher</h1>
+      <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
+        <div>
+          <h1 className="font-bold text-xl text-primary tracking-tight">SAÚDE DA MULHER</h1>
+          <p className="text-xs text-muted-foreground">Sistema de Agendamento — Camocim</p>
         </div>
-        <div className="flex items-center gap-3">
-          <ImportExport onImportComplete={handleRefresh} />
+        <div className="flex items-center gap-2">
           <InviteLink />
-          <div className="relative">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-foreground/60" />
-            <Input
-              placeholder="Buscar..."
-              value={globalSearch}
-              onChange={e => setGlobalSearch(e.target.value)}
-              className="pl-8 w-48 bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 h-8 text-sm"
-            />
-          </div>
-          <Button variant="ghost" size="sm" onClick={signOut} className="text-primary-foreground hover:bg-primary-foreground/10">
-            <LogOut className="w-4 h-4 mr-1" /> Sair
+          <ImportExport onImportComplete={handleRefresh} />
+          <Button variant="ghost" size="icon" onClick={signOut} title="Sair">
+            <LogOut className="w-4 h-4" />
           </Button>
         </div>
       </header>
 
+      {/* Tab navigation */}
+      <nav className="bg-white border-b px-4 flex items-center gap-1">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-t-md transition-colors ${
+              tab === t.id
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        <Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col">
-          <div className="border-b px-4">
-            <TabsList className="h-10">
-              <TabsTrigger value="agenda" className="gap-1.5"><CalendarDays className="w-4 h-4" /> Agenda</TabsTrigger>
-              <TabsTrigger value="pacientes" className="gap-1.5"><Users className="w-4 h-4" /> Pacientes</TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="agenda" className="flex-1 flex overflow-hidden m-0">
-            {/* Date sidebar */}
-            <div className="w-52 border-r bg-card flex-shrink-0 overflow-hidden">
-              <DateSidebar
-                releasedDays={sched.releasedDays}
-                selectedDate={sched.selectedDate}
-                onSelectDate={sched.setSelectedDate}
-                onAddDay={sched.addReleasedDay}
-                onRemoveDay={sched.removeReleasedDay}
+        {tab === "agenda" && (
+          <>
+            {/* Calendar sidebar */}
+            <div className="w-[300px] border-r bg-white flex-shrink-0 flex flex-col overflow-auto p-4">
+              <CalendarUI
+                mode="single"
+                selected={calendarDate}
+                onSelect={handleCalendarSelect}
+                locale={ptBR}
+                modifiers={{ released: releasedDateObjects }}
+                modifiersClassNames={{ released: "bg-primary/10 font-semibold" }}
+                className="w-full"
               />
+              <div className="mt-4 space-y-2">
+                <ImportExport onImportComplete={handleRefresh} />
+              </div>
             </div>
 
-            {/* Slots */}
+            {/* Slots area */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {sched.selectedDate && (
-                <div className="px-4 py-2 border-b bg-card">
-                  <h2 className="font-semibold capitalize">{formatDateFull(sched.selectedDate)}</h2>
+                <div className="px-6 py-3 bg-white border-b">
+                  <h2 className="font-semibold text-base capitalize">
+                    {formatDateFull(sched.selectedDate)}
+                  </h2>
                 </div>
               )}
               <div className="flex-1 flex overflow-hidden">
                 {sched.selectedDate ? (
                   <>
-                    <div className="flex-1 p-3 overflow-auto">
+                    <div className="flex-1 overflow-auto">
                       <SlotPanel
-                        title="Manhã"
-                        subtitle="Zona Rural"
+                        title="MANHÃ — 08:00 — ZONA RURAL"
                         slots={MORNING_SLOTS}
                         appointments={sched.appointments}
                         patients={sched.patients}
                         date={sched.selectedDate}
                         variant="morning"
+                        vacancies={15}
                         onAdd={sched.addAppointment}
                         onRemove={sched.removeAppointment}
                       />
                     </div>
-                    <div className="flex-1 p-3 overflow-auto border-l">
+                    <div className="flex-1 overflow-auto border-l">
                       <SlotPanel
-                        title="Tarde"
-                        subtitle="Cidade / Camocim"
+                        title="TARDE — 14:00 — CIDADE / CAMOCIM"
                         slots={AFTERNOON_SLOTS}
                         appointments={sched.appointments}
                         patients={sched.patients}
                         date={sched.selectedDate}
                         variant="afternoon"
+                        vacancies={17}
                         onAdd={sched.addAppointment}
                         onRemove={sched.removeAppointment}
                       />
@@ -122,14 +168,16 @@ export default function Dashboard() {
                   </>
                 ) : (
                   <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                    <p>Selecione um dia liberado para ver a agenda</p>
+                    <p>Selecione um dia no calendário para ver a agenda</p>
                   </div>
                 )}
               </div>
             </div>
-          </TabsContent>
+          </>
+        )}
 
-          <TabsContent value="pacientes" className="flex-1 overflow-hidden m-0">
+        {tab === "pacientes" && (
+          <div className="flex-1 overflow-hidden">
             <PatientManager
               patients={sched.patients}
               onAdd={sched.addPatient}
@@ -137,9 +185,87 @@ export default function Dashboard() {
               onDelete={sched.deletePatient}
               onGetHistory={sched.getPatientHistory}
             />
-          </TabsContent>
-        </Tabs>
+          </div>
+        )}
+
+        {tab === "dashboard" && (
+          <div className="flex-1 p-8">
+            <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-lg border p-6 shadow-sm">
+                <p className="text-sm text-muted-foreground">Total de Pacientes</p>
+                <p className="text-3xl font-bold text-primary">{sched.patients.length}</p>
+              </div>
+              <div className="bg-white rounded-lg border p-6 shadow-sm">
+                <p className="text-sm text-muted-foreground">Dias Liberados</p>
+                <p className="text-3xl font-bold text-primary">{sched.releasedDays.length}</p>
+              </div>
+              <div className="bg-white rounded-lg border p-6 shadow-sm">
+                <p className="text-sm text-muted-foreground">Consultas Hoje</p>
+                <p className="text-3xl font-bold text-primary">{totalOccupied}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "busca" && (
+          <div className="flex-1 p-6">
+            <div className="max-w-2xl mx-auto space-y-4">
+              <h2 className="text-xl font-bold">Busca Global</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar paciente por nome ou cartão SUS..."
+                  value={globalSearch}
+                  onChange={e => setGlobalSearch(e.target.value)}
+                  className="pl-9"
+                  autoFocus
+                />
+              </div>
+              {searchResults.length > 0 && (
+                <div className="border rounded-lg divide-y bg-white">
+                  {searchResults.slice(0, 50).map(p => (
+                    <div key={p.id} className="px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{p.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {p.sus_card && `SUS: ${p.sus_card}`}
+                          {p.psf && ` • PSF: ${p.psf}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {globalSearch.trim() && searchResults.length === 0 && (
+                <p className="text-muted-foreground text-center py-8">Nenhum resultado encontrado</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Status bar */}
+      {tab === "agenda" && sched.selectedDate && (
+        <footer className="bg-white border-t px-4 py-2 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-6">
+            <span className="font-semibold">{totalOccupied}/{totalSlots} Vagas Ocupadas</span>
+            <span className="text-muted-foreground">
+              {totalSlots - totalOccupied} Livres: {morningFree} Manhã, {afternoonFree} Tarde
+            </span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+              Rural
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+              Cidade
+            </span>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }
