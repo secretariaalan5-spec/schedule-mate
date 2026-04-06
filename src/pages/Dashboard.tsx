@@ -5,6 +5,7 @@ import DateSidebar from "@/components/DateSidebar";
 import SlotPanel from "@/components/SlotPanel";
 import PatientManager from "@/components/PatientManager";
 import ImportExport from "@/components/ImportExport";
+import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Heart, LogOut, CalendarDays, Users, Search } from "lucide-react";
@@ -44,6 +45,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3">
           <ImportExport onImportComplete={handleRefresh} />
+          <InviteLink />
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-primary-foreground/60" />
             <Input
