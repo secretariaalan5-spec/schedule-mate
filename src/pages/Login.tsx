@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Heart } from "lucide-react";
 
@@ -11,6 +13,8 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(searchParams.get("tab") === "signup" ? "signup" : "login");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,6 +22,27 @@ export default function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       toast.error("Erro ao entrar: " + error.message);
+    }
+    setLoading(false);
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    if (error) {
+      toast.error("Erro ao criar conta: " + error.message);
+    } else {
+      toast.success("Conta criada! Verifique seu e-mail para confirmar ou faça login.");
+      setTab("login");
     }
     setLoading(false);
   };
@@ -30,22 +55,47 @@ export default function Login() {
             <Heart className="w-8 h-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold text-primary">Saúde da Mulher</CardTitle>
-          <p className="text-sm text-muted-foreground">Sistema de Agendamento de Consultas</p>
+          <CardDescription>Sistema de Agendamento de Consultas</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
-          </form>
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="w-full mb-4">
+              <TabsTrigger value="login" className="flex-1">Entrar</TabsTrigger>
+              <TabsTrigger value="signup" className="flex-1">Criar Conta</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">E-mail</Label>
+                  <Input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Senha</Label>
+                  <Input id="login-password" type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Entrando..." : "Entrar"}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="signup">
+              <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">E-mail</Label>
+                  <Input id="signup-email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Senha (mín. 6 caracteres)</Label>
+                  <Input id="signup-password" type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" minLength={6} />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Criando..." : "Criar Conta"}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
