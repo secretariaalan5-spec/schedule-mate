@@ -145,6 +145,7 @@ export default function Dashboard() {
                         vacancies={17}
                         onAdd={sched.addAppointment}
                         onRemove={sched.removeAppointment}
+                        onPatientsChanged={sched.fetchPatients}
                       />
                     </div>
                   </>
