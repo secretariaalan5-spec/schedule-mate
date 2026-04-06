@@ -14,9 +14,10 @@ interface Props {
   vacancies: number;
   onAdd: (slot: number, date: string, patientId: string, reason: string, type: string) => Promise<boolean>;
   onRemove: (id: string) => void;
+  onPatientsChanged: () => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove }: Props) {
+export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove, onPatientsChanged }: Props) {
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
 
   const getAppointment = (slot: number) => appointments.find(a => a.slot === slot);
@@ -26,7 +27,6 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b bg-card">
         <div className="flex items-center gap-2">
           <span className={`w-3 h-3 rounded-full ${dotColor}`}></span>
@@ -35,17 +35,13 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
         <span className="text-sm text-muted-foreground">{vacancies} vagas</span>
       </div>
 
-      {/* Slot rows */}
       <div className="flex-1 overflow-auto">
         {slots.map(slot => {
           const appt = getAppointment(slot);
           const slotNum = String(slot).padStart(2, "0");
 
           return (
-            <div
-              key={slot}
-              className="flex items-center border-b px-4 py-3 hover:bg-muted/30 transition-colors group"
-            >
+            <div key={slot} className="flex items-center border-b px-4 py-3 hover:bg-muted/30 transition-colors group">
               <span className="font-bold text-sm text-muted-foreground w-8">{slotNum}</span>
               {appt ? (
                 <div className="flex-1 flex items-center justify-between">
@@ -56,6 +52,9 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
                     )}
                     {appt.reason && (
                       <span className="ml-2 text-xs text-primary font-medium">{appt.reason}</span>
+                    )}
+                    {appt.type === "RETORNO" && (
+                      <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Retorno</span>
                     )}
                   </div>
                   <Button
@@ -92,7 +91,9 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
           slot={dialogSlot}
           date={date}
           patients={patients}
+          variant={variant}
           onAdd={onAdd}
+          onPatientsChanged={onPatientsChanged}
         />
       )}
     </div>
