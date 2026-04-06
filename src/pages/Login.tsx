@@ -48,8 +48,8 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
-      <Card className="w-full max-w-md shadow-xl border-primary/20">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary/5 to-background p-4">
+      <Card className="w-full max-w-md shadow-xl border-primary/15">
         <CardHeader className="text-center space-y-3">
           <div className="mx-auto w-16 h-16 rounded-full bg-primary flex items-center justify-center">
             <Heart className="w-8 h-8 text-primary-foreground" />
