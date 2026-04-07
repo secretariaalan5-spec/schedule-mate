@@ -98,7 +98,7 @@ export default function Dashboard() {
                 onSelect={handleCalendarSelect}
                 locale={ptBR}
                 modifiers={{ hasAppointments: appointmentDateObjects }}
-                modifiersClassNames={{ hasAppointments: "bg-primary/10 font-semibold" }}
+                modifiersClassNames={{ hasAppointments: "!bg-primary/20 !text-primary font-bold ring-1 ring-primary/40" }}
                 className="w-full"
               />
             </div>
