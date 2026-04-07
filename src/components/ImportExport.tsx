@@ -5,17 +5,88 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import type { Patient } from "@/hooks/useScheduling";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Props {
   onImportComplete: () => void;
 }
 
+/* ── helpers ── */
+
+function parseSheetDate(raw: string): string | null {
+  // Extract date from strings like "DATA: 21/08/24- HORÁRIO: 07:30 h"
+  const m = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (!m) return null;
+  const day = m[1].padStart(2, "0");
+  const month = m[2].padStart(2, "0");
+  let year = m[3];
+  if (year.length === 2) year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
+  return `${year}-${month}-${day}`;
+}
+
+function isMorningSheet(raw: string, sheetName: string): boolean {
+  // Check time in DATA row
+  const timeMatch = raw.match(/HOR[ÁA]RIO[:\s]*(\d{1,2})/i);
+  if (timeMatch) return parseInt(timeMatch[1]) < 12;
+  // Fallback: sheet name contains M or T
+  const upper = sheetName.toUpperCase().trim();
+  if (upper.endsWith("M")) return true;
+  if (upper.endsWith("T")) return false;
+  return true; // default morning
+}
+
+function parseDob(val: any): string | null {
+  if (!val) return null;
+  if (val instanceof Date || (typeof val === "string" && val.includes("T"))) {
+    try {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      }
+    } catch { /* fall through */ }
+  }
+  const s = String(val).trim();
+  // Try dd/mm/yyyy or dd/mm/yy
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    let year = m[3];
+    if (year.length === 2) year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
+    return `${year}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  }
+  return null;
+}
+
+function findHeaderRow(ws: XLSX.WorkSheet): number {
+  const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+  for (let r = range.s.r; r <= Math.min(range.e.r, 15); r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      if (cell && String(cell.v || "").toUpperCase().includes("NOME")) return r;
+    }
+  }
+  return -1;
+}
+
+function findDateRow(ws: XLSX.WorkSheet): string {
+  const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+  for (let r = range.s.r; r <= Math.min(range.e.r, 15); r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      const val = String(cell?.v || "");
+      if (val.toUpperCase().includes("DATA:")) return val;
+    }
+  }
+  return "";
+}
+
+/* ── component ── */
+
 export default function ImportExport({ onImportComplete }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
 
+  /* ═══════ EXPORT EXCEL ═══════ */
   const exportExcel = async () => {
     try {
       const [patientsRes, apptsRes, daysRes] = await Promise.all([
@@ -26,7 +97,55 @@ export default function ImportExport({ onImportComplete }: Props) {
 
       const wb = XLSX.utils.book_new();
 
-      // Patients sheet - complete info
+      // Group appointments by date
+      const apptsByDate = new Map<string, any[]>();
+      for (const a of apptsRes.data || []) {
+        const key = a.date;
+        if (!apptsByDate.has(key)) apptsByDate.set(key, []);
+        apptsByDate.get(key)!.push(a);
+      }
+
+      // Create a sheet per date (like the original format)
+      for (const [date, appts] of apptsByDate) {
+        const morning = appts.filter((a: any) => a.slot <= 15).sort((a: any, b: any) => a.slot - b.slot);
+        const afternoon = appts.filter((a: any) => a.slot > 15).sort((a: any, b: any) => a.slot - b.slot);
+
+        const dateFormatted = format(parseISO(date), "dd/MM/yyyy", { locale: ptBR });
+
+        for (const [label, group, time] of [
+          ["M", morning, "07:30 h"],
+          ["T", afternoon, "14:00 h"],
+        ] as [string, any[], string][]) {
+          if (group.length === 0) continue;
+          const dayPart = format(parseISO(date), "dd_MM");
+          const sheetName = `${dayPart} ${label}`.substring(0, 31);
+
+          const rows: any[][] = [
+            ["LISTA DOS PACIENTES PARA O ATENDIMENTO"],
+            [`DATA: ${dateFormatted}-  HORÁRIO: ${time}`],
+            ["HORÁRIO CHEGADA", "Nº", "NOME", "CARTÃO DO SUS", "DATA DE NASCIMENTO", "PSF", "MOTIVO"],
+          ];
+
+          for (const a of group) {
+            const pt = a.patients as Patient | null;
+            rows.push([
+              time.replace(" h", ""),
+              String(a.slot <= 15 ? a.slot : a.slot - 15),
+              pt?.name || "",
+              pt?.sus_card || "",
+              pt?.dob ? format(parseISO(pt.dob), "dd/MM/yyyy") : "",
+              pt?.psf || "",
+              a.reason || "",
+            ]);
+          }
+
+          const ws = XLSX.utils.aoa_to_sheet(rows);
+          ws["!cols"] = [{ wch: 16 }, { wch: 4 }, { wch: 40 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 20 }];
+          XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        }
+      }
+
+      // Patients master sheet
       const pData = (patientsRes.data || []).map((p, i) => ({
         "Nº": i + 1,
         "Nome": p.name,
@@ -36,50 +155,18 @@ export default function ImportExport({ onImportComplete }: Props) {
         "Observações": p.observations || "",
       }));
       const pSheet = XLSX.utils.json_to_sheet(pData);
-      pSheet["!cols"] = [{ wch: 5 }, { wch: 35 }, { wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 30 }];
+      pSheet["!cols"] = [{ wch: 5 }, { wch: 40 }, { wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 30 }];
       XLSX.utils.book_append_sheet(wb, pSheet, "Pacientes");
 
-      // Appointments sheet - grouped by date with formatted info
-      const aData = (apptsRes.data || []).map(a => {
-        const pt = a.patients as Patient | null;
-        const dateFormatted = format(parseISO(a.date), "dd/MM/yyyy (EEEE)", { locale: ptBR });
-        const turno = a.slot <= 15 ? "Manhã" : "Tarde";
-        return {
-          "Data": dateFormatted,
-          "Turno": turno,
-          "Vaga": String(a.slot).padStart(2, "0"),
-          "Paciente": pt?.name || "",
-          "Cartão SUS": pt?.sus_card || "",
-          "PSF": pt?.psf || "",
-          "Motivo": a.reason || "",
-          "Tipo": a.type,
-        };
-      });
-      const aSheet = XLSX.utils.json_to_sheet(aData);
-      aSheet["!cols"] = [{ wch: 30 }, { wch: 8 }, { wch: 6 }, { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 10 }];
-      XLSX.utils.book_append_sheet(wb, aSheet, "Agendamentos");
-
-      // Released days sheet with formatted dates
-      const dData = (daysRes.data || []).map(d => ({
-        "Data": d.date,
-        "Dia Formatado": format(parseISO(d.date), "dd/MM/yyyy (EEEE)", { locale: ptBR }),
-      }));
-      const dSheet = XLSX.utils.json_to_sheet(dData);
-      dSheet["!cols"] = [{ wch: 12 }, { wch: 35 }];
-      XLSX.utils.book_append_sheet(wb, dSheet, "Dias Liberados");
-
-      // Summary sheet
-      const totalPatients = patientsRes.data?.length || 0;
-      const totalAppts = apptsRes.data?.length || 0;
-      const totalDays = daysRes.data?.length || 0;
+      // Summary
       const summaryData = [
-        { "Informação": "Total de Pacientes", "Valor": totalPatients },
-        { "Informação": "Total de Consultas Agendadas", "Valor": totalAppts },
-        { "Informação": "Total de Dias Liberados", "Valor": totalDays },
-        { "Informação": "Data da Exportação", "Valor": format(new Date(), "dd/MM/yyyy HH:mm") },
+        { "Informação": "Total de Pacientes", "Valor": patientsRes.data?.length || 0 },
+        { "Informação": "Total de Consultas", "Valor": apptsRes.data?.length || 0 },
+        { "Informação": "Dias Liberados", "Valor": daysRes.data?.length || 0 },
+        { "Informação": "Exportado em", "Valor": format(new Date(), "dd/MM/yyyy HH:mm") },
       ];
       const sSheet = XLSX.utils.json_to_sheet(summaryData);
-      sSheet["!cols"] = [{ wch: 30 }, { wch: 20 }];
+      sSheet["!cols"] = [{ wch: 25 }, { wch: 20 }];
       XLSX.utils.book_append_sheet(wb, sSheet, "Resumo");
 
       XLSX.writeFile(wb, `saude_mulher_${new Date().toISOString().split("T")[0]}.xlsx`);
@@ -89,6 +176,7 @@ export default function ImportExport({ onImportComplete }: Props) {
     }
   };
 
+  /* ═══════ EXPORT CSV BACKUP ═══════ */
   const exportCSV = async () => {
     try {
       const [daysRes, patientsRes, apptsRes] = await Promise.all([
@@ -124,18 +212,16 @@ export default function ImportExport({ onImportComplete }: Props) {
     }
   };
 
+  /* ═══════ IMPORT ═══════ */
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);
 
     try {
-      const isExcel = file.name.match(/\.(xlsx|xls)$/i);
-      const isCSV = file.name.match(/\.csv$/i);
-
-      if (isExcel) {
+      if (file.name.match(/\.(xlsx|xls)$/i)) {
         await importExcelFile(file);
-      } else if (isCSV) {
+      } else if (file.name.match(/\.csv$/i)) {
         await importCSVFile(file);
       } else {
         toast.error("Formato não suportado. Use .xlsx, .xls ou .csv");
@@ -149,78 +235,130 @@ export default function ImportExport({ onImportComplete }: Props) {
     }
   };
 
+  /* ── Import Excel (multi-sheet per day format) ── */
   const importExcelFile = async (file: File) => {
     const buffer = await file.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: "array" });
+    const wb = XLSX.read(buffer, { type: "array", cellDates: true });
 
-    let patientsImported = 0;
-    let appointmentsImported = 0;
-    let daysImported = 0;
+    // Build existing patients map
     const patientNameToId = new Map<string, string>();
-
     const { data: existingPatients } = await supabase.from("patients").select("id, name");
     for (const p of existingPatients || []) {
       patientNameToId.set(p.name.toUpperCase().trim(), p.id);
     }
 
-    const pSheet = wb.Sheets["Pacientes"] || wb.Sheets[wb.SheetNames[0]];
-    if (pSheet) {
-      const rows: any[] = XLSX.utils.sheet_to_json(pSheet);
-      for (const row of rows) {
-        const name = (row["Nome"] || row["name"] || row["NOME"] || "").toString().trim();
-        if (!name) continue;
-        const upperName = name.toUpperCase();
-        if (patientNameToId.has(upperName)) continue;
+    let patientsImported = 0;
+    let appointmentsImported = 0;
+    let daysImported = 0;
 
-        const patient = {
-          name,
-          sus_card: (row["Cartão SUS"] || row["susCard"] || "").toString() || null,
-          dob: (row["Nascimento"] || row["Data Nascimento"] || row["dob"] || "").toString() || null,
-          psf: (row["PSF"] || row["PSF / UBS"] || row["psf"] || "").toString() || null,
-          observations: (row["Observações"] || row["observations"] || "").toString() || null,
-        };
+    for (const sheetName of wb.SheetNames) {
+      const ws = wb.Sheets[sheetName];
+      if (!ws || !ws["!ref"]) continue;
 
-        const { data, error } = await supabase.from("patients").insert(patient).select("id").single();
-        if (data) { patientNameToId.set(upperName, data.id); patientsImported++; }
-        if (error) console.error("Patient import error:", error);
+      // Try to find date from DATA: row
+      const dateRowText = findDateRow(ws);
+      const date = parseSheetDate(dateRowText);
+
+      // If this is a "Pacientes" or "Resumo" sheet (from our export), handle separately
+      if (sheetName === "Pacientes") {
+        const rows: any[] = XLSX.utils.sheet_to_json(ws);
+        for (const row of rows) {
+          const name = (row["Nome"] || row["name"] || row["NOME"] || "").toString().trim();
+          if (!name) continue;
+          if (patientNameToId.has(name.toUpperCase())) continue;
+
+          const { data, error } = await supabase.from("patients").insert({
+            name,
+            sus_card: (row["Cartão SUS"] || row["CARTÃO DO SUS"] || "").toString() || null,
+            dob: parseDob(row["Data Nascimento"] || row["DATA DE NASCIMENTO"]),
+            psf: (row["PSF / UBS"] || row["PSF"] || "").toString() || null,
+            observations: (row["Observações"] || "").toString() || null,
+          }).select("id").single();
+          if (data) { patientNameToId.set(name.toUpperCase(), data.id); patientsImported++; }
+          if (error) console.error("Patient import error:", error);
+        }
+        continue;
       }
-    }
 
-    const aSheet = wb.Sheets["Agendamentos"] || wb.Sheets[wb.SheetNames[1]];
-    if (aSheet) {
-      const rows: any[] = XLSX.utils.sheet_to_json(aSheet);
-      for (const row of rows) {
-        const slot = parseInt(row["Vaga"] || row["slot"] || "0");
-        const date = (row["Data"] || row["date"] || "").toString().split(" ")[0];
-        const patientName = (row["Paciente"] || row["patient"] || "").toString().trim();
-        if (!slot || !date || !patientName) continue;
-        const patientId = patientNameToId.get(patientName.toUpperCase());
+      if (sheetName === "Resumo" || sheetName === "Dias Liberados") continue;
+
+      if (!date) {
+        console.warn(`Sheet "${sheetName}": could not parse date`);
+        continue;
+      }
+
+      // Release the day
+      const { error: dayErr } = await supabase.from("released_days").upsert({ date }, { onConflict: "date" });
+      if (!dayErr) daysImported++;
+
+      const isMorning = isMorningSheet(dateRowText, sheetName);
+      const headerRow = findHeaderRow(ws);
+      if (headerRow < 0) continue;
+
+      const range = XLSX.utils.decode_range(ws["!ref"]);
+
+      // Find column indices
+      let colName = -1, colSus = -1, colDob = -1, colPsf = -1, colMotivo = -1, colNum = -1;
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r: headerRow, c })];
+        const val = String(cell?.v || "").toUpperCase().trim();
+        if (val.includes("NOME")) colName = c;
+        else if (val.includes("CART") || val.includes("SUS")) colSus = c;
+        else if (val.includes("NASC")) colDob = c;
+        else if (val.includes("PSF")) colPsf = c;
+        else if (val.includes("MOTIVO")) colMotivo = c;
+        else if (val === "Nº" || val === "N°" || val === "NO" || val === "NR") colNum = c;
+      }
+
+      if (colName < 0) continue;
+
+      for (let r = headerRow + 1; r <= range.e.r; r++) {
+        const nameCell = ws[XLSX.utils.encode_cell({ r, c: colName })];
+        const name = String(nameCell?.v || "").trim();
+        if (!name) continue;
+
+        const susCell = colSus >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colSus })] : null;
+        const dobCell = colDob >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colDob })] : null;
+        const psfCell = colPsf >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colPsf })] : null;
+        const motivoCell = colMotivo >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colMotivo })] : null;
+        const numCell = colNum >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colNum })] : null;
+
+        const susCard = String(susCell?.v || "").trim() || null;
+        const dob = parseDob(dobCell?.v);
+        const psf = String(psfCell?.v || "").trim() || null;
+        const reason = String(motivoCell?.v || "").trim() || null;
+        const slotNum = numCell ? parseInt(String(numCell.v)) : (r - headerRow);
+
+        // Upsert patient
+        let patientId = patientNameToId.get(name.toUpperCase());
+        if (!patientId) {
+          const { data } = await supabase.from("patients").insert({
+            name, sus_card: susCard, dob, psf,
+          }).select("id").single();
+          if (data) {
+            patientId = data.id;
+            patientNameToId.set(name.toUpperCase(), data.id);
+            patientsImported++;
+          }
+        }
+
         if (!patientId) continue;
-        await supabase.from("released_days").upsert({ date }, { onConflict: "date" });
+
+        // Calculate slot: morning 1-15, afternoon 16-30
+        const slot = isMorning ? slotNum : slotNum + 15;
+
         const { error } = await supabase.from("appointments").insert({
-          slot, date, patient_id: patientId,
-          reason: (row["Motivo"] || row["reason"] || "").toString() || null,
-          type: (row["Tipo"] || row["type"] || "NORMAL").toString(),
+          slot, date, patient_id: patientId, reason, type: "NORMAL",
         });
         if (!error) appointmentsImported++;
       }
     }
 
-    const dSheet = wb.Sheets["Dias Liberados"] || wb.Sheets[wb.SheetNames[2]];
-    if (dSheet) {
-      const rows: any[] = XLSX.utils.sheet_to_json(dSheet);
-      for (const row of rows) {
-        const date = (row["Data"] || row["date"] || "").toString();
-        if (!date) continue;
-        const { error } = await supabase.from("released_days").upsert({ date }, { onConflict: "date" });
-        if (!error) daysImported++;
-      }
-    }
-
-    toast.success(`Importado: ${patientsImported} pacientes, ${appointmentsImported} agendamentos, ${daysImported} dias`);
+    toast.success(`Importado: ${patientsImported} pacientes, ${appointmentsImported} consultas, ${daysImported} dias`);
     onImportComplete();
   };
 
+  /* ── Import CSV ── */
   const importCSVFile = async (file: File) => {
     const text = await file.text();
     const lines = text.replace(/^\ufeff/, "").split("\n");
@@ -268,7 +406,7 @@ export default function ImportExport({ onImportComplete }: Props) {
       });
     }
 
-    toast.success(`Importado: ${days.length} dias, ${patients.length} pacientes, ${appointments.length} agendamentos`);
+    toast.success(`Importado: ${days.length} dias, ${patients.length} pacientes, ${appointments.length} consultas`);
     onImportComplete();
   };
 
