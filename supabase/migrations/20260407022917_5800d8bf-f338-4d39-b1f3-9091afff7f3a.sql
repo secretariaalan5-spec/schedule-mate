@@ -1,0 +1,1 @@
+ALTER TABLE public.appointments ADD COLUMN printed boolean NOT NULL DEFAULT false;
