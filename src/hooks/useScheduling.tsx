@@ -59,9 +59,18 @@ export function useScheduling() {
   }, []);
 
   const fetchPatients = useCallback(async () => {
-    const { data, error } = await supabase.from("patients").select("*").order("name");
-    if (error) { toast.error("Erro ao carregar pacientes"); return; }
-    setPatients(data || []);
+    let allPatients: any[] = [];
+    let from = 0;
+    const PAGE_SIZE = 1000;
+    while (true) {
+      const { data, error } = await supabase.from("patients").select("*").order("name").range(from, from + PAGE_SIZE - 1);
+      if (error) { toast.error("Erro ao carregar pacientes"); return; }
+      if (!data || data.length === 0) break;
+      allPatients = allPatients.concat(data);
+      if (data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
+    }
+    setPatients(allPatients);
   }, []);
 
   useEffect(() => { fetchPatients(); fetchAppointmentDates(); }, [fetchPatients, fetchAppointmentDates]);
