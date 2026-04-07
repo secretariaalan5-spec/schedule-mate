@@ -181,7 +181,6 @@ export default function PatientManager({ patients, onAdd, onUpdate, onDelete, on
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => { if (window.confirm(`Excluir paciente "${p.name}"?`)) onDelete(p.id); }} title="Excluir">
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
-                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
