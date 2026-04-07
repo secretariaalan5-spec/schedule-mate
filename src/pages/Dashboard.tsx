@@ -11,6 +11,7 @@ import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { CalendarDays, Users, LogOut, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import logo from "@/assets/logo.png";
 
 const MORNING_SLOTS = Array.from({ length: 15 }, (_, i) => i + 1);
 const AFTERNOON_SLOTS = Array.from({ length: 17 }, (_, i) => i + 16);
@@ -56,10 +57,13 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shadow-md">
-        <div>
-          <h1 className="font-bold text-xl tracking-tight">SAÚDE DA MULHER</h1>
-          <p className="text-xs opacity-80">Sistema de Agendamento — Camocim</p>
+      <header className="bg-primary text-primary-foreground px-4 py-2 flex items-center justify-between shadow-md">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Logo" className="w-10 h-10 object-contain rounded-full bg-white/90 p-0.5" />
+          <div>
+            <h1 className="font-bold text-lg tracking-tight">SAÚDE DA MULHER</h1>
+            <p className="text-xs opacity-80">Sistema de Agendamento — Camocim</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <InviteLink />
