@@ -22,6 +22,7 @@ export type Database = {
           patient_id: string
           printed: boolean
           reason: string | null
+          schedule_time: string
           slot: number
           type: string
           updated_at: string
@@ -33,6 +34,7 @@ export type Database = {
           patient_id: string
           printed?: boolean
           reason?: string | null
+          schedule_time?: string
           slot: number
           type?: string
           updated_at?: string
@@ -44,6 +46,7 @@ export type Database = {
           patient_id?: string
           printed?: boolean
           reason?: string | null
+          schedule_time?: string
           slot?: number
           type?: string
           updated_at?: string
