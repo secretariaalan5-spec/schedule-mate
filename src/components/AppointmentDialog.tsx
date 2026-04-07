@@ -4,18 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
-
-interface HealthUnit {
-  id: string;
-  name: string;
-  address: string | null;
-}
 
 interface Props {
   open: boolean;
@@ -43,15 +36,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
   const [scheduleTime, setScheduleTime] = useState(variant === "morning" ? "08:00" : "14:00");
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [healthUnits, setHealthUnits] = useState<HealthUnit[]>([]);
   const [patientMonthAppointments, setPatientMonthAppointments] = useState<Appointment[]>([]);
-
-  // Load health units for PSF/UBS dropdown
-  useEffect(() => {
-    supabase.from("health_units").select("*").order("name").then(({ data }) => {
-      setHealthUnits((data as any) || []);
-    });
-  }, []);
 
   // When a patient is selected, check for existing appointments this month
   const checkMonthAppointments = useCallback(async (patientId: string) => {
@@ -245,20 +230,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
 
               <div className="space-y-1.5">
                 <Label>PSF / UBS</Label>
-                {healthUnits.length > 0 ? (
-                  <Select value={psf} onValueChange={setPsf}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a unidade de saúde" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {healthUnits.map(u => (
-                        <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input placeholder="Nome do PSF" value={psf} onChange={e => setPsf(e.target.value)} />
-                )}
+                <Input placeholder="Nome do PSF / UBS" value={psf} onChange={e => setPsf(e.target.value)} />
               </div>
             </>
           )}
