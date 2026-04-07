@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -31,9 +31,15 @@ export function useScheduling() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // Fetch dates that have appointments (for calendar highlighting)
   const [appointmentDates, setAppointmentDates] = useState<string[]>([]);
+
+  // Debounce refs to prevent rapid re-fetches from realtime
+  const debounceRef = useRef<Record<string, NodeJS.Timeout>>({});
+
+  const debouncedCall = useCallback((key: string, fn: () => void, delay = 500) => {
+    if (debounceRef.current[key]) clearTimeout(debounceRef.current[key]);
+    debounceRef.current[key] = setTimeout(fn, delay);
+  }, []);
 
   const fetchAppointmentDates = useCallback(async () => {
     const { data, error } = await supabase
@@ -70,27 +76,36 @@ export function useScheduling() {
       if (data.length < PAGE_SIZE) break;
       from += PAGE_SIZE;
     }
-    setPatients(allPatients);
+    // Deduplicate by id
+    const seen = new Set<string>();
+    const unique = allPatients.filter(p => {
+      if (seen.has(p.id)) return false;
+      seen.add(p.id);
+      return true;
+    });
+    setPatients(unique);
   }, []);
 
   useEffect(() => { fetchPatients(); fetchAppointmentDates(); }, [fetchPatients, fetchAppointmentDates]);
   useEffect(() => { if (selectedDate) fetchAppointments(selectedDate); }, [selectedDate, fetchAppointments]);
 
-  // Realtime subscriptions
+  // Realtime subscriptions with debounce
   useEffect(() => {
     const channel = supabase
       .channel("realtime-scheduling")
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
-        if (selectedDate) fetchAppointments(selectedDate);
-        fetchAppointmentDates();
+        debouncedCall("appointments", () => {
+          if (selectedDate) fetchAppointments(selectedDate);
+          fetchAppointmentDates();
+        });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, () => {
-        fetchPatients();
+        debouncedCall("patients", () => fetchPatients());
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedDate, fetchAppointments, fetchPatients, fetchAppointmentDates]);
+  }, [selectedDate, fetchAppointments, fetchPatients, fetchAppointmentDates, debouncedCall]);
 
   const addAppointment = async (slot: number, date: string, patientId: string, reason: string, type: string = "NORMAL", scheduleTime?: string) => {
     const time = scheduleTime || (slot <= 15 ? "08:00" : "14:00");
