@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, UserPlus } from "lucide-react";
+import { Trash2, UserPlus, Printer, CheckCircle } from "lucide-react";
 import type { Appointment, Patient } from "@/hooks/useScheduling";
 import AppointmentDialog from "./AppointmentDialog";
+import { printAppointments } from "./PrintSlip";
 
 interface Props {
   title: string;
@@ -15,15 +16,39 @@ interface Props {
   onAdd: (slot: number, date: string, patientId: string, reason: string, type: string) => Promise<boolean>;
   onRemove: (id: string) => void;
   onPatientsChanged: () => void;
+  onRefresh?: () => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove, onPatientsChanged }: Props) {
+export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh }: Props) {
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const getAppointment = (slot: number) => appointments.find(a => a.slot === slot);
 
   const occupied = slots.filter(s => getAppointment(s)).length;
   const dotColor = variant === "morning" ? "bg-morning" : "bg-afternoon";
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const allIds = slots.map(s => getAppointment(s)?.id).filter(Boolean) as string[];
+    setSelectedIds(prev => prev.size === allIds.length ? new Set() : new Set(allIds));
+  };
+
+  const handlePrint = () => {
+    const toPrint = appointments.filter(a => selectedIds.has(a.id));
+    printAppointments(toPrint, () => {
+      setSelectedIds(new Set());
+      onRefresh?.();
+    });
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -32,39 +57,83 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
           <span className={`w-3 h-3 rounded-full ${dotColor}`}></span>
           <h3 className="font-bold text-sm tracking-wide">{title}</h3>
         </div>
-        <span className="text-sm text-muted-foreground">{vacancies} vagas</span>
+        <div className="flex items-center gap-2">
+          {occupied > 0 && (
+            <>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={selectAll}>
+                {selectedIds.size > 0 ? "Limpar" : "Selecionar"}
+              </Button>
+              {selectedIds.size > 0 && (
+                <Button size="sm" className="h-7 text-xs gap-1" onClick={handlePrint}>
+                  <Printer className="w-3 h-3" />
+                  Imprimir ({selectedIds.size})
+                </Button>
+              )}
+            </>
+          )}
+          <span className="text-sm text-muted-foreground">{vacancies} vagas</span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto">
         {slots.map(slot => {
           const appt = getAppointment(slot);
           const slotNum = String(slot).padStart(2, "0");
+          const isSelected = appt ? selectedIds.has(appt.id) : false;
+          const isPrinted = appt ? (appt as any).printed : false;
 
           return (
-            <div key={slot} className="flex items-center border-b px-4 py-3 hover:bg-muted/30 transition-colors group">
+            <div
+              key={slot}
+              className={`flex items-center border-b px-4 py-3 hover:bg-muted/30 transition-colors group ${isSelected ? "bg-primary/5" : ""}`}
+            >
+              {appt && (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelect(appt.id)}
+                  className="mr-2 accent-primary w-4 h-4 cursor-pointer"
+                />
+              )}
               <span className="font-bold text-sm text-muted-foreground w-8">{slotNum}</span>
               {appt ? (
                 <div className="flex-1 flex items-center justify-between">
-                  <div>
+                  <div className="flex items-center gap-1 flex-wrap">
                     <span className="font-medium text-sm">{appt.patients?.name || "—"}</span>
                     {appt.patients?.psf && (
-                      <span className="ml-2 text-xs text-muted-foreground">({appt.patients.psf})</span>
+                      <span className="text-xs text-muted-foreground">({appt.patients.psf})</span>
                     )}
                     {appt.reason && (
-                      <span className="ml-2 text-xs text-primary font-medium">{appt.reason}</span>
+                      <span className="text-xs text-primary font-medium">{appt.reason}</span>
                     )}
                     {appt.type === "RETORNO" && (
-                      <span className="ml-2 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Retorno</span>
+                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Retorno</span>
+                    )}
+                    {isPrinted && (
+                      <span className="text-xs text-green-600 flex items-center gap-0.5" title="Impresso">
+                        <CheckCircle className="w-3 h-3" />
+                      </span>
                     )}
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => onRemove(appt.id)}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => printAppointments([appt], onRefresh)}
+                      title="Imprimir"
+                    >
+                      <Printer className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => onRemove(appt.id)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-between">
