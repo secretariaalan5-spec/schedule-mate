@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Plus, Edit2, Trash2, History, User, CreditCard, MapPin } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, History, User, CreditCard } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { formatDateBR } from "@/hooks/useScheduling";
 
@@ -34,11 +34,6 @@ export default function PatientManager({ patients, onAdd, onUpdate, onDelete, on
 
   const totalPatients = patients.length;
   const totalFiltered = filtered.length;
-  const psfGroups = new Map<string, number>();
-  patients.forEach(p => {
-    const key = p.psf || "Sem PSF";
-    psfGroups.set(key, (psfGroups.get(key) || 0) + 1);
-  });
 
   const openNew = () => { setForm({ name: "", sus_card: "", dob: "", psf: "", observations: "" }); setNewOpen(true); };
   const openEdit = (p: Patient) => {
@@ -119,17 +114,6 @@ export default function PatientManager({ patients, onAdd, onUpdate, onDelete, on
               <div>
                 <p className="text-xl font-bold text-primary">{patients.filter(p => p.sus_card).length}</p>
                 <p className="text-xs text-muted-foreground">Com Cartão SUS</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="flex-1 border-primary/20">
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <MapPin className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-primary">{psfGroups.size}</p>
-                <p className="text-xs text-muted-foreground">PSFs Diferentes</p>
               </div>
             </CardContent>
           </Card>
