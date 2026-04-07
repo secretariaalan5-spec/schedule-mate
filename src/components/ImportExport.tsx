@@ -15,8 +15,8 @@ interface Props {
 /* ── helpers ── */
 
 function parseSheetDate(raw: string): string | null {
-  // Extract date from strings like "DATA: 21/08/24- HORÁRIO: 07:30 h"
-  const m = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  // Extract date from "DATA: 21/08/24-", "DATA 25/03/2026 -", etc.
+  const m = raw.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
   if (!m) return null;
   const day = m[1].padStart(2, "0");
   const month = m[2].padStart(2, "0");
@@ -26,19 +26,25 @@ function parseSheetDate(raw: string): string | null {
 }
 
 function isMorningSheet(raw: string, sheetName: string): boolean {
-  // Check time in DATA row
   const timeMatch = raw.match(/HOR[ÁA]RIO[:\s]*(\d{1,2})/i);
   if (timeMatch) return parseInt(timeMatch[1]) < 12;
-  // Fallback: sheet name contains M or T
   const upper = sheetName.toUpperCase().trim();
   if (upper.endsWith("M")) return true;
   if (upper.endsWith("T")) return false;
-  return true; // default morning
+  return true;
 }
 
 function parseDob(val: any): string | null {
   if (!val) return null;
-  if (val instanceof Date || (typeof val === "string" && val.includes("T"))) {
+  // Handle JS Date objects (from XLSX cellDates)
+  if (val instanceof Date) {
+    if (!isNaN(val.getTime())) {
+      return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, "0")}-${String(val.getDate()).padStart(2, "0")}`;
+    }
+    return null;
+  }
+  // Handle ISO strings with T
+  if (typeof val === "string" && val.includes("T")) {
     try {
       const d = new Date(val);
       if (!isNaN(d.getTime())) {
@@ -47,12 +53,19 @@ function parseDob(val: any): string | null {
     } catch { /* fall through */ }
   }
   const s = String(val).trim();
-  // Try dd/mm/yyyy or dd/mm/yy
-  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  // Try dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy (2 or 4 digit year)
+  const m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
   if (m) {
     let year = m[3];
     if (year.length === 2) year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
     return `${year}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  }
+  // Handle Excel serial number
+  if (typeof val === "number" && val > 10000 && val < 100000) {
+    const d = new Date((val - 25569) * 86400000);
+    if (!isNaN(d.getTime())) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
   }
   return null;
 }
@@ -74,7 +87,7 @@ function findDateRow(ws: XLSX.WorkSheet): string {
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cell = ws[XLSX.utils.encode_cell({ r, c })];
       const val = String(cell?.v || "");
-      if (val.toUpperCase().includes("DATA:")) return val;
+      if (val.toUpperCase().includes("DATA") && val.match(/\d{1,2}[\/\-.](\d{1,2})[\/\-.]\d{2,4}/)) return val;
     }
   }
   return "";
@@ -323,7 +336,8 @@ export default function ImportExport({ onImportComplete }: Props) {
         const motivoCell = colMotivo >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colMotivo })] : null;
         const numCell = colNum >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colNum })] : null;
 
-        const susCard = String(susCell?.v || "").trim() || null;
+        const susRaw = susCell?.v;
+        const susCard = susRaw != null ? String(susRaw).trim() : null;
         const dob = parseDob(dobCell?.v);
         const psf = String(psfCell?.v || "").trim() || null;
         const reason = String(motivoCell?.v || "").trim() || null;
