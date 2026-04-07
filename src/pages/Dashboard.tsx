@@ -49,7 +49,7 @@ export default function Dashboard() {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-4 h-4" /> },
-    { id: "pacientes", label: `Pacientes (${sched.patients.length})`, icon: <Users className="w-4 h-4" /> },
+    { id: "pacientes", label: `Pacientes`, icon: <Users className="w-4 h-4" /> },
   ];
 
   return (
@@ -98,7 +98,7 @@ export default function Dashboard() {
                 onSelect={handleCalendarSelect}
                 locale={ptBR}
                 modifiers={{ hasAppointments: appointmentDateObjects }}
-                modifiersClassNames={{ hasAppointments: "bg-primary/10 font-semibold" }}
+                modifiersClassNames={{ hasAppointments: "!bg-primary/20 !text-primary font-bold ring-1 ring-primary/40" }}
                 className="w-full"
               />
             </div>
