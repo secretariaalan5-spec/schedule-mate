@@ -1,11 +1,21 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
+import { formatDateBR } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
+
+interface HealthUnit {
+  id: string;
+  name: string;
+  address: string | null;
+}
 
 interface Props {
   open: boolean;
@@ -33,6 +43,33 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
   const [scheduleTime, setScheduleTime] = useState(variant === "morning" ? "08:00" : "14:00");
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [healthUnits, setHealthUnits] = useState<HealthUnit[]>([]);
+  const [patientMonthAppointments, setPatientMonthAppointments] = useState<Appointment[]>([]);
+
+  // Load health units for PSF/UBS dropdown
+  useEffect(() => {
+    supabase.from("health_units").select("*").order("name").then(({ data }) => {
+      setHealthUnits((data as any) || []);
+    });
+  }, []);
+
+  // When a patient is selected, check for existing appointments this month
+  const checkMonthAppointments = useCallback(async (patientId: string) => {
+    const monthStart = date.substring(0, 7) + "-01";
+    const month = parseInt(date.substring(5, 7));
+    const year = parseInt(date.substring(0, 4));
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthEnd = date.substring(0, 7) + "-" + String(lastDay).padStart(2, "0");
+
+    const { data } = await supabase
+      .from("appointments")
+      .select("*, patients(*)")
+      .eq("patient_id", patientId)
+      .gte("date", monthStart)
+      .lte("date", monthEnd)
+      .order("date");
+    setPatientMonthAppointments((data as any) || []);
+  }, [date]);
 
   // Pre-fill when editing
   useEffect(() => {
@@ -45,12 +82,13 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
         setSusCard(pt.sus_card || "");
         setDob(pt.dob || "");
         setPsf(pt.psf || "");
+        checkMonthAppointments(pt.id);
       }
       setReason(editAppointment.reason || "");
       setType(editAppointment.type || "NORMAL");
       setScheduleTime(editAppointment.schedule_time || (variant === "morning" ? "08:00" : "14:00"));
     }
-  }, [editAppointment, variant]);
+  }, [editAppointment, variant, checkMonthAppointments]);
 
   const variantLabel = variant === "morning" ? "Manhã — Zona Rural" : "Tarde — Cidade";
 
@@ -72,6 +110,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
     setPsf(p.psf || "");
     setSearch(p.name);
     setShowResults(false);
+    checkMonthAppointments(p.id);
   };
 
   const handleSave = async () => {
@@ -79,7 +118,6 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
     setLoading(true);
 
     if (isEditing && onUpdate) {
-      // Update existing appointment
       const updates: any = {
         reason: reason || null,
         type,
@@ -123,6 +161,11 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
     if (ok) onClose();
   };
 
+  // Filter out current appointment from month list
+  const existingAppointments = patientMonthAppointments.filter(
+    a => !editAppointment || a.id !== editAppointment.id
+  );
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
@@ -132,6 +175,23 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Duplicate warning */}
+          {existingAppointments.length > 0 && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-destructive">Paciente já possui consulta(s) neste mês:</p>
+                <div className="mt-1 space-y-0.5">
+                  {existingAppointments.map(a => (
+                    <p key={a.id} className="text-xs text-muted-foreground">
+                      {formatDateBR(a.date)} — Vaga {String(a.slot).padStart(2, "0")} — {a.schedule_time} — {a.type}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5 relative">
             <Label>Nome do Paciente</Label>
             <Input
@@ -141,7 +201,10 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
                 setSearch(e.target.value);
                 setName(e.target.value);
                 setShowResults(true);
-                if (!e.target.value) setSelectedPatient(null);
+                if (!e.target.value) {
+                  setSelectedPatient(null);
+                  setPatientMonthAppointments([]);
+                }
               }}
               onFocus={() => search && setShowResults(true)}
               disabled={isEditing}
@@ -182,7 +245,20 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
 
               <div className="space-y-1.5">
                 <Label>PSF / UBS</Label>
-                <Input placeholder="Nome do PSF" value={psf} onChange={e => setPsf(e.target.value)} />
+                {healthUnits.length > 0 ? (
+                  <Select value={psf} onValueChange={setPsf}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a unidade de saúde" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {healthUnits.map(u => (
+                        <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input placeholder="Nome do PSF" value={psf} onChange={e => setPsf(e.target.value)} />
+                )}
               </div>
             </>
           )}
