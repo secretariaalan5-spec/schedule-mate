@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, UserPlus, Printer, CheckCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Trash2, UserPlus, Printer, CheckCircle, Clock } from "lucide-react";
 import type { Appointment, Patient } from "@/hooks/useScheduling";
 import AppointmentDialog from "./AppointmentDialog";
 import { printAppointments } from "./PrintSlip";
@@ -13,15 +14,18 @@ interface Props {
   date: string;
   variant: "morning" | "afternoon";
   vacancies: number;
-  onAdd: (slot: number, date: string, patientId: string, reason: string, type: string) => Promise<boolean>;
+  onAdd: (slot: number, date: string, patientId: string, reason: string, type: string, scheduleTime?: string) => Promise<boolean>;
   onRemove: (id: string) => void;
   onPatientsChanged: () => void;
   onRefresh?: () => void;
+  onUpdateTime?: (id: string, time: string) => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh }: Props) {
+export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime }: Props) {
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
+  const [editTimeValue, setEditTimeValue] = useState("");
 
   const getAppointment = (slot: number) => appointments.find(a => a.slot === slot);
 
@@ -48,6 +52,18 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
       setSelectedIds(new Set());
       onRefresh?.();
     });
+  };
+
+  const startEditTime = (appt: Appointment) => {
+    setEditingTimeId(appt.id);
+    setEditTimeValue(appt.schedule_time || (appt.slot <= 15 ? "08:00" : "14:00"));
+  };
+
+  const saveTime = () => {
+    if (editingTimeId && editTimeValue && onUpdateTime) {
+      onUpdateTime(editingTimeId, editTimeValue);
+    }
+    setEditingTimeId(null);
   };
 
   return (
@@ -80,7 +96,7 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
           const appt = getAppointment(slot);
           const slotNum = String(slot).padStart(2, "0");
           const isSelected = appt ? selectedIds.has(appt.id) : false;
-          const isPrinted = appt ? (appt as any).printed : false;
+          const isPrinted = appt?.printed || false;
 
           return (
             <div
@@ -108,6 +124,27 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
                     )}
                     {appt.type === "RETORNO" && (
                       <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Retorno</span>
+                    )}
+                    {/* Time display/edit */}
+                    {editingTimeId === appt.id ? (
+                      <Input
+                        type="time"
+                        value={editTimeValue}
+                        onChange={e => setEditTimeValue(e.target.value)}
+                        onBlur={saveTime}
+                        onKeyDown={e => e.key === "Enter" && saveTime()}
+                        className="w-24 h-6 text-xs ml-1"
+                        autoFocus
+                      />
+                    ) : (
+                      <span
+                        className="text-xs text-muted-foreground ml-1 cursor-pointer hover:text-primary flex items-center gap-0.5"
+                        onClick={() => startEditTime(appt)}
+                        title="Clique para alterar horário"
+                      >
+                        <Clock className="w-3 h-3" />
+                        {appt.schedule_time || (appt.slot <= 15 ? "08:00" : "14:00")}
+                      </span>
                     )}
                     {isPrinted && (
                       <span className="text-xs text-green-600 flex items-center gap-0.5" title="Impresso">
