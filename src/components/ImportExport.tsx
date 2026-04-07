@@ -87,7 +87,7 @@ function findDateRow(ws: XLSX.WorkSheet): string {
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cell = ws[XLSX.utils.encode_cell({ r, c })];
       const val = String(cell?.v || "");
-      if (val.toUpperCase().includes("DATA:")) return val;
+      if (val.toUpperCase().includes("DATA") && val.match(/\d{1,2}[\/\-.](\d{1,2})[\/\-.]\d{2,4}/)) return val;
     }
   }
   return "";
@@ -336,7 +336,8 @@ export default function ImportExport({ onImportComplete }: Props) {
         const motivoCell = colMotivo >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colMotivo })] : null;
         const numCell = colNum >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colNum })] : null;
 
-        const susCard = String(susCell?.v || "").trim() || null;
+        const susRaw = susCell?.v;
+        const susCard = susRaw != null ? String(susRaw).trim() : null;
         const dob = parseDob(dobCell?.v);
         const psf = String(psfCell?.v || "").trim() || null;
         const reason = String(motivoCell?.v || "").trim() || null;
