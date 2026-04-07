@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import type { Patient } from "@/hooks/useScheduling";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Props {
   onImportComplete: () => void;
@@ -18,43 +20,70 @@ export default function ImportExport({ onImportComplete }: Props) {
     try {
       const [patientsRes, apptsRes, daysRes] = await Promise.all([
         supabase.from("patients").select("*").order("name"),
-        supabase.from("appointments").select("*, patients(*)").order("date"),
+        supabase.from("appointments").select("*, patients(*)").order("date").order("slot"),
         supabase.from("released_days").select("*").order("date"),
       ]);
 
       const wb = XLSX.utils.book_new();
 
-      // Patients sheet
-      const pData = (patientsRes.data || []).map(p => ({
-        Nome: p.name,
+      // Patients sheet - complete info
+      const pData = (patientsRes.data || []).map((p, i) => ({
+        "Nº": i + 1,
+        "Nome": p.name,
         "Cartão SUS": p.sus_card || "",
-        Nascimento: p.dob || "",
-        PSF: p.psf || "",
-        Observações: p.observations || "",
+        "Data Nascimento": p.dob ? format(parseISO(p.dob), "dd/MM/yyyy") : "",
+        "PSF / UBS": p.psf || "",
+        "Observações": p.observations || "",
       }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pData), "Pacientes");
+      const pSheet = XLSX.utils.json_to_sheet(pData);
+      pSheet["!cols"] = [{ wch: 5 }, { wch: 35 }, { wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 30 }];
+      XLSX.utils.book_append_sheet(wb, pSheet, "Pacientes");
 
-      // Appointments sheet
+      // Appointments sheet - grouped by date with formatted info
       const aData = (apptsRes.data || []).map(a => {
         const pt = a.patients as Patient | null;
+        const dateFormatted = format(parseISO(a.date), "dd/MM/yyyy (EEEE)", { locale: ptBR });
+        const turno = a.slot <= 15 ? "Manhã" : "Tarde";
         return {
-          Vaga: a.slot,
-          Data: a.date,
-          Paciente: pt?.name || "",
+          "Data": dateFormatted,
+          "Turno": turno,
+          "Vaga": String(a.slot).padStart(2, "0"),
+          "Paciente": pt?.name || "",
           "Cartão SUS": pt?.sus_card || "",
-          PSF: pt?.psf || "",
-          Motivo: a.reason || "",
-          Tipo: a.type,
+          "PSF": pt?.psf || "",
+          "Motivo": a.reason || "",
+          "Tipo": a.type,
         };
       });
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(aData), "Agendamentos");
+      const aSheet = XLSX.utils.json_to_sheet(aData);
+      aSheet["!cols"] = [{ wch: 30 }, { wch: 8 }, { wch: 6 }, { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 25 }, { wch: 10 }];
+      XLSX.utils.book_append_sheet(wb, aSheet, "Agendamentos");
 
-      // Released days sheet
-      const dData = (daysRes.data || []).map(d => ({ Data: d.date }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dData), "Dias Liberados");
+      // Released days sheet with formatted dates
+      const dData = (daysRes.data || []).map(d => ({
+        "Data": d.date,
+        "Dia Formatado": format(parseISO(d.date), "dd/MM/yyyy (EEEE)", { locale: ptBR }),
+      }));
+      const dSheet = XLSX.utils.json_to_sheet(dData);
+      dSheet["!cols"] = [{ wch: 12 }, { wch: 35 }];
+      XLSX.utils.book_append_sheet(wb, dSheet, "Dias Liberados");
+
+      // Summary sheet
+      const totalPatients = patientsRes.data?.length || 0;
+      const totalAppts = apptsRes.data?.length || 0;
+      const totalDays = daysRes.data?.length || 0;
+      const summaryData = [
+        { "Informação": "Total de Pacientes", "Valor": totalPatients },
+        { "Informação": "Total de Consultas Agendadas", "Valor": totalAppts },
+        { "Informação": "Total de Dias Liberados", "Valor": totalDays },
+        { "Informação": "Data da Exportação", "Valor": format(new Date(), "dd/MM/yyyy HH:mm") },
+      ];
+      const sSheet = XLSX.utils.json_to_sheet(summaryData);
+      sSheet["!cols"] = [{ wch: 30 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, sSheet, "Resumo");
 
       XLSX.writeFile(wb, `saude_mulher_${new Date().toISOString().split("T")[0]}.xlsx`);
-      toast.success("Excel exportado!");
+      toast.success("Excel exportado com sucesso!");
     } catch {
       toast.error("Erro ao exportar");
     }
@@ -129,60 +158,47 @@ export default function ImportExport({ onImportComplete }: Props) {
     let daysImported = 0;
     const patientNameToId = new Map<string, string>();
 
-    // Load existing patients to avoid duplicates
     const { data: existingPatients } = await supabase.from("patients").select("id, name");
     for (const p of existingPatients || []) {
       patientNameToId.set(p.name.toUpperCase().trim(), p.id);
     }
 
-    // Import Patients sheet
     const pSheet = wb.Sheets["Pacientes"] || wb.Sheets[wb.SheetNames[0]];
     if (pSheet) {
       const rows: any[] = XLSX.utils.sheet_to_json(pSheet);
       for (const row of rows) {
         const name = (row["Nome"] || row["name"] || row["NOME"] || "").toString().trim();
         if (!name) continue;
-
         const upperName = name.toUpperCase();
         if (patientNameToId.has(upperName)) continue;
 
         const patient = {
           name,
-          sus_card: (row["Cartão SUS"] || row["susCard"] || row["CARTAO SUS"] || "").toString() || null,
-          dob: (row["Nascimento"] || row["dob"] || row["DATA NASCIMENTO"] || "").toString() || null,
-          psf: (row["PSF"] || row["psf"] || "").toString() || null,
-          observations: (row["Observações"] || row["observations"] || row["OBS"] || "").toString() || null,
+          sus_card: (row["Cartão SUS"] || row["susCard"] || "").toString() || null,
+          dob: (row["Nascimento"] || row["Data Nascimento"] || row["dob"] || "").toString() || null,
+          psf: (row["PSF"] || row["PSF / UBS"] || row["psf"] || "").toString() || null,
+          observations: (row["Observações"] || row["observations"] || "").toString() || null,
         };
 
         const { data, error } = await supabase.from("patients").insert(patient).select("id").single();
-        if (data) {
-          patientNameToId.set(upperName, data.id);
-          patientsImported++;
-        }
+        if (data) { patientNameToId.set(upperName, data.id); patientsImported++; }
         if (error) console.error("Patient import error:", error);
       }
     }
 
-    // Import Appointments sheet
     const aSheet = wb.Sheets["Agendamentos"] || wb.Sheets[wb.SheetNames[1]];
     if (aSheet) {
       const rows: any[] = XLSX.utils.sheet_to_json(aSheet);
       for (const row of rows) {
         const slot = parseInt(row["Vaga"] || row["slot"] || "0");
-        const date = (row["Data"] || row["date"] || "").toString();
+        const date = (row["Data"] || row["date"] || "").toString().split(" ")[0];
         const patientName = (row["Paciente"] || row["patient"] || "").toString().trim();
         if (!slot || !date || !patientName) continue;
-
         const patientId = patientNameToId.get(patientName.toUpperCase());
         if (!patientId) continue;
-
-        // Ensure released day exists
         await supabase.from("released_days").upsert({ date }, { onConflict: "date" });
-
         const { error } = await supabase.from("appointments").insert({
-          slot,
-          date,
-          patient_id: patientId,
+          slot, date, patient_id: patientId,
           reason: (row["Motivo"] || row["reason"] || "").toString() || null,
           type: (row["Tipo"] || row["type"] || "NORMAL").toString(),
         });
@@ -190,7 +206,6 @@ export default function ImportExport({ onImportComplete }: Props) {
       }
     }
 
-    // Import Released Days sheet
     const dSheet = wb.Sheets["Dias Liberados"] || wb.Sheets[wb.SheetNames[2]];
     if (dSheet) {
       const rows: any[] = XLSX.utils.sheet_to_json(dSheet);
