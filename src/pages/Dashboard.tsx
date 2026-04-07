@@ -3,12 +3,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
 import PatientManager from "@/components/PatientManager";
-import HealthUnitManager from "@/components/HealthUnitManager";
 import ImportExport from "@/components/ImportExport";
 import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, LogOut, Building2 } from "lucide-react";
+import { CalendarDays, Users, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import logo from "@/assets/logo.png";
@@ -16,7 +15,7 @@ import logo from "@/assets/logo.png";
 const MORNING_SLOTS = Array.from({ length: 15 }, (_, i) => i + 1);
 const AFTERNOON_SLOTS = Array.from({ length: 17 }, (_, i) => i + 16);
 
-type Tab = "agenda" | "pacientes" | "unidades";
+type Tab = "agenda" | "pacientes";
 
 export default function Dashboard() {
   const { signOut } = useAuth();
@@ -36,7 +35,6 @@ export default function Dashboard() {
     sched.setSelectedDate(dateStr);
   };
 
-  // Highlight dates that have appointments
   const appointmentDateObjects = useMemo(
     () => sched.appointmentDates.map(d => new Date(d + "T12:00:00")),
     [sched.appointmentDates]
@@ -52,7 +50,6 @@ export default function Dashboard() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-4 h-4" /> },
     { id: "pacientes", label: `Pacientes (${sched.patients.length})`, icon: <Users className="w-4 h-4" /> },
-    { id: "unidades", label: "Unidades de Saúde", icon: <Building2 className="w-4 h-4" /> },
   ];
 
   return (
@@ -171,12 +168,6 @@ export default function Dashboard() {
               onDelete={sched.deletePatient}
               onGetHistory={sched.getPatientHistory}
             />
-          </div>
-        )}
-
-        {tab === "unidades" && (
-          <div className="flex-1 overflow-hidden">
-            <HealthUnitManager />
           </div>
         )}
       </div>
