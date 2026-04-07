@@ -20,6 +20,7 @@ export type Database = {
           date: string
           id: string
           patient_id: string
+          printed: boolean
           reason: string | null
           slot: number
           type: string
@@ -30,6 +31,7 @@ export type Database = {
           date: string
           id?: string
           patient_id: string
+          printed?: boolean
           reason?: string | null
           slot: number
           type?: string
@@ -40,6 +42,7 @@ export type Database = {
           date?: string
           id?: string
           patient_id?: string
+          printed?: boolean
           reason?: string | null
           slot?: number
           type?: string
