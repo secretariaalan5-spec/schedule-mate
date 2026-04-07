@@ -26,28 +26,25 @@ export interface Appointment {
   patients?: Patient;
 }
 
-export interface ReleasedDay {
-  id: string;
-  date: string;
-}
-
 export function useScheduling() {
-  const [releasedDays, setReleasedDays] = useState<ReleasedDay[]>([]);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchReleasedDays = useCallback(async () => {
-    const { data, error } = await supabase.from("released_days").select("*").order("date");
-    if (error) { toast.error("Erro ao carregar dias liberados"); return; }
-    setReleasedDays(data || []);
-    if (data && data.length > 0 && !selectedDate) {
-      const today = format(new Date(), "yyyy-MM-dd");
-      const future = data.find(d => d.date >= today);
-      setSelectedDate(future?.date || data[data.length - 1].date);
+  // Fetch dates that have appointments (for calendar highlighting)
+  const [appointmentDates, setAppointmentDates] = useState<string[]>([]);
+
+  const fetchAppointmentDates = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("date")
+      .order("date");
+    if (!error && data) {
+      const uniqueDates = [...new Set(data.map(d => d.date))];
+      setAppointmentDates(uniqueDates);
     }
-  }, [selectedDate]);
+  }, []);
 
   const fetchAppointments = useCallback(async (date: string) => {
     setLoading(true);
@@ -67,18 +64,16 @@ export function useScheduling() {
     setPatients(data || []);
   }, []);
 
-  useEffect(() => { fetchReleasedDays(); fetchPatients(); }, [fetchReleasedDays, fetchPatients]);
+  useEffect(() => { fetchPatients(); fetchAppointmentDates(); }, [fetchPatients, fetchAppointmentDates]);
   useEffect(() => { if (selectedDate) fetchAppointments(selectedDate); }, [selectedDate, fetchAppointments]);
 
   // Realtime subscriptions
   useEffect(() => {
     const channel = supabase
       .channel("realtime-scheduling")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
         if (selectedDate) fetchAppointments(selectedDate);
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "released_days" }, () => {
-        fetchReleasedDays();
+        fetchAppointmentDates();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, () => {
         fetchPatients();
@@ -86,21 +81,7 @@ export function useScheduling() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedDate, fetchAppointments, fetchReleasedDays, fetchPatients]);
-
-  const addReleasedDay = async (date: string) => {
-    const { error } = await supabase.from("released_days").insert({ date });
-    if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("Dia liberado adicionado");
-    fetchReleasedDays();
-  };
-
-  const removeReleasedDay = async (date: string) => {
-    const { error } = await supabase.from("released_days").delete().eq("date", date);
-    if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("Dia removido");
-    fetchReleasedDays();
-  };
+  }, [selectedDate, fetchAppointments, fetchPatients, fetchAppointmentDates]);
 
   const addAppointment = async (slot: number, date: string, patientId: string, reason: string, type: string = "NORMAL", scheduleTime?: string) => {
     const time = scheduleTime || (slot <= 15 ? "08:00" : "14:00");
@@ -111,6 +92,13 @@ export function useScheduling() {
     toast.success("Consulta agendada");
     fetchAppointments(date);
     return true;
+  };
+
+  const updateAppointment = async (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => {
+    const { error } = await supabase.from("appointments").update(updates as any).eq("id", id);
+    if (error) { toast.error("Erro: " + error.message); return; }
+    toast.success("Consulta atualizada");
+    if (selectedDate) fetchAppointments(selectedDate);
   };
 
   const updateAppointmentTime = async (id: string, scheduleTime: string) => {
@@ -160,11 +148,12 @@ export function useScheduling() {
   };
 
   return {
-    releasedDays, selectedDate, setSelectedDate, appointments, patients, loading,
-    addReleasedDay, removeReleasedDay, addAppointment, removeAppointment,
+    selectedDate, setSelectedDate, appointments, patients, loading,
+    appointmentDates,
+    addAppointment, updateAppointment, removeAppointment,
     addPatient, updatePatient, deletePatient, getPatientHistory,
     updateAppointmentTime,
-    fetchPatients, fetchAppointments, fetchReleasedDays,
+    fetchPatients, fetchAppointments, fetchAppointmentDates,
   };
 }
 
