@@ -1,0 +1,1 @@
+ALTER TABLE public.appointments ADD COLUMN schedule_time text NOT NULL DEFAULT '08:00';

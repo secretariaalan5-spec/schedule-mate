@@ -330,6 +330,20 @@ export default function ImportExport({ onImportComplete }: Props) {
         const name = String(nameCell?.v || "").trim();
         if (!name) continue;
 
+        // Skip metadata rows (headers imported as patient names)
+        const nameUpper = name.toUpperCase();
+        if (
+          nameUpper.includes("LOCAL DE REALIZA") ||
+          nameUpper.includes("ESPECIALIDADE") ||
+          nameUpper.includes("PROFISSIONAL") ||
+          nameUpper.includes("HOSPITAL") ||
+          nameUpper.includes("HORÁRIO") ||
+          nameUpper.includes("HORARIO") ||
+          nameUpper.includes("DATA:") ||
+          nameUpper.includes("LISTA DOS PACIENTES") ||
+          nameUpper.includes("HORÁRIO CHEGADA")
+        ) continue;
+
         const susCell = colSus >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colSus })] : null;
         const dobCell = colDob >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colDob })] : null;
         const psfCell = colPsf >= 0 ? ws[XLSX.utils.encode_cell({ r, c: colPsf })] : null;
