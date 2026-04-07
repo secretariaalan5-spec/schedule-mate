@@ -1,13 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, UserPlus, Check } from "lucide-react";
+import { Copy, UserPlus, Check, UserCheck, UserX, Trash2, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
+interface TeamMember {
+  id: string;
+  email: string;
+  name: string | null;
+  status: string;
+  user_id: string | null;
+  invited_by: string | null;
+  created_at: string;
+}
 
 export default function InviteLink() {
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
-  const inviteUrl = `${window.location.origin}/?tab=signup`;
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const inviteUrl = `${window.location.origin}/?tab=signup&invited_by=${user?.id || ""}`;
+
+  const fetchMembers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("team_members")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (!error && data) setMembers(data as TeamMember[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (open) fetchMembers();
+  }, [open]);
+
+  // Realtime
+  useEffect(() => {
+    const channel = supabase
+      .channel("team_members_changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, () => {
+        fetchMembers();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const handleCopy = async () => {
     try {
@@ -20,25 +63,121 @@ export default function InviteLink() {
     }
   };
 
+  const handleApprove = async (id: string) => {
+    const { error } = await supabase
+      .from("team_members")
+      .update({ status: "approved" })
+      .eq("id", id);
+    if (error) toast.error("Erro ao aprovar");
+    else {
+      toast.success("Membro aprovado!");
+      fetchMembers();
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const { error } = await supabase
+      .from("team_members")
+      .update({ status: "rejected" })
+      .eq("id", id);
+    if (error) toast.error("Erro ao rejeitar");
+    else {
+      toast.success("Membro rejeitado");
+      fetchMembers();
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    if (!window.confirm("Remover este membro da equipe?")) return;
+    const { error } = await supabase
+      .from("team_members")
+      .delete()
+      .eq("id", id);
+    if (error) toast.error("Erro ao remover");
+    else {
+      toast.success("Membro removido");
+      fetchMembers();
+    }
+  };
+
+  const pendingCount = members.filter(m => m.status === "pending").length;
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case "pending": return <Badge variant="outline" className="text-yellow-600 border-yellow-400 bg-yellow-50">Pendente</Badge>;
+      case "approved": return <Badge variant="outline" className="text-green-600 border-green-400 bg-green-50">Aprovado</Badge>;
+      case "rejected": return <Badge variant="outline" className="text-red-600 border-red-400 bg-red-50">Rejeitado</Badge>;
+      default: return null;
+    }
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10">
-          <UserPlus className="w-4 h-4 mr-1" /> Convidar
+        <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 relative">
+          <Users className="w-4 h-4 mr-1" /> Equipe
+          {pendingCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+              {pendingCount}
+            </span>
+          )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>Convidar Pessoa</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" /> Equipe & Convites
+          </DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">
-          Envie este link para outra pessoa. Ela poderá criar uma conta e terá o mesmo acesso ao sistema.
-        </p>
-        <div className="flex items-center gap-2 mt-2">
-          <Input value={inviteUrl} readOnly className="text-sm" />
-          <Button size="icon" variant="outline" onClick={handleCopy}>
-            {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-          </Button>
+
+        {/* Invite link */}
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Envie este link para convidar alguém. Quando a pessoa criar uma conta, você receberá uma solicitação para aprovar.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input value={inviteUrl} readOnly className="text-xs" />
+            <Button size="icon" variant="outline" onClick={handleCopy}>
+              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Members list */}
+        <div className="mt-4 space-y-2">
+          <h3 className="text-sm font-semibold">Participantes ({members.length})</h3>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          ) : members.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum participante ainda.</p>
+          ) : (
+            <div className="space-y-2">
+              {members.map(m => (
+                <div key={m.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{m.name || m.email}</p>
+                    {m.name && <p className="text-xs text-muted-foreground truncate">{m.email}</p>}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {statusBadge(m.status)}
+                    {m.status === "pending" && (
+                      <>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => handleApprove(m.id)} title="Aprovar">
+                          <UserCheck className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-600" onClick={() => handleReject(m.id)} title="Rejeitar">
+                          <UserX className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleRemove(m.id)} title="Remover">
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

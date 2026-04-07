@@ -12,8 +12,10 @@ import logo from "@/assets/logo.png";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchParams] = useSearchParams();
+  const invitedBy = searchParams.get("invited_by") || "";
   const [tab, setTab] = useState(searchParams.get("tab") === "signup" ? "signup" : "login");
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -27,10 +29,33 @@ export default function Login() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) { toast.error("A senha deve ter pelo menos 6 caracteres"); return; }
+    if (!name.trim()) { toast.error("Informe seu nome"); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
-    if (error) toast.error("Erro ao criar conta: " + error.message);
-    else { toast.success("Conta criada! Verifique seu e-mail para confirmar ou faça login."); setTab("login"); }
+    
+    const { data, error } = await supabase.auth.signUp({ 
+      email, password, 
+      options: { emailRedirectTo: window.location.origin } 
+    });
+
+    if (error) {
+      toast.error("Erro ao criar conta: " + error.message);
+      setLoading(false);
+      return;
+    }
+
+    // Register as team member (pending approval)
+    if (data.user) {
+      await supabase.from("team_members").insert({
+        user_id: data.user.id,
+        email,
+        name: name.trim(),
+        invited_by: invitedBy || null,
+        status: invitedBy ? "pending" : "approved",
+      });
+    }
+
+    toast.success("Conta criada! Aguarde a aprovação do administrador.");
+    setTab("login");
     setLoading(false);
   };
 
@@ -41,6 +66,11 @@ export default function Login() {
           <img src={logo} alt="Saúde da Mulher" className="mx-auto w-24 h-24 object-contain" />
           <CardTitle className="text-2xl font-bold text-primary">Saúde da Mulher</CardTitle>
           <CardDescription>Sistema de Agendamento de Consultas</CardDescription>
+          {invitedBy && tab === "signup" && (
+            <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
+              Você foi convidado(a) para a equipe. Preencha seus dados para solicitar acesso.
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <Tabs value={tab} onValueChange={setTab}>
@@ -63,6 +93,10 @@ export default function Login() {
             </TabsContent>
             <TabsContent value="signup">
               <form onSubmit={handleSignup} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Nome Completo</Label>
+                  <Input id="signup-name" type="text" value={name} onChange={e => setName(e.target.value)} required placeholder="Seu nome completo" />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">E-mail</Label>
                   <Input id="signup-email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="seu@email.com" />
