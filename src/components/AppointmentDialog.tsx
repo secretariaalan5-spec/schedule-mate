@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Patient } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,7 +13,7 @@ interface Props {
   date: string;
   patients: Patient[];
   variant: "morning" | "afternoon";
-  onAdd: (slot: number, date: string, patientId: string, reason: string, type: string) => Promise<boolean>;
+  onAdd: (slot: number, date: string, patientId: string, reason: string, type: string, scheduleTime?: string) => Promise<boolean>;
   onPatientsChanged: () => void;
 }
 
@@ -27,6 +26,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
   const [psf, setPsf] = useState("");
   const [reason, setReason] = useState("");
   const [type, setType] = useState("NORMAL");
+  const [scheduleTime, setScheduleTime] = useState(variant === "morning" ? "08:00" : "14:00");
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
@@ -54,7 +54,6 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
 
     let patientId = selectedPatient?.id;
 
-    // If no patient selected or name changed, create new patient
     if (!patientId || name.trim().toUpperCase() !== selectedPatient?.name.toUpperCase()) {
       const { data, error } = await supabase.from("patients").insert({
         name: name.trim().toUpperCase(),
@@ -70,7 +69,6 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
       patientId = data.id;
       onPatientsChanged();
     } else {
-      // Update existing patient info if changed
       const updates: Partial<Patient> = {};
       if (susCard !== (selectedPatient.sus_card || "")) updates.sus_card = susCard || null;
       if (dob !== (selectedPatient.dob || "")) updates.dob = dob || null;
@@ -81,7 +79,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
       }
     }
 
-    const ok = await onAdd(slot, date, patientId!, reason, type);
+    const ok = await onAdd(slot, date, patientId!, reason, type, scheduleTime);
     setLoading(false);
     if (ok) onClose();
   };
@@ -93,7 +91,6 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
           <DialogTitle>Vaga {String(slot).padStart(2, "0")} — {variantLabel}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Nome do Paciente */}
           <div className="space-y-1.5 relative">
             <Label>Nome do Paciente</Label>
             <Input
@@ -123,7 +120,6 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
             )}
           </div>
 
-          {/* Cartão SUS + Data Nascimento */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Cartão SUS</Label>
@@ -135,19 +131,22 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
             </div>
           </div>
 
-          {/* PSF / UBS */}
-          <div className="space-y-1.5">
-            <Label>PSF / UBS</Label>
-            <Input placeholder="Nome do PSF" value={psf} onChange={e => setPsf(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>PSF / UBS</Label>
+              <Input placeholder="Nome do PSF" value={psf} onChange={e => setPsf(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Horário da Consulta</Label>
+              <Input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} />
+            </div>
           </div>
 
-          {/* Motivo */}
           <div className="space-y-1.5">
             <Label>Motivo / Observação</Label>
             <Input placeholder="Motivo da consulta" value={reason} onChange={e => setReason(e.target.value)} />
           </div>
 
-          {/* Tipo: Normal / Retorno */}
           <div className="grid grid-cols-2 gap-3">
             <Button
               type="button"
@@ -167,7 +166,6 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
             </Button>
           </div>
 
-          {/* Actions */}
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
             <Button onClick={handleSave} disabled={!name.trim() || loading}>

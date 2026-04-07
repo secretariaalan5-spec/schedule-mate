@@ -54,14 +54,13 @@ export async function printAppointments(
 
   const slips: SlipData[] = appointmentsToPrint.map(appt => {
     const pt = appt.patients;
-    const isMorning = appt.slot <= 15;
     return {
       patientName: pt?.name || "—",
       dob: pt?.dob ? format(parseISO(pt.dob), "dd/MM/yyyy") : "—",
       psf: pt?.psf || "—",
       reason: appt.reason || "GINECOLOGIA",
       date: format(parseISO(appt.date), "dd/MM/yyyy"),
-      time: isMorning ? "8:00" : "14:00",
+      time: appt.schedule_time || (appt.slot <= 15 ? "08:00" : "14:00"),
     };
   });
 
@@ -112,9 +111,7 @@ export async function printAppointments(
 
   const img = printWindow.document.querySelector("img");
   const doPrint = () => {
-    setTimeout(() => {
-      printWindow.print();
-    }, 300);
+    setTimeout(() => { printWindow.print(); }, 300);
   };
   if (img && !img.complete) {
     img.onload = doPrint;
