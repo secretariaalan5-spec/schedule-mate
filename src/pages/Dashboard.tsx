@@ -114,7 +114,7 @@ export default function Dashboard() {
                   onSelect={handleCalendarSelect}
                   locale={ptBR}
                   modifiers={{ hasAppointments: appointmentDateObjects }}
-                  modifiersClassNames={{ hasAppointments: "!bg-accent/30 !text-accent-foreground font-bold ring-2 ring-accent" }}
+                  modifiersClassNames={{ hasAppointments: "hasAppointments" }}
                   className="w-full"
                 />
                 {isMobile && sched.selectedDate && (
