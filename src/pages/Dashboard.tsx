@@ -133,6 +133,7 @@ export default function Dashboard() {
                         onRemove={sched.removeAppointment}
                         onPatientsChanged={sched.fetchPatients}
                         onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
+                        onUpdateTime={sched.updateAppointmentTime}
                       />
                     </div>
                     <div className="flex-1 overflow-auto border-l">
@@ -148,6 +149,7 @@ export default function Dashboard() {
                         onRemove={sched.removeAppointment}
                         onPatientsChanged={sched.fetchPatients}
                         onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
+                        onUpdateTime={sched.updateAppointmentTime}
                       />
                     </div>
                   </>
