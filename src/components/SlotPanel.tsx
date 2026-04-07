@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, UserPlus, Printer, CheckCircle, Clock } from "lucide-react";
+import { Trash2, UserPlus, Printer, CheckCircle, Clock, Edit2 } from "lucide-react";
 import type { Appointment, Patient } from "@/hooks/useScheduling";
 import AppointmentDialog from "./AppointmentDialog";
 import { printAppointments } from "./PrintSlip";
@@ -19,10 +19,12 @@ interface Props {
   onPatientsChanged: () => void;
   onRefresh?: () => void;
   onUpdateTime?: (id: string, time: string) => void;
+  onUpdateAppointment?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime }: Props) {
+export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment }: Props) {
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
+  const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editTimeValue, setEditTimeValue] = useState("");
@@ -66,6 +68,16 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
     setEditingTimeId(null);
   };
 
+  const openEditDialog = (appt: Appointment) => {
+    setEditAppointment(appt);
+    setDialogSlot(appt.slot);
+  };
+
+  const closeDialog = () => {
+    setDialogSlot(null);
+    setEditAppointment(null);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-3 flex items-center justify-between border-b bg-card">
@@ -87,7 +99,7 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
               )}
             </>
           )}
-          <span className="text-sm text-muted-foreground">{vacancies} vagas</span>
+          <span className="text-sm text-muted-foreground">{occupied}/{vacancies}</span>
         </div>
       </div>
 
@@ -114,7 +126,11 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
               <span className="font-bold text-sm text-muted-foreground w-8">{slotNum}</span>
               {appt ? (
                 <div className="flex-1 flex items-center justify-between">
-                  <div className="flex items-center gap-1 flex-wrap">
+                  <div
+                    className="flex items-center gap-1 flex-wrap cursor-pointer flex-1"
+                    onClick={() => openEditDialog(appt)}
+                    title="Clique para editar"
+                  >
                     <span className="font-medium text-sm">{appt.patients?.name || "—"}</span>
                     {appt.patients?.psf && (
                       <span className="text-xs text-muted-foreground">({appt.patients.psf})</span>
@@ -135,11 +151,12 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
                         onKeyDown={e => e.key === "Enter" && saveTime()}
                         className="w-24 h-6 text-xs ml-1"
                         autoFocus
+                        onClick={e => e.stopPropagation()}
                       />
                     ) : (
                       <span
                         className="text-xs text-muted-foreground ml-1 cursor-pointer hover:text-primary flex items-center gap-0.5"
-                        onClick={() => startEditTime(appt)}
+                        onClick={e => { e.stopPropagation(); startEditTime(appt); }}
                         title="Clique para alterar horário"
                       >
                         <Clock className="w-3 h-3" />
@@ -153,6 +170,15 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
                     )}
                   </div>
                   <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => openEditDialog(appt)}
+                      title="Editar"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
@@ -179,7 +205,7 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
                     size="icon"
                     variant="ghost"
                     className="h-6 w-6 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => setDialogSlot(slot)}
+                    onClick={() => { setEditAppointment(null); setDialogSlot(slot); }}
                   >
                     <UserPlus className="w-3 h-3" />
                   </Button>
@@ -193,13 +219,15 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
       {dialogSlot !== null && (
         <AppointmentDialog
           open={true}
-          onClose={() => setDialogSlot(null)}
+          onClose={closeDialog}
           slot={dialogSlot}
           date={date}
           patients={patients}
           variant={variant}
           onAdd={onAdd}
           onPatientsChanged={onPatientsChanged}
+          editAppointment={editAppointment}
+          onUpdate={onUpdateAppointment}
         />
       )}
     </div>
