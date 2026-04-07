@@ -3,18 +3,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
 import PatientManager from "@/components/PatientManager";
+import HealthUnitManager from "@/components/HealthUnitManager";
 import ImportExport from "@/components/ImportExport";
 import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, LogOut } from "lucide-react";
+import { CalendarDays, Users, LogOut, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const MORNING_SLOTS = Array.from({ length: 15 }, (_, i) => i + 1);
 const AFTERNOON_SLOTS = Array.from({ length: 17 }, (_, i) => i + 16);
 
-type Tab = "agenda" | "pacientes";
+type Tab = "agenda" | "pacientes" | "unidades";
 
 export default function Dashboard() {
   const { signOut } = useAuth();
@@ -22,7 +23,6 @@ export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("agenda");
 
   const handleRefresh = () => {
-    sched.fetchReleasedDays();
     sched.fetchPatients();
     if (sched.selectedDate) sched.fetchAppointments(sched.selectedDate);
   };
@@ -32,16 +32,13 @@ export default function Dashboard() {
   const handleCalendarSelect = (date: Date | undefined) => {
     if (!date) return;
     const dateStr = format(date, "yyyy-MM-dd");
-    const exists = sched.releasedDays.find(d => d.date === dateStr);
-    if (!exists) {
-      sched.addReleasedDay(dateStr);
-    }
     sched.setSelectedDate(dateStr);
   };
 
-  const releasedDateObjects = useMemo(
-    () => sched.releasedDays.map(d => new Date(d.date + "T12:00:00")),
-    [sched.releasedDays]
+  // Highlight dates that have appointments
+  const appointmentDateObjects = useMemo(
+    () => sched.appointmentDates.map(d => new Date(d + "T12:00:00")),
+    [sched.appointmentDates]
   );
 
   const morningOccupied = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).length;
@@ -54,11 +51,11 @@ export default function Dashboard() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-4 h-4" /> },
     { id: "pacientes", label: `Pacientes (${sched.patients.length})`, icon: <Users className="w-4 h-4" /> },
+    { id: "unidades", label: "Unidades de Saúde", icon: <Building2 className="w-4 h-4" /> },
   ];
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
       <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shadow-md">
         <div>
           <h1 className="font-bold text-xl tracking-tight">SAÚDE DA MULHER</h1>
@@ -73,7 +70,6 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Tab navigation */}
       <nav className="bg-card border-b px-4 flex items-center gap-1">
         {tabs.map(t => (
           <button
@@ -91,24 +87,21 @@ export default function Dashboard() {
         ))}
       </nav>
 
-      {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {tab === "agenda" && (
           <>
-            {/* Calendar sidebar */}
             <div className="w-[300px] border-r bg-card flex-shrink-0 flex flex-col overflow-auto p-4">
               <CalendarUI
                 mode="single"
                 selected={calendarDate}
                 onSelect={handleCalendarSelect}
                 locale={ptBR}
-                modifiers={{ released: releasedDateObjects }}
-                modifiersClassNames={{ released: "bg-primary/10 font-semibold" }}
+                modifiers={{ hasAppointments: appointmentDateObjects }}
+                modifiersClassNames={{ hasAppointments: "bg-primary/10 font-semibold" }}
                 className="w-full"
               />
             </div>
 
-            {/* Slots area */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {sched.selectedDate && (
                 <div className="px-6 py-3 bg-card border-b">
@@ -134,6 +127,7 @@ export default function Dashboard() {
                         onPatientsChanged={sched.fetchPatients}
                         onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
                         onUpdateTime={sched.updateAppointmentTime}
+                        onUpdateAppointment={sched.updateAppointment}
                       />
                     </div>
                     <div className="flex-1 overflow-auto border-l">
@@ -150,6 +144,7 @@ export default function Dashboard() {
                         onPatientsChanged={sched.fetchPatients}
                         onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
                         onUpdateTime={sched.updateAppointmentTime}
+                        onUpdateAppointment={sched.updateAppointment}
                       />
                     </div>
                   </>
@@ -174,9 +169,14 @@ export default function Dashboard() {
             />
           </div>
         )}
+
+        {tab === "unidades" && (
+          <div className="flex-1 overflow-hidden">
+            <HealthUnitManager />
+          </div>
+        )}
       </div>
 
-      {/* Status bar */}
       {tab === "agenda" && sched.selectedDate && (
         <footer className="bg-card border-t px-4 py-2 flex items-center justify-between text-sm">
           <div className="flex items-center gap-6">

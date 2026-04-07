@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Patient } from "@/hooks/useScheduling";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
@@ -15,9 +16,12 @@ interface Props {
   variant: "morning" | "afternoon";
   onAdd: (slot: number, date: string, patientId: string, reason: string, type: string, scheduleTime?: string) => Promise<boolean>;
   onPatientsChanged: () => void;
+  editAppointment?: Appointment | null;
+  onUpdate?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
 }
 
-export default function AppointmentDialog({ open, onClose, slot, date, patients, variant, onAdd, onPatientsChanged }: Props) {
+export default function AppointmentDialog({ open, onClose, slot, date, patients, variant, onAdd, onPatientsChanged, editAppointment, onUpdate }: Props) {
+  const isEditing = !!editAppointment;
   const [search, setSearch] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [name, setName] = useState("");
@@ -30,13 +34,35 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
+  // Pre-fill when editing
+  useEffect(() => {
+    if (editAppointment) {
+      const pt = editAppointment.patients;
+      if (pt) {
+        setSelectedPatient(pt);
+        setSearch(pt.name);
+        setName(pt.name);
+        setSusCard(pt.sus_card || "");
+        setDob(pt.dob || "");
+        setPsf(pt.psf || "");
+      }
+      setReason(editAppointment.reason || "");
+      setType(editAppointment.type || "NORMAL");
+      setScheduleTime(editAppointment.schedule_time || (variant === "morning" ? "08:00" : "14:00"));
+    }
+  }, [editAppointment, variant]);
+
   const variantLabel = variant === "morning" ? "Manhã — Zona Rural" : "Tarde — Cidade";
 
   const filtered = useMemo(() => {
-    if (!search) return [];
+    if (!search || isEditing) return [];
     const s = search.toUpperCase();
-    return patients.filter(p => p.name.toUpperCase().includes(s) || p.sus_card?.includes(s)).slice(0, 20);
-  }, [patients, search]);
+    return patients.filter(p =>
+      p.name.toUpperCase().includes(s) ||
+      p.sus_card?.includes(s) ||
+      p.psf?.toUpperCase().includes(s)
+    ).slice(0, 20);
+  }, [patients, search, isEditing]);
 
   const selectPatient = (p: Patient) => {
     setSelectedPatient(p);
@@ -51,6 +77,19 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
   const handleSave = async () => {
     if (!name.trim()) return;
     setLoading(true);
+
+    if (isEditing && onUpdate) {
+      // Update existing appointment
+      const updates: any = {
+        reason: reason || null,
+        type,
+        schedule_time: scheduleTime,
+      };
+      onUpdate(editAppointment!.id, updates);
+      setLoading(false);
+      onClose();
+      return;
+    }
 
     let patientId = selectedPatient?.id;
 
@@ -88,13 +127,15 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Vaga {String(slot).padStart(2, "0")} — {variantLabel}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Editar" : "Vaga"} {String(slot).padStart(2, "0")} — {variantLabel}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5 relative">
             <Label>Nome do Paciente</Label>
             <Input
-              placeholder="Pesquisar ou digitar nome..."
+              placeholder="Pesquisar por nome, SUS ou PSF..."
               value={search}
               onChange={e => {
                 setSearch(e.target.value);
@@ -103,48 +144,58 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
                 if (!e.target.value) setSelectedPatient(null);
               }}
               onFocus={() => search && setShowResults(true)}
+              disabled={isEditing}
             />
             {showResults && filtered.length > 0 && (
-              <div className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-40 overflow-auto">
+              <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48">
                 {filtered.map(p => (
                   <div
                     key={p.id}
-                    className="px-3 py-2 text-sm cursor-pointer hover:bg-muted transition-colors"
+                    className="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center justify-between"
                     onClick={() => selectPatient(p)}
                   >
-                    <span className="font-medium">{p.name}</span>
-                    {p.psf && <span className="ml-2 text-xs text-muted-foreground">({p.psf})</span>}
+                    <div>
+                      <span className="font-medium">{p.name}</span>
+                      {p.psf && <span className="ml-2 text-xs text-muted-foreground">({p.psf})</span>}
+                    </div>
+                    {p.sus_card && (
+                      <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
+                    )}
                   </div>
                 ))}
-              </div>
+              </ScrollArea>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Cartão SUS</Label>
-              <Input placeholder="Nº do cartão" value={susCard} onChange={e => setSusCard(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Data de Nascimento</Label>
-              <Input placeholder="DD/MM/AAAA" value={dob} onChange={e => setDob(e.target.value)} />
-            </div>
-          </div>
+          {!isEditing && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Cartão SUS</Label>
+                  <Input placeholder="Nº do cartão" value={susCard} onChange={e => setSusCard(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Data de Nascimento</Label>
+                  <Input type="date" value={dob} onChange={e => setDob(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>PSF / UBS</Label>
+                <Input placeholder="Nome do PSF" value={psf} onChange={e => setPsf(e.target.value)} />
+              </div>
+            </>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>PSF / UBS</Label>
-              <Input placeholder="Nome do PSF" value={psf} onChange={e => setPsf(e.target.value)} />
-            </div>
             <div className="space-y-1.5">
               <Label>Horário da Consulta</Label>
               <Input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} />
             </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label>Motivo / Observação</Label>
-            <Input placeholder="Motivo da consulta" value={reason} onChange={e => setReason(e.target.value)} />
+            <div className="space-y-1.5">
+              <Label>Motivo / Observação</Label>
+              <Input placeholder="Motivo da consulta" value={reason} onChange={e => setReason(e.target.value)} />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -169,7 +220,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
           <div className="grid grid-cols-2 gap-3">
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
             <Button onClick={handleSave} disabled={!name.trim() || loading}>
-              {loading ? "Salvando..." : "Salvar"}
+              {loading ? "Salvando..." : isEditing ? "Atualizar" : "Salvar"}
             </Button>
           </div>
         </div>
