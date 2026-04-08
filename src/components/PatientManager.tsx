@@ -28,8 +28,12 @@ export default function PatientManager({ patients, onAdd, onUpdate, onDelete, on
   const [form, setForm] = useState({ name: "", sus_card: "", dob: "", psf: "", observations: "" });
 
   const filtered = patients.filter(p => {
+    if (!search) return true;
     const s = search.toUpperCase();
-    return !search || p.name.toUpperCase().includes(s) || p.sus_card?.includes(s) || p.psf?.toUpperCase().includes(s);
+    const name = (p.name || "").toUpperCase();
+    const sus = (p.sus_card || "").toUpperCase();
+    const psf = (p.psf || "").toUpperCase();
+    return name.includes(s) || sus.includes(s) || psf.includes(s);
   });
 
   const totalPatients = patients.length;
