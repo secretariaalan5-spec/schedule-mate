@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
@@ -7,7 +8,8 @@ import ImportExport from "@/components/ImportExport";
 import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, LogOut, ChevronLeft } from "lucide-react";
+import { CalendarDays, Users, LogOut, ChevronLeft, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -50,6 +52,37 @@ export default function Dashboard() {
   const totalSlots = 32;
   const morningFree = 15 - morningOccupied;
   const afternoonFree = 17 - afternoonOccupied;
+
+  const exportDayExcel = () => {
+    if (!sched.selectedDate || sched.appointments.length === 0) {
+      toast("Nenhuma marcação para exportar neste dia.");
+      return;
+    }
+    const morning = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).sort((a, b) => a.slot - b.slot);
+    const afternoon = sched.appointments.filter(a => a.slot >= 16 && a.slot <= 32).sort((a, b) => a.slot - b.slot);
+
+    const buildRows = (appts: typeof sched.appointments) =>
+      appts.map(a => ({
+        "Nº": a.slot,
+        "Paciente": a.patients?.name || "—",
+        "Cartão SUS": a.patients?.sus_card || "",
+        "PSF/UBS": a.patients?.psf || "",
+        "Tipo": a.type,
+        "Motivo": a.reason || "",
+        "Horário": a.schedule_time,
+      }));
+
+    const wb = XLSX.utils.book_new();
+    const wsMorning = XLSX.utils.json_to_sheet(buildRows(morning));
+    wsMorning["!cols"] = [{ wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, wsMorning, "Manhã");
+
+    const wsAfternoon = XLSX.utils.json_to_sheet(buildRows(afternoon));
+    wsAfternoon["!cols"] = [{ wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, wsAfternoon, "Tarde");
+
+    XLSX.writeFile(wb, `agenda_${sched.selectedDate}.xlsx`);
+  };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-5 h-5" /> },
@@ -136,10 +169,14 @@ export default function Dashboard() {
             {(!isMobile || mobileShowSlots) && (
               <div className="flex-1 flex flex-col overflow-hidden">
                 {sched.selectedDate && (
-                  <div className="px-4 md:px-6 py-2 md:py-3 bg-card border-b">
+                  <div className="px-4 md:px-6 py-2 md:py-3 bg-card border-b flex items-center justify-between">
                     <h2 className="font-semibold text-sm md:text-base capitalize">
                       {formatDateFull(sched.selectedDate)}
                     </h2>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportDayExcel}>
+                      <Download className="w-3 h-3" />
+                      Excel
+                    </Button>
                   </div>
                 )}
                 <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
