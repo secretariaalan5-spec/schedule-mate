@@ -9,34 +9,25 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Plus, Edit2, Trash2, History, User, CreditCard } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
+import { usePatients } from "@/hooks/usePatients";
+import { useDebounce } from "@/hooks/use-debounce";
 import { formatDateBR } from "@/hooks/useScheduling";
 
 interface Props {
-  patients: Patient[];
-  onAdd: (p: Omit<Patient, "id" | "legacy_id">) => Promise<Patient | null>;
-  onUpdate: (id: string, p: Partial<Patient>) => void;
-  onDelete: (id: string) => void;
   onGetHistory: (id: string) => Promise<Appointment[]>;
 }
 
-export default function PatientManager({ patients, onAdd, onUpdate, onDelete, onGetHistory }: Props) {
+export default function PatientManager({ onGetHistory }: Props) {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
+  const { patients: filtered, stats, addPatient: onAdd, updatePatient: onUpdate, deletePatient: onDelete, isLoading } = usePatients(debouncedSearch);
+
   const [editPatient, setEditPatient] = useState<Patient | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [historyPatient, setHistoryPatient] = useState<Patient | null>(null);
   const [history, setHistory] = useState<Appointment[]>([]);
   const [form, setForm] = useState({ name: "", sus_card: "", dob: "", psf: "", observations: "" });
 
-  const filtered = patients.filter(p => {
-    if (!search) return true;
-    const s = search.toUpperCase();
-    const name = (p.name || "").toUpperCase();
-    const sus = (p.sus_card || "").toUpperCase();
-    const psf = (p.psf || "").toUpperCase();
-    return name.includes(s) || sus.includes(s) || psf.includes(s);
-  });
-
-  const totalPatients = patients.length;
   const totalFiltered = filtered.length;
 
   const openNew = () => { setForm({ name: "", sus_card: "", dob: "", psf: "", observations: "" }); setNewOpen(true); };
@@ -105,7 +96,7 @@ export default function PatientManager({ patients, onAdd, onUpdate, onDelete, on
                 <User className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <p className="text-xl font-bold text-primary">{totalPatients}</p>
+                <p className="text-xl font-bold text-primary">{stats.total}</p>
                 <p className="text-xs text-muted-foreground">Pacientes</p>
               </div>
             </CardContent>
@@ -116,7 +107,7 @@ export default function PatientManager({ patients, onAdd, onUpdate, onDelete, on
                 <CreditCard className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <p className="text-xl font-bold text-primary">{patients.filter(p => p.sus_card).length}</p>
+                <p className="text-xl font-bold text-primary">{stats.withSus}</p>
                 <p className="text-xs text-muted-foreground">Com Cartão SUS</p>
               </div>
             </CardContent>
@@ -131,9 +122,9 @@ export default function PatientManager({ patients, onAdd, onUpdate, onDelete, on
             <Plus className="w-4 h-4" /> Nova Paciente
           </Button>
         </div>
-        {search && (
+        {debouncedSearch && (
           <p className="text-xs text-muted-foreground mt-2">
-            {totalFiltered} resultado{totalFiltered !== 1 ? "s" : ""} encontrado{totalFiltered !== 1 ? "s" : ""}
+            {totalFiltered === 100 ? "Mais de 100" : totalFiltered} resultado{totalFiltered !== 1 ? "s" : ""} encontrado{totalFiltered !== 1 ? "s" : ""}
           </p>
         )}
       </div>
@@ -153,10 +144,16 @@ export default function PatientManager({ patients, onAdd, onUpdate, onDelete, on
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
+            {isLoading ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  {search ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
+                  Carregando pacientes...
+                </TableCell>
+              </TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  {debouncedSearch ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
                 </TableCell>
               </TableRow>
             ) : (

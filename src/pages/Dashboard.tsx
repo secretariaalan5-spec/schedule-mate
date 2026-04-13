@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
@@ -9,45 +10,13 @@ import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { CalendarDays, Users, LogOut, ChevronLeft, Download } from "lucide-react";
-import * as XLSX from "xlsx";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 import logo from "@/assets/logo.png";
+import { MORNING_SLOTS, AFTERNOON_SLOTS, exportDayExcel } from "@/lib/exportUtils";
 
-const MORNING_SLOTS = Array.from({ length: 15 }, (_, i) => i + 1);
-const AFTERNOON_SLOTS = Array.from({ length: 17 }, (_, i) => i + 16);
-const EXPORT_HEADERS = ["Nº", "NOME", "CARTÃO SUS", "DATA NASCIMENTO", "PSF", "HORÁRIO", "MOTIVO", "TIPO", "ASSINATURA"];
 
-const capitalizeText = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
-
-const formatPatientDob = (dob: string | null | undefined) => {
-  if (!dob) return "";
-  const parsed = new Date(`${dob}T12:00:00`);
-  return Number.isNaN(parsed.getTime()) ? dob : format(parsed, "dd/MM/yyyy");
-};
-
-const buildShiftRows = (
-  slots: number[],
-  appointments: ReturnType<typeof useScheduling>["appointments"],
-) => {
-  const bySlot = new Map(appointments.map((appointment) => [appointment.slot, appointment]));
-
-  return slots.map((slot) => {
-    const appointment = bySlot.get(slot);
-    return [
-      slot,
-      appointment?.patients?.name || "",
-      appointment?.patients?.sus_card || "",
-      formatPatientDob(appointment?.patients?.dob),
-      appointment?.patients?.psf || "",
-      appointment?.schedule_time || "",
-      appointment?.reason || "",
-      appointment?.type || "",
-      "",
-    ];
-  });
-};
 
 type Tab = "agenda" | "pacientes";
 
@@ -58,8 +27,11 @@ export default function Dashboard() {
   const [mobileShowSlots, setMobileShowSlots] = useState(false);
   const isMobile = useIsMobile();
 
+  const queryClient = useQueryClient();
+
   const handleRefresh = () => {
-    sched.fetchPatients();
+    queryClient.invalidateQueries({ queryKey: ["patients"] });
+    queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
     if (sched.selectedDate) sched.fetchAppointments(sched.selectedDate);
   };
 
@@ -84,52 +56,8 @@ export default function Dashboard() {
   const morningFree = 15 - morningOccupied;
   const afternoonFree = 17 - afternoonOccupied;
 
-  const exportDayExcel = () => {
-    if (!sched.selectedDate || sched.appointments.length === 0) {
-      toast("Nenhuma marcação para exportar neste dia.");
-      return;
-    }
-
-    const morning = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).sort((a, b) => a.slot - b.slot);
-    const afternoon = sched.appointments.filter(a => a.slot >= 16 && a.slot <= 32).sort((a, b) => a.slot - b.slot);
-
-    const parsedDate = new Date(`${sched.selectedDate}T12:00:00`);
-    const formattedDate = capitalizeText(format(parsedDate, "dd/MM/yyyy (EEEE)", { locale: ptBR }));
-    const sheetRows = [
-      ["AGENDA DE ATENDIMENTO"],
-      [`Data: ${formattedDate}`],
-      [],
-      ["MANHÃ — 08:00 — ZONA RURAL (Vagas 1–15)"],
-      EXPORT_HEADERS,
-      ...buildShiftRows(MORNING_SLOTS, morning),
-      [],
-      ["TARDE — 14:00 — CIDADE / CAMOCIM (Vagas 16–32)"],
-      EXPORT_HEADERS,
-      ...buildShiftRows(AFTERNOON_SLOTS, afternoon),
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(sheetRows);
-    ws["!cols"] = [
-      { wch: 6 },
-      { wch: 34 },
-      { wch: 22 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 12 },
-      { wch: 30 },
-      { wch: 12 },
-      { wch: 18 },
-    ];
-    ws["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } },
-      { s: { r: 20, c: 0 }, e: { r: 20, c: 8 } },
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, format(parsedDate, "dd-MM EEE", { locale: ptBR }));
-    XLSX.writeFile(wb, `agenda_${sched.selectedDate}.xlsx`);
+  const handleExport = () => {
+    exportDayExcel(sched.selectedDate, sched.appointments);
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -221,7 +149,7 @@ export default function Dashboard() {
                     <h2 className="font-semibold text-sm md:text-base capitalize">
                       {formatDateFull(sched.selectedDate)}
                     </h2>
-                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportDayExcel}>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleExport}>
                       <Download className="w-3 h-3" />
                       Excel
                     </Button>
@@ -235,13 +163,15 @@ export default function Dashboard() {
                           title="MANHÃ — 08:00 — ZONA RURAL"
                           slots={MORNING_SLOTS}
                           appointments={sched.appointments}
-                          patients={sched.patients}
                           date={sched.selectedDate}
                           variant="morning"
                           vacancies={15}
                           onAdd={sched.addAppointment}
                           onRemove={sched.removeAppointment}
-                          onPatientsChanged={sched.fetchPatients}
+                          onPatientsChanged={() => {
+                            queryClient.invalidateQueries({ queryKey: ["patients"] });
+                            queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
+                          }}
                           onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
                           onUpdateTime={sched.updateAppointmentTime}
                           onUpdateAppointment={sched.updateAppointment}
@@ -252,13 +182,15 @@ export default function Dashboard() {
                           title="TARDE — 14:00 — CIDADE / CAMOCIM"
                           slots={AFTERNOON_SLOTS}
                           appointments={sched.appointments}
-                          patients={sched.patients}
                           date={sched.selectedDate}
                           variant="afternoon"
                           vacancies={17}
                           onAdd={sched.addAppointment}
                           onRemove={sched.removeAppointment}
-                          onPatientsChanged={sched.fetchPatients}
+                          onPatientsChanged={() => {
+                            queryClient.invalidateQueries({ queryKey: ["patients"] });
+                            queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
+                          }}
                           onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
                           onUpdateTime={sched.updateAppointmentTime}
                           onUpdateAppointment={sched.updateAppointment}
@@ -279,10 +211,6 @@ export default function Dashboard() {
         {tab === "pacientes" && (
           <div className="flex-1 overflow-hidden">
             <PatientManager
-              patients={sched.patients}
-              onAdd={sched.addPatient}
-              onUpdate={sched.updatePatient}
-              onDelete={sched.deletePatient}
               onGetHistory={sched.getPatientHistory}
             />
           </div>

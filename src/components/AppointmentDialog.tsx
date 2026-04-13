@@ -9,13 +9,16 @@ import { AlertTriangle } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
+import { usePatients } from "@/hooks/usePatients";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   slot: number;
   date: string;
-  patients: Patient[];
+  slot: number;
+  date: string;
   variant: "morning" | "afternoon";
   onAdd: (slot: number, date: string, patientId: string, reason: string, type: string, scheduleTime?: string) => Promise<boolean>;
   onPatientsChanged: () => void;
@@ -23,9 +26,11 @@ interface Props {
   onUpdate?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
 }
 
-export default function AppointmentDialog({ open, onClose, slot, date, patients, variant, onAdd, onPatientsChanged, editAppointment, onUpdate }: Props) {
+export default function AppointmentDialog({ open, onClose, slot, date, variant, onAdd, onPatientsChanged, editAppointment, onUpdate }: Props) {
   const isEditing = !!editAppointment;
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 400);
+  const { patients: searchResults, isLoading: isSearching } = usePatients(debouncedSearch);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [name, setName] = useState("");
   const [susCard, setSusCard] = useState("");
@@ -79,13 +84,8 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
 
   const filtered = useMemo(() => {
     if (!search || isEditing) return [];
-    const s = search.toUpperCase();
-    return patients.filter(p =>
-      p.name.toUpperCase().includes(s) ||
-      p.sus_card?.includes(s) ||
-      p.psf?.toUpperCase().includes(s)
-    ).slice(0, 20);
-  }, [patients, search, isEditing]);
+    return searchResults.slice(0, 10);
+  }, [searchResults, search, isEditing]);
 
   const selectPatient = (p: Patient) => {
     setSelectedPatient(p);
@@ -194,9 +194,14 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
               onFocus={() => search && setShowResults(true)}
               disabled={isEditing}
             />
-            {showResults && filtered.length > 0 && (
+            {showResults && search && (
               <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48">
-                {filtered.map(p => (
+                {isSearching ? (
+                  <div className="px-3 py-4 text-sm text-center text-muted-foreground">Buscando...</div>
+                ) : filtered.length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-center text-muted-foreground">Paciente não encontrado. Ao salvar, um novo será criado.</div>
+                ) : (
+                  filtered.map(p => (
                   <div
                     key={p.id}
                     className="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center justify-between"
@@ -210,7 +215,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, patients,
                       <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
                     )}
                   </div>
-                ))}
+                )))}
               </ScrollArea>
             )}
           </div>
