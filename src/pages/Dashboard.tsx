@@ -169,10 +169,14 @@ export default function Dashboard() {
             {(!isMobile || mobileShowSlots) && (
               <div className="flex-1 flex flex-col overflow-hidden">
                 {sched.selectedDate && (
-                  <div className="px-4 md:px-6 py-2 md:py-3 bg-card border-b">
+                  <div className="px-4 md:px-6 py-2 md:py-3 bg-card border-b flex items-center justify-between">
                     <h2 className="font-semibold text-sm md:text-base capitalize">
                       {formatDateFull(sched.selectedDate)}
                     </h2>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportDayExcel}>
+                      <Download className="w-3 h-3" />
+                      Excel
+                    </Button>
                   </div>
                 )}
                 <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
