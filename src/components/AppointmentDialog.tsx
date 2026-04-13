@@ -20,13 +20,15 @@ interface Props {
   slot: number;
   date: string;
   variant: "morning" | "afternoon";
+  defaultTime: string;
+  title: string;
   onAdd: (slot: number, date: string, patientId: string, reason: string, type: string, scheduleTime?: string) => Promise<boolean>;
   onPatientsChanged: () => void;
   editAppointment?: Appointment | null;
   onUpdate?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
 }
 
-export default function AppointmentDialog({ open, onClose, slot, date, variant, onAdd, onPatientsChanged, editAppointment, onUpdate }: Props) {
+export default function AppointmentDialog({ open, onClose, slot, date, variant, defaultTime, title, onAdd, onPatientsChanged, editAppointment, onUpdate }: Props) {
   const isEditing = !!editAppointment;
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
@@ -38,7 +40,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   const [psf, setPsf] = useState("");
   const [reason, setReason] = useState("");
   const [type, setType] = useState("NORMAL");
-  const [scheduleTime, setScheduleTime] = useState(variant === "morning" ? "08:00" : "14:00");
+  const [scheduleTime, setScheduleTime] = useState(defaultTime);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [patientMonthAppointments, setPatientMonthAppointments] = useState<Appointment[]>([]);
@@ -76,11 +78,11 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
       }
       setReason(editAppointment.reason || "");
       setType(editAppointment.type || "NORMAL");
-      setScheduleTime(editAppointment.schedule_time || (variant === "morning" ? "08:00" : "14:00"));
+      setScheduleTime(editAppointment.schedule_time || defaultTime);
     }
-  }, [editAppointment, variant, checkMonthAppointments]);
+  }, [editAppointment, defaultTime, checkMonthAppointments]);
 
-  const variantLabel = variant === "morning" ? "Manhã — Zona Rural" : "Tarde — Cidade";
+  const variantLabel = title;
 
   const filtered = useMemo(() => {
     if (!search || isEditing) return [];

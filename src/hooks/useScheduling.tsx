@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useShifts } from "./useShifts";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -29,6 +30,7 @@ export interface Appointment {
 
 export function useScheduling() {
   const queryClient = useQueryClient();
+  const { data: shifts = [] } = useShifts();
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
   // Query: Appointment Dates
@@ -75,7 +77,11 @@ export function useScheduling() {
   // Mutations
   const addAppointmentMutation = useMutation({
     mutationFn: async ({ slot, date, patientId, reason, type = "NORMAL", scheduleTime }: any) => {
-      const time = scheduleTime || (slot <= 15 ? "08:00" : "14:00");
+      let time = scheduleTime;
+      if (!time) {
+        const matchingShift = shifts.find(s => slot >= s.start_slot && slot <= s.end_slot);
+        time = matchingShift ? matchingShift.default_time : (slot <= 15 ? "08:00" : "14:00");
+      }
       const { error } = await supabase.from("appointments").insert({
         slot, date, patient_id: patientId, reason, type, schedule_time: time
       } as any);
