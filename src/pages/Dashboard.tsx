@@ -13,8 +13,9 @@ import { CalendarDays, Users, LogOut, ChevronLeft, Download } from "lucide-react
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useShifts } from "@/hooks/useShifts";
 import logo from "@/assets/logo.png";
-import { MORNING_SLOTS, AFTERNOON_SLOTS, exportDayExcel } from "@/lib/exportUtils";
+import { exportDayExcel } from "@/lib/exportUtils";
 
 
 
@@ -23,6 +24,7 @@ type Tab = "agenda" | "pacientes";
 export default function Dashboard() {
   const { signOut } = useAuth();
   const sched = useScheduling();
+  const { data: shifts = [] } = useShifts();
   const [tab, setTab] = useState<Tab>("agenda");
   const [mobileShowSlots, setMobileShowSlots] = useState(false);
   const isMobile = useIsMobile();
@@ -49,15 +51,17 @@ export default function Dashboard() {
     [sched.appointmentDates]
   );
 
-  const morningOccupied = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).length;
-  const afternoonOccupied = sched.appointments.filter(a => a.slot >= 16 && a.slot <= 32).length;
-  const totalOccupied = morningOccupied + afternoonOccupied;
-  const totalSlots = 32;
-  const morningFree = 15 - morningOccupied;
-  const afternoonFree = 17 - afternoonOccupied;
+  const totalOccupied = sched.appointments.length;
+  const totalSlots = shifts.reduce((acc, s) => acc + (s.end_slot - s.start_slot + 1), 0);
+  
+  const morningShift = shifts.find(s => s.label === "morning");
+  const afternoonShift = shifts.find(s => s.label === "afternoon");
+
+  const morningFree = morningShift ? (morningShift.end_slot - morningShift.start_slot + 1) - sched.appointments.filter(a => a.slot >= morningShift.start_slot && a.slot <= morningShift.end_slot).length : 0;
+  const afternoonFree = afternoonShift ? (afternoonShift.end_slot - afternoonShift.start_slot + 1) - sched.appointments.filter(a => a.slot >= afternoonShift.start_slot && a.slot <= afternoonShift.end_slot).length : 0;
 
   const handleExport = () => {
-    exportDayExcel(sched.selectedDate, sched.appointments);
+    exportDayExcel(sched.selectedDate, sched.appointments, shifts);
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -158,44 +162,28 @@ export default function Dashboard() {
                 <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
                   {sched.selectedDate ? (
                     <>
-                      <div className="flex-1 overflow-auto">
-                        <SlotPanel
-                          title="MANHÃ — 08:00 — ZONA RURAL"
-                          slots={MORNING_SLOTS}
-                          appointments={sched.appointments}
-                          date={sched.selectedDate}
-                          variant="morning"
-                          vacancies={15}
-                          onAdd={sched.addAppointment}
-                          onRemove={sched.removeAppointment}
-                          onPatientsChanged={() => {
-                            queryClient.invalidateQueries({ queryKey: ["patients"] });
-                            queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
-                          }}
-                          onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
-                          onUpdateTime={sched.updateAppointmentTime}
-                          onUpdateAppointment={sched.updateAppointment}
-                        />
-                      </div>
-                      <div className={`flex-1 overflow-auto ${isMobile ? "border-t" : "border-l"}`}>
-                        <SlotPanel
-                          title="TARDE — 14:00 — CIDADE / CAMOCIM"
-                          slots={AFTERNOON_SLOTS}
-                          appointments={sched.appointments}
-                          date={sched.selectedDate}
-                          variant="afternoon"
-                          vacancies={17}
-                          onAdd={sched.addAppointment}
-                          onRemove={sched.removeAppointment}
-                          onPatientsChanged={() => {
-                            queryClient.invalidateQueries({ queryKey: ["patients"] });
-                            queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
-                          }}
-                          onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
-                          onUpdateTime={sched.updateAppointmentTime}
-                          onUpdateAppointment={sched.updateAppointment}
-                        />
-                      </div>
+                      {shifts.map((shift, idx) => (
+                        <div key={shift.id} className={`flex-1 overflow-auto ${isMobile && idx > 0 ? "border-t" : !isMobile && idx > 0 ? "border-l" : ""}`}>
+                          <SlotPanel
+                            title={shift.display_title}
+                            slots={Array.from({ length: shift.end_slot - shift.start_slot + 1 }, (_, i) => i + shift.start_slot)}
+                            appointments={sched.appointments}
+                            date={sched.selectedDate}
+                            variant={shift.label as any}
+                            defaultTime={shift.default_time}
+                            vacancies={shift.end_slot - shift.start_slot + 1}
+                            onAdd={sched.addAppointment}
+                            onRemove={sched.removeAppointment}
+                            onPatientsChanged={() => {
+                              queryClient.invalidateQueries({ queryKey: ["patients"] });
+                              queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
+                            }}
+                            onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
+                            onUpdateTime={sched.updateAppointmentTime}
+                            onUpdateAppointment={sched.updateAppointment}
+                          />
+                        </div>
+                      ))}
                     </>
                   ) : (
                     <div className="flex-1 flex items-center justify-center text-muted-foreground">

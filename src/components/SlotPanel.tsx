@@ -12,7 +12,8 @@ interface Props {
   slots: number[];
   appointments: Appointment[];
   date: string;
-  variant: "morning" | "afternoon";
+  variant: string;
+  defaultTime: string;
   vacancies: number;
   onAdd: (slot: number, date: string, patientId: string, reason: string, type: string, scheduleTime?: string) => Promise<boolean>;
   onRemove: (id: string) => void;
@@ -22,7 +23,7 @@ interface Props {
   onUpdateAppointment?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, date, variant, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment }: Props) {
+export default function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment }: Props) {
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
   const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -58,7 +59,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, v
 
   const startEditTime = (appt: Appointment) => {
     setEditingTimeId(appt.id);
-    setEditTimeValue(appt.schedule_time || (appt.slot <= 15 ? "08:00" : "14:00"));
+    setEditTimeValue(appt.schedule_time || defaultTime);
   };
 
   const saveTime = () => {
@@ -160,7 +161,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, v
                         title="Clique para alterar horário"
                       >
                         <Clock className="w-3 h-3" />
-                        {appt.schedule_time || (appt.slot <= 15 ? "08:00" : "14:00")}
+                        {appt.schedule_time || defaultTime}
                       </span>
                     )}
                     {isPrinted && (
@@ -222,7 +223,9 @@ export default function SlotPanel({ title, slots, appointments, date, variant, v
           onClose={closeDialog}
           slot={dialogSlot}
           date={date}
-          variant={variant}
+          variant={variant as any}
+          defaultTime={defaultTime}
+          title={title}
           onAdd={onAdd}
           onPatientsChanged={onPatientsChanged}
           editAppointment={editAppointment}
