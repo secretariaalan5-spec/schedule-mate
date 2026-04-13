@@ -52,6 +52,37 @@ export default function Dashboard() {
   const morningFree = 15 - morningOccupied;
   const afternoonFree = 17 - afternoonOccupied;
 
+  const exportDayExcel = () => {
+    if (!sched.selectedDate || sched.appointments.length === 0) {
+      toast("Nenhuma marcação para exportar neste dia.");
+      return;
+    }
+    const morning = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).sort((a, b) => a.slot - b.slot);
+    const afternoon = sched.appointments.filter(a => a.slot >= 16 && a.slot <= 32).sort((a, b) => a.slot - b.slot);
+
+    const buildRows = (appts: typeof sched.appointments) =>
+      appts.map(a => ({
+        "Nº": a.slot,
+        "Paciente": a.patients?.name || "—",
+        "Cartão SUS": a.patients?.sus_card || "",
+        "PSF/UBS": a.patients?.psf || "",
+        "Tipo": a.type,
+        "Motivo": a.reason || "",
+        "Horário": a.schedule_time,
+      }));
+
+    const wb = XLSX.utils.book_new();
+    const wsMorning = XLSX.utils.json_to_sheet(buildRows(morning));
+    wsMorning["!cols"] = [{ wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, wsMorning, "Manhã");
+
+    const wsAfternoon = XLSX.utils.json_to_sheet(buildRows(afternoon));
+    wsAfternoon["!cols"] = [{ wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, wsAfternoon, "Tarde");
+
+    XLSX.writeFile(wb, `agenda_${sched.selectedDate}.xlsx`);
+  };
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-5 h-5" /> },
     { id: "pacientes", label: "Pacientes", icon: <Users className="w-5 h-5" /> },
