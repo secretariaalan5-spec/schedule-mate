@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,93 +28,131 @@ export interface Appointment {
 }
 
 export function useScheduling() {
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [appointmentDates, setAppointmentDates] = useState<string[]>([]);
 
-  // Debounce refs to prevent rapid re-fetches from realtime
-  const debounceRef = useRef<Record<string, NodeJS.Timeout>>({});
-
-  const debouncedCall = useCallback((key: string, fn: () => void, delay = 500) => {
-    if (debounceRef.current[key]) clearTimeout(debounceRef.current[key]);
-    debounceRef.current[key] = setTimeout(fn, delay);
-  }, []);
-
-  const fetchAppointmentDates = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("appointments")
-      .select("date")
-      .order("date");
-    if (!error && data) {
-      const uniqueDates = [...new Set(data.map(d => d.date))];
-      setAppointmentDates(uniqueDates);
+  // Query: Appointment Dates
+  const { data: appointmentDates = [] } = useQuery({
+    queryKey: ["appointmentDates"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("date")
+        .order("date");
+      if (error) throw error;
+      return [...new Set(data.map(d => d.date))];
     }
-  }, []);
+  });
 
-  const fetchAppointments = useCallback(async (date: string) => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("appointments")
-      .select("*, patients(*)")
-      .eq("date", date)
-      .order("slot");
-    if (error) { toast.error("Erro ao carregar agendamentos"); setLoading(false); return; }
-    setAppointments((data as any) || []);
-    setLoading(false);
-  }, []);
+  // Query: Appointments for selectedDate
+  const { data: appointments = [], isLoading: loading } = useQuery({
+    queryKey: ["appointments", selectedDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("*, patients(*)")
+        .eq("date", selectedDate)
+        .order("slot");
+      if (error) { throw error; }
+      return (data as any) || [];
+    },
+    enabled: !!selectedDate
+  });
 
-  useEffect(() => { fetchAppointmentDates(); }, [fetchAppointmentDates]);
-  useEffect(() => { if (selectedDate) fetchAppointments(selectedDate); }, [selectedDate, fetchAppointments]);
-
-  // Realtime subscriptions with debounce
+  // Realtime subscriptions
   useEffect(() => {
     const channel = supabase
       .channel("realtime-scheduling")
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
-        debouncedCall("appointments", () => {
-          if (selectedDate) fetchAppointments(selectedDate);
-          fetchAppointmentDates();
-        });
+        queryClient.invalidateQueries({ queryKey: ["appointments"] });
+        queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedDate, fetchAppointments, fetchAppointmentDates, debouncedCall]);
+  }, [queryClient]);
+
+  // Mutations
+  const addAppointmentMutation = useMutation({
+    mutationFn: async ({ slot, date, patientId, reason, type = "NORMAL", scheduleTime }: any) => {
+      const time = scheduleTime || (slot <= 15 ? "08:00" : "14:00");
+      const { error } = await supabase.from("appointments").insert({
+        slot, date, patient_id: patientId, reason, type, schedule_time: time
+      } as any);
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      toast.success("Consulta agendada");
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
+    },
+    onError: (error) => toast.error("Erro: " + error.message)
+  });
+
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string, updates: any }) => {
+      const { error } = await supabase.from("appointments").update(updates as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Consulta atualizada");
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    },
+    onError: (error) => toast.error("Erro: " + error.message)
+  });
+
+  const updateAppointmentTimeMutation = useMutation({
+    mutationFn: async ({ id, scheduleTime }: { id: string, scheduleTime: string }) => {
+      const { error } = await supabase.from("appointments").update({ schedule_time: scheduleTime } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Horário atualizado");
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+    },
+    onError: (error) => toast.error("Erro: " + error.message)
+  });
+
+  const removeAppointmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("appointments").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Consulta removida");
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
+    },
+    onError: (error) => toast.error("Erro: " + error.message)
+  });
 
   const addAppointment = async (slot: number, date: string, patientId: string, reason: string, type: string = "NORMAL", scheduleTime?: string) => {
-    const time = scheduleTime || (slot <= 15 ? "08:00" : "14:00");
-    const { error } = await supabase.from("appointments").insert({
-      slot, date, patient_id: patientId, reason, type, schedule_time: time
-    } as any);
-    if (error) { toast.error("Erro: " + error.message); return false; }
-    toast.success("Consulta agendada");
-    fetchAppointments(date);
-    return true;
+    try {
+      await addAppointmentMutation.mutateAsync({ slot, date, patientId, reason, type, scheduleTime });
+      return true;
+    } catch {
+      return false;
+    }
   };
 
-  const updateAppointment = async (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => {
-    const { error } = await supabase.from("appointments").update(updates as any).eq("id", id);
-    if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("Consulta atualizada");
-    if (selectedDate) fetchAppointments(selectedDate);
+  const updateAppointment = async (id: string, updates: any) => {
+    try {
+      await updateAppointmentMutation.mutateAsync({ id, updates });
+    } catch {}
   };
 
   const updateAppointmentTime = async (id: string, scheduleTime: string) => {
-    const { error } = await supabase.from("appointments").update({ schedule_time: scheduleTime } as any).eq("id", id);
-    if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("Horário atualizado");
-    if (selectedDate) fetchAppointments(selectedDate);
+    try {
+      await updateAppointmentTimeMutation.mutateAsync({ id, scheduleTime });
+    } catch {}
   };
 
   const removeAppointment = async (id: string) => {
-    const { error } = await supabase.from("appointments").delete().eq("id", id);
-    if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("Consulta removida");
-    if (selectedDate) fetchAppointments(selectedDate);
+    try {
+      await removeAppointmentMutation.mutateAsync(id);
+    } catch {}
   };
-
-
 
   const getPatientHistory = async (patientId: string) => {
     const { data, error } = await supabase
@@ -123,6 +162,14 @@ export function useScheduling() {
       .order("date", { ascending: false });
     if (error) { toast.error("Erro ao buscar histórico"); return []; }
     return data || [];
+  };
+
+  const fetchAppointments = () => {
+    queryClient.invalidateQueries({ queryKey: ["appointments"] });
+  };
+
+  const fetchAppointmentDates = () => {
+    queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
   };
 
   return {
