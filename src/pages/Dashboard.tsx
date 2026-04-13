@@ -61,6 +61,9 @@ export default function Dashboard() {
     const morning = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).sort((a, b) => a.slot - b.slot);
     const afternoon = sched.appointments.filter(a => a.slot >= 16 && a.slot <= 32).sort((a, b) => a.slot - b.slot);
 
+    const headers = ["Nº", "Paciente", "Cartão SUS", "PSF/UBS", "Tipo", "Motivo", "Horário"];
+    const colWidths = [{ wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
+
     const buildRows = (appts: typeof sched.appointments) =>
       appts.map(a => ({
         "Nº": a.slot,
@@ -72,14 +75,18 @@ export default function Dashboard() {
         "Horário": a.schedule_time,
       }));
 
-    const wb = XLSX.utils.book_new();
-    const wsMorning = XLSX.utils.json_to_sheet(buildRows(morning));
-    wsMorning["!cols"] = [{ wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
-    XLSX.utils.book_append_sheet(wb, wsMorning, "Manhã");
+    const makeSheet = (appts: typeof sched.appointments) => {
+      const rows = buildRows(appts);
+      const ws = rows.length > 0
+        ? XLSX.utils.json_to_sheet(rows)
+        : XLSX.utils.aoa_to_sheet([headers]);
+      ws["!cols"] = colWidths;
+      return ws;
+    };
 
-    const wsAfternoon = XLSX.utils.json_to_sheet(buildRows(afternoon));
-    wsAfternoon["!cols"] = [{ wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
-    XLSX.utils.book_append_sheet(wb, wsAfternoon, "Tarde");
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, makeSheet(morning), "Manhã");
+    XLSX.utils.book_append_sheet(wb, makeSheet(afternoon), "Tarde");
 
     XLSX.writeFile(wb, `agenda_${sched.selectedDate}.xlsx`);
   };
