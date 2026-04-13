@@ -17,6 +17,36 @@ import logo from "@/assets/logo.png";
 
 const MORNING_SLOTS = Array.from({ length: 15 }, (_, i) => i + 1);
 const AFTERNOON_SLOTS = Array.from({ length: 17 }, (_, i) => i + 16);
+const EXPORT_HEADERS = ["Nº", "NOME", "CARTÃO SUS", "DATA NASCIMENTO", "PSF", "MOTIVO", "TIPO", "ASSINATURA"];
+
+const capitalizeText = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+
+const formatPatientDob = (dob: string | null | undefined) => {
+  if (!dob) return "";
+  const parsed = new Date(`${dob}T12:00:00`);
+  return Number.isNaN(parsed.getTime()) ? dob : format(parsed, "dd/MM/yyyy");
+};
+
+const buildShiftRows = (
+  slots: number[],
+  appointments: ReturnType<typeof useScheduling>["appointments"],
+) => {
+  const bySlot = new Map(appointments.map((appointment) => [appointment.slot, appointment]));
+
+  return slots.map((slot) => {
+    const appointment = bySlot.get(slot);
+    return [
+      slot,
+      appointment?.patients?.name || "",
+      appointment?.patients?.sus_card || "",
+      formatPatientDob(appointment?.patients?.dob),
+      appointment?.patients?.psf || "",
+      appointment?.reason || "",
+      appointment?.type || "",
+      "",
+    ];
+  });
+};
 
 type Tab = "agenda" | "pacientes";
 
@@ -58,36 +88,45 @@ export default function Dashboard() {
       toast("Nenhuma marcação para exportar neste dia.");
       return;
     }
+
     const morning = sched.appointments.filter(a => a.slot >= 1 && a.slot <= 15).sort((a, b) => a.slot - b.slot);
     const afternoon = sched.appointments.filter(a => a.slot >= 16 && a.slot <= 32).sort((a, b) => a.slot - b.slot);
 
-    const headers = ["Nº", "Paciente", "Cartão SUS", "PSF/UBS", "Tipo", "Motivo", "Horário"];
-    const colWidths = [{ wch: 5 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 8 }];
+    const parsedDate = new Date(`${sched.selectedDate}T12:00:00`);
+    const formattedDate = capitalizeText(format(parsedDate, "dd/MM/yyyy (EEEE)", { locale: ptBR }));
+    const sheetRows = [
+      ["AGENDA DE ATENDIMENTO"],
+      [`Data: ${formattedDate}`],
+      [],
+      ["MANHÃ — 08:00 — ZONA RURAL (Vagas 1–15)"],
+      EXPORT_HEADERS,
+      ...buildShiftRows(MORNING_SLOTS, morning),
+      [],
+      ["TARDE — 14:00 — CIDADE / CAMOCIM (Vagas 16–32)"],
+      EXPORT_HEADERS,
+      ...buildShiftRows(AFTERNOON_SLOTS, afternoon),
+    ];
 
-    const buildRows = (appts: typeof sched.appointments) =>
-      appts.map(a => ({
-        "Nº": a.slot,
-        "Paciente": a.patients?.name || "—",
-        "Cartão SUS": a.patients?.sus_card || "",
-        "PSF/UBS": a.patients?.psf || "",
-        "Tipo": a.type,
-        "Motivo": a.reason || "",
-        "Horário": a.schedule_time,
-      }));
-
-    const makeSheet = (appts: typeof sched.appointments) => {
-      const rows = buildRows(appts);
-      const ws = rows.length > 0
-        ? XLSX.utils.json_to_sheet(rows)
-        : XLSX.utils.aoa_to_sheet([headers]);
-      ws["!cols"] = colWidths;
-      return ws;
-    };
+    const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+    ws["!cols"] = [
+      { wch: 6 },
+      { wch: 34 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 30 },
+      { wch: 12 },
+      { wch: 18 },
+    ];
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 7 } },
+      { s: { r: 20, c: 0 }, e: { r: 20, c: 7 } },
+    ];
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, makeSheet(morning), "Manhã");
-    XLSX.utils.book_append_sheet(wb, makeSheet(afternoon), "Tarde");
-
+    XLSX.utils.book_append_sheet(wb, ws, format(parsedDate, "dd-MM EEE", { locale: ptBR }));
     XLSX.writeFile(wb, `agenda_${sched.selectedDate}.xlsx`);
   };
 
