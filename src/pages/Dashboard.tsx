@@ -17,7 +17,7 @@ import logo from "@/assets/logo.png";
 
 const MORNING_SLOTS = Array.from({ length: 15 }, (_, i) => i + 1);
 const AFTERNOON_SLOTS = Array.from({ length: 17 }, (_, i) => i + 16);
-const EXPORT_HEADERS = ["Nº", "NOME", "CARTÃO SUS", "DATA NASCIMENTO", "PSF", "MOTIVO", "TIPO", "ASSINATURA"];
+const EXPORT_HEADERS = ["Nº", "NOME", "CARTÃO SUS", "DATA NASCIMENTO", "PSF", "HORÁRIO", "MOTIVO", "TIPO", "ASSINATURA"];
 
 const capitalizeText = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
@@ -41,6 +41,7 @@ const buildShiftRows = (
       appointment?.patients?.sus_card || "",
       formatPatientDob(appointment?.patients?.dob),
       appointment?.patients?.psf || "",
+      appointment?.schedule_time || "",
       appointment?.reason || "",
       appointment?.type || "",
       "",
@@ -114,15 +115,16 @@ export default function Dashboard() {
       { wch: 22 },
       { wch: 18 },
       { wch: 18 },
+      { wch: 12 },
       { wch: 30 },
       { wch: 12 },
       { wch: 18 },
     ];
     ws["!merges"] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: 7 } },
-      { s: { r: 20, c: 0 }, e: { r: 20, c: 7 } },
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } },
+      { s: { r: 20, c: 0 }, e: { r: 20, c: 8 } },
     ];
 
     const wb = XLSX.utils.book_new();
