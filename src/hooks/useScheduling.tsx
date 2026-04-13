@@ -29,7 +29,6 @@ export interface Appointment {
 export function useScheduling() {
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [appointmentDates, setAppointmentDates] = useState<string[]>([]);
 
@@ -64,29 +63,7 @@ export function useScheduling() {
     setLoading(false);
   }, []);
 
-  const fetchPatients = useCallback(async () => {
-    let allPatients: any[] = [];
-    let from = 0;
-    const PAGE_SIZE = 1000;
-    while (true) {
-      const { data, error } = await supabase.from("patients").select("*").order("name").range(from, from + PAGE_SIZE - 1);
-      if (error) { toast.error("Erro ao carregar pacientes"); return; }
-      if (!data || data.length === 0) break;
-      allPatients = allPatients.concat(data);
-      if (data.length < PAGE_SIZE) break;
-      from += PAGE_SIZE;
-    }
-    // Deduplicate by id
-    const seen = new Set<string>();
-    const unique = allPatients.filter(p => {
-      if (seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
-    setPatients(unique);
-  }, []);
-
-  useEffect(() => { fetchPatients(); fetchAppointmentDates(); }, [fetchPatients, fetchAppointmentDates]);
+  useEffect(() => { fetchAppointmentDates(); }, [fetchAppointmentDates]);
   useEffect(() => { if (selectedDate) fetchAppointments(selectedDate); }, [selectedDate, fetchAppointments]);
 
   // Realtime subscriptions with debounce
@@ -99,13 +76,10 @@ export function useScheduling() {
           fetchAppointmentDates();
         });
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, () => {
-        debouncedCall("patients", () => fetchPatients());
-      })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [selectedDate, fetchAppointments, fetchPatients, fetchAppointmentDates, debouncedCall]);
+  }, [selectedDate, fetchAppointments, fetchAppointmentDates, debouncedCall]);
 
   const addAppointment = async (slot: number, date: string, patientId: string, reason: string, type: string = "NORMAL", scheduleTime?: string) => {
     const time = scheduleTime || (slot <= 15 ? "08:00" : "14:00");
@@ -139,27 +113,7 @@ export function useScheduling() {
     if (selectedDate) fetchAppointments(selectedDate);
   };
 
-  const addPatient = async (patient: Omit<Patient, "id" | "legacy_id">) => {
-    const { data, error } = await supabase.from("patients").insert(patient).select().single();
-    if (error) { toast.error("Erro: " + error.message); return null; }
-    toast.success("Paciente cadastrada");
-    fetchPatients();
-    return data;
-  };
 
-  const updatePatient = async (id: string, patient: Partial<Patient>) => {
-    const { error } = await supabase.from("patients").update(patient).eq("id", id);
-    if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("Paciente atualizada");
-    fetchPatients();
-  };
-
-  const deletePatient = async (id: string) => {
-    const { error } = await supabase.from("patients").delete().eq("id", id);
-    if (error) { toast.error("Erro: " + error.message); return; }
-    toast.success("Paciente removida");
-    fetchPatients();
-  };
 
   const getPatientHistory = async (patientId: string) => {
     const { data, error } = await supabase
@@ -172,12 +126,12 @@ export function useScheduling() {
   };
 
   return {
-    selectedDate, setSelectedDate, appointments, patients, loading,
+    selectedDate, setSelectedDate, appointments, loading,
     appointmentDates,
     addAppointment, updateAppointment, removeAppointment,
-    addPatient, updatePatient, deletePatient, getPatientHistory,
+    getPatientHistory,
     updateAppointmentTime,
-    fetchPatients, fetchAppointments, fetchAppointmentDates,
+    fetchAppointments, fetchAppointmentDates,
   };
 }
 

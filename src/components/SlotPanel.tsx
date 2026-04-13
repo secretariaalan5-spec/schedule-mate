@@ -8,9 +8,9 @@ import { printAppointments } from "./PrintSlip";
 
 interface Props {
   title: string;
+  title: string;
   slots: number[];
   appointments: Appointment[];
-  patients: Patient[];
   date: string;
   variant: "morning" | "afternoon";
   vacancies: number;
@@ -22,7 +22,7 @@ interface Props {
   onUpdateAppointment?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, patients, date, variant, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment }: Props) {
+export default function SlotPanel({ title, slots, appointments, date, variant, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment }: Props) {
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
   const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -222,7 +222,6 @@ export default function SlotPanel({ title, slots, appointments, patients, date, 
           onClose={closeDialog}
           slot={dialogSlot}
           date={date}
-          patients={patients}
           variant={variant}
           onAdd={onAdd}
           onPatientsChanged={onPatientsChanged}
