@@ -130,70 +130,119 @@ export default function PatientManager({ onGetHistory }: Props) {
         )}
       </div>
 
-      {/* Table */}
-      <ScrollArea className="flex-1">
-        <div className="min-w-[800px] md:min-w-0">
-          <Table>
-
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-10 text-center">#</TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Cartão SUS</TableHead>
-              <TableHead>Nascimento</TableHead>
-              <TableHead>PSF / UBS</TableHead>
-              <TableHead>Observações</TableHead>
-              <TableHead className="w-28 text-center">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  Carregando pacientes...
-                </TableCell>
-              </TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  {debouncedSearch ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map((p, i) => (
-                <TableRow key={p.id} className="hover:bg-primary/5 transition-colors">
-                  <TableCell className="text-center text-xs text-muted-foreground font-mono">{i + 1}</TableCell>
-                  <TableCell className="font-medium text-sm">{p.name}</TableCell>
-                  <TableCell className="text-sm font-mono">{p.sus_card || <span className="text-muted-foreground">—</span>}</TableCell>
-                  <TableCell className="text-sm">{p.dob ? formatDateBR(p.dob) : <span className="text-muted-foreground">—</span>}</TableCell>
-                  <TableCell>
-                    {p.psf ? (
-                      <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-xs">{p.psf}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{p.observations || "—"}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 justify-center">
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={() => openHistory(p)} title="Histórico">
-                        <History className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={() => openEdit(p)} title="Editar">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => { if (window.confirm(`Excluir paciente "${p.name}"?`)) onDelete(p.id); }} title="Excluir">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+      <ScrollArea className="flex-1 -mx-4 px-4 md:mx-0 md:px-0">
+        <div className="space-y-3 pb-8">
+          {isLoading ? (
+            <div className="py-12 text-center text-muted-foreground">Carregando pacientes...</div>
+          ) : filtered.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              {debouncedSearch ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
+            </div>
+          ) : (
+            <>
+              {/* Mobile Cards */}
+              <div className="grid grid-cols-1 gap-3 md:hidden">
+                {filtered.map((p, i) => (
+                  <div key={p.id} className="bg-card border rounded-xl p-4 shadow-sm space-y-3">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">{i + 1}</span>
+                          <h3 className="font-bold text-base truncate">{p.name}</h3>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-primary text-xs font-semibold">
+                          <CreditCard className="w-3.5 h-3.5" />
+                          {p.sus_card || "Sem Cartão SUS"}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 shrink-0">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => openHistory(p)}>
+                          <History className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => openEdit(p)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { if (window.confirm(`Excluir paciente "${p.name}"?`)) onDelete(p.id); }}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </ScrollArea>
+
+                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-dashed">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Nascimento</p>
+                        <p className="text-sm">{p.dob ? formatDateBR(p.dob) : "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">PSF / UBS</p>
+                        <div className="mt-0.5">
+                          {p.psf ? (
+                            <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-[10px] h-5">{p.psf}</Badge>
+                          ) : "—"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {p.observations && (
+                      <div className="bg-muted/30 p-2 rounded-lg">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Observações</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 italic">"{p.observations}"</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden md:block bg-card rounded-2xl border shadow-sm overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-10 text-center">#</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Cartão SUS</TableHead>
+                      <TableHead>Nascimento</TableHead>
+                      <TableHead>PSF / UBS</TableHead>
+                      <TableHead>Observações</TableHead>
+                      <TableHead className="w-28 text-center">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((p, i) => (
+                      <TableRow key={p.id} className="hover:bg-primary/5 transition-colors">
+                        <TableCell className="text-center text-xs text-muted-foreground font-mono">{i + 1}</TableCell>
+                        <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                        <TableCell className="text-sm font-mono">{p.sus_card || "—"}</TableCell>
+                        <TableCell className="text-sm">{p.dob ? formatDateBR(p.dob) : "—"}</TableCell>
+                        <TableCell>
+                          {p.psf ? (
+                            <Badge variant="secondary" className="bg-primary/10 text-primary border-0 text-xs">{p.psf}</Badge>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{p.observations || "—"}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 justify-center">
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={() => openHistory(p)} title="Histórico">
+                              <History className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={() => openEdit(p)} title="Editar">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => { if (window.confirm(`Excluir paciente "${p.name}"?`)) onDelete(p.id); }} title="Excluir">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </div>
+      </ScrollArea>
+
 
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>{formDialog}</Dialog>
