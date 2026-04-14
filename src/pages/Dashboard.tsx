@@ -95,7 +95,12 @@ export default function Dashboard() {
         <div className="flex items-center gap-1">
           <InviteLink />
           <ImportExport onImportComplete={handleRefresh} />
+          <Button variant="ghost" size="sm" onClick={signOut} className="text-primary-foreground hover:bg-primary-foreground/10 h-10 px-1 flex flex-col items-center justify-center gap-0">
+            <LogOut className="w-5 h-5" />
+            <span className="text-[8px] font-bold uppercase leading-none mt-0.5">Sair</span>
+          </Button>
         </div>
+
       </header>
 
 
@@ -269,15 +274,9 @@ export default function Dashboard() {
               )}
             </button>
           ))}
-          <button
-            onClick={signOut}
-            className="flex-1 flex flex-col items-center justify-center h-full text-white/50 active:text-red-300 transition-all active:scale-95 border-l border-white/5"
-          >
-            <LogOut className="w-5 h-5 opacity-80" />
-            <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5">Sair</span>
-          </button>
         </nav>
       )}
+
 
 
 
