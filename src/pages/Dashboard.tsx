@@ -10,9 +10,10 @@ import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { CalendarDays, Users, LogOut, ChevronLeft, Download } from "lucide-react";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
+
 import { useShifts } from "@/hooks/useShifts";
 import logo from "@/assets/logo.png";
 import { exportDayExcel } from "@/lib/exportUtils";
@@ -43,7 +44,8 @@ export default function Dashboard() {
     if (!date) return;
     const dateStr = format(date, "yyyy-MM-dd");
     sched.setSelectedDate(dateStr);
-    if (isMobile) setMobileShowSlots(true);
+    // REMOVED: if (isMobile) setMobileShowSlots(true); 
+    // Now the user must explicitly click "Abrir Agenda do Dia" as requested.
   };
 
   const appointmentDateObjects = useMemo(
@@ -70,21 +72,26 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-background overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
+
       {/* Header */}
-      <header className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shadow-sm z-30">
+      {/* Header */}
+      <header className="bg-primary text-primary-foreground px-4 py-3 md:py-4 flex items-center justify-between shadow-sm z-30 pt-[calc(12px+env(safe-area-inset-top))]">
+
+
         <div className="flex items-center gap-3">
           {isMobile && tab === "agenda" && mobileShowSlots && (
             <Button variant="ghost" size="icon" onClick={() => setMobileShowSlots(false)} className="text-primary-foreground hover:bg-primary-foreground/10 -ml-2 h-9 w-9">
               <ChevronLeft className="w-6 h-6" />
             </Button>
           )}
-          <img src={logo} alt="Logo" className="w-9 h-9 object-contain rounded-xl bg-white p-1 shadow-sm" />
-          <div>
-            <h1 className="font-bold text-sm md:text-lg tracking-tight leading-none">SAÚDE DA MULHER</h1>
-            <p className="text-[10px] md:text-xs opacity-80 mt-0.5">Agendamento • Camocim</p>
+          <img src={logo} alt="Logo" className="w-8 h-8 md:w-9 md:h-9 object-contain rounded-xl bg-white p-1 shadow-sm flex-shrink-0" />
+          <div className="hidden xs:block overflow-hidden">
+            <h1 className="font-bold text-xs md:text-sm lg:text-lg tracking-tight leading-none truncate">SAÚDE DA MULHER</h1>
+            <p className="text-[9px] md:text-xs opacity-80 mt-0.5 truncate">Agendamento • Camocim</p>
           </div>
         </div>
+
         <div className="flex items-center gap-1.5">
           <InviteLink />
           <ImportExport onImportComplete={handleRefresh} />
@@ -144,14 +151,15 @@ export default function Dashboard() {
                     <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl transition-all hover:bg-primary/10">
                       <p className="text-xs text-primary/70 font-medium mb-1">Status de Ocupação</p>
                       <div className="flex items-end justify-between">
-                        <span className="text-2xl font-bold text-primary">{totalOccupied}<span className="text-sm font-normal text-muted-foreground ml-1">/ {totalSlots}</span></span>
+                        <span className="text-2xl font-bold text-primary">{totalOccupied}<span className="text-sm font-normal text-muted-foreground ml-1">/ {totalSlots || 0}</span></span>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                          {Math.round((totalOccupied / totalSlots) * 100)}%
+                          {totalSlots > 0 ? Math.round((totalOccupied / totalSlots) * 100) : 0}%
                         </span>
                       </div>
                       <div className="w-full bg-primary/10 h-1.5 rounded-full mt-2 overflow-hidden">
-                        <div className="bg-primary h-full transition-all duration-500" style={{ width: `${(totalOccupied / totalSlots) * 100}%` }}></div>
+                        <div className="bg-primary h-full transition-all duration-500" style={{ width: `${totalSlots > 0 ? (totalOccupied / totalSlots) * 100 : 0}%` }}></div>
                       </div>
+
                     </div>
                     
                     <div className="grid grid-cols-2 gap-3">
@@ -237,7 +245,7 @@ export default function Dashboard() {
 
       {/* Mobile bottom navigation */}
       {isMobile && (
-        <nav className="bg-card/90 backdrop-blur-lg border-t flex items-center justify-around py-2 safe-bottom z-30 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <nav className="bg-primary/95 backdrop-blur-lg border-t border-white/10 flex items-center justify-around py-3 pb-[calc(12px+env(safe-area-inset-bottom))] px-4 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
           {tabs.map(t => (
             <button
               key={t.id}
@@ -245,30 +253,33 @@ export default function Dashboard() {
                 setTab(t.id); 
                 if (t.id === "agenda") setMobileShowSlots(false); 
               }}
-              className={`flex flex-col items-center gap-1 px-6 py-1.5 rounded-2xl transition-all duration-300 relative ${
-                tab === t.id ? "text-primary bg-primary/5" : "text-muted-foreground"
+              className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${
+                tab === t.id && !mobileShowSlots ? "text-white scale-105" : "text-white/60"
               }`}
             >
-              <div className={`transition-transform duration-300 ${tab === t.id ? "scale-110" : "scale-100"}`}>
+              <div className={`p-2 rounded-xl transition-all duration-300 ${tab === t.id && !mobileShowSlots ? "bg-white/20 shadow-inner" : ""}`}>
                 {t.icon}
               </div>
-              <span className={`text-[10px] font-bold tracking-tight transition-all ${tab === t.id ? "opacity-100" : "opacity-70"}`}>
+              <span className="text-[10px] font-black uppercase tracking-[0.05em]">
                 {t.label}
               </span>
-              {tab === t.id && (
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full" />
+              {tab === t.id && !mobileShowSlots && (
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
               )}
             </button>
           ))}
           <button
             onClick={signOut}
-            className="flex flex-col items-center gap-1 px-6 py-1.5 text-muted-foreground hover:text-destructive transition-colors"
+            className="flex flex-col items-center gap-1 text-white/60 hover:text-red-300 transition-all active:scale-95"
           >
-            <LogOut className="w-5 h-5" />
-            <span className="text-[10px] font-bold uppercase tracking-tight opacity-70">Sair</span>
+            <div className="p-2">
+              <LogOut className="w-5 h-5 rotate-180" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.05em]">Sair</span>
           </button>
         </nav>
       )}
+
 
       {/* Desktop footer replaced by in-sidebar summary */}
     </div>
