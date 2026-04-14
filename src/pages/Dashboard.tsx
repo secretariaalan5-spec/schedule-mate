@@ -251,7 +251,7 @@ export default function Dashboard() {
 
       {/* Mobile bottom navigation */}
       {isMobile && (
-        <nav className="bg-primary border-t border-white/10 flex items-center justify-around h-[calc(60px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-40 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
+        <nav className="bg-primary border-t border-white/10 flex items-center justify-around h-[calc(56px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
           {tabs.map(t => (
             <button
               key={t.id}
@@ -260,7 +260,7 @@ export default function Dashboard() {
                 if (t.id === "agenda") setMobileShowSlots(false); 
               }}
               className={`flex-1 flex flex-col items-center justify-center h-full transition-all active:scale-95 relative ${
-                tab === t.id && !mobileShowSlots ? "text-white" : "text-white/50"
+                tab === t.id && !mobileShowSlots ? "text-white" : "text-white/40"
               }`}
             >
               <div className={`transition-all duration-300 ${tab === t.id && !mobileShowSlots ? "scale-110" : "scale-100 opacity-80"}`}>
@@ -270,12 +270,13 @@ export default function Dashboard() {
                 {t.label}
               </span>
               {tab === t.id && !mobileShowSlots && (
-                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />
+                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
               )}
             </button>
           ))}
         </nav>
       )}
+
 
 
 
