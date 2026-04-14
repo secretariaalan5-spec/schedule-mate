@@ -92,11 +92,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <InviteLink />
           <ImportExport onImportComplete={handleRefresh} />
         </div>
       </header>
+
 
       {/* Desktop/Tablet top nav */}
       {!isMobile && (
@@ -245,7 +246,7 @@ export default function Dashboard() {
 
       {/* Mobile bottom navigation */}
       {isMobile && (
-        <nav className="bg-primary/95 backdrop-blur-lg border-t border-white/10 flex items-center justify-around py-3 pb-[calc(12px+env(safe-area-inset-bottom))] px-4 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.15)]">
+        <nav className="bg-primary/95 backdrop-blur-md border-t border-white/10 flex items-center justify-around pb-[env(safe-area-inset-bottom)] z-40 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
           {tabs.map(t => (
             <button
               key={t.id}
@@ -253,32 +254,31 @@ export default function Dashboard() {
                 setTab(t.id); 
                 if (t.id === "agenda") setMobileShowSlots(false); 
               }}
-              className={`flex flex-col items-center gap-1 transition-all duration-300 relative ${
-                tab === t.id && !mobileShowSlots ? "text-white scale-105" : "text-white/60"
+              className={`flex-1 flex flex-col items-center justify-center py-2 transition-all active:scale-95 ${
+                tab === t.id && !mobileShowSlots ? "text-white" : "text-white/50"
               }`}
             >
-              <div className={`p-2 rounded-xl transition-all duration-300 ${tab === t.id && !mobileShowSlots ? "bg-white/20 shadow-inner" : ""}`}>
+              <div className={`transition-all duration-300 ${tab === t.id && !mobileShowSlots ? "scale-110 mb-0.5" : "scale-100 opacity-80"}`}>
                 {t.icon}
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.05em]">
+              <span className="text-[9px] font-bold uppercase tracking-wider">
                 {t.label}
               </span>
               {tab === t.id && !mobileShowSlots && (
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
+                <div className="absolute bottom-1 w-1 h-1 bg-white rounded-full" />
               )}
             </button>
           ))}
           <button
             onClick={signOut}
-            className="flex flex-col items-center gap-1 text-white/60 hover:text-red-300 transition-all active:scale-95"
+            className="flex-1 flex flex-col items-center justify-center py-2 text-white/50 active:text-red-300 transition-all active:scale-95 border-l border-white/5"
           >
-            <div className="p-2">
-              <LogOut className="w-5 h-5 rotate-180" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-[0.05em]">Sair</span>
+            <LogOut className="w-5 h-5 opacity-80" />
+            <span className="text-[9px] font-bold uppercase tracking-wider">Sair</span>
           </button>
         </nav>
       )}
+
 
 
       {/* Desktop footer replaced by in-sidebar summary */}
