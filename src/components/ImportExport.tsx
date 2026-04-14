@@ -439,7 +439,7 @@ export default function ImportExport({ onImportComplete }: Props) {
   };
 
   return (
-    <div className="flex items-center gap-1 md:gap-2">
+    <div className="flex items-center gap-1">
       <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleImport} className="hidden" />
 
       <Button
@@ -447,23 +447,24 @@ export default function ImportExport({ onImportComplete }: Props) {
         size="sm"
         onClick={() => fileRef.current?.click()}
         disabled={importing}
-        className="text-primary-foreground hover:bg-primary-foreground/10 h-9 px-2 md:px-3"
+        className="text-primary-foreground hover:bg-primary-foreground/10 h-10 px-1 flex flex-col items-center justify-center gap-0"
         title="Importar"
       >
-        {importing ? <Loader2 className="w-5 h-5 md:w-4 md:h-4 animate-spin" /> : <Upload className="w-5 h-5 md:w-4 md:h-4 md:mr-1" />}
-        <span className="hidden sm:inline">{importing ? "Importando..." : "Importar"}</span>
+        {importing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+        <span className="text-[8px] font-bold uppercase leading-none mt-0.5">{importing ? "..." : "Importar"}</span>
       </Button>
       <Button
         variant="ghost"
         size="sm"
         onClick={exportExcel}
-        className="text-primary-foreground hover:bg-primary-foreground/10 h-9 px-2 md:px-3"
+        className="text-primary-foreground hover:bg-primary-foreground/10 h-10 px-1 flex flex-col items-center justify-center gap-0"
         title="Excel"
       >
-        <FileSpreadsheet className="w-5 h-5 md:w-4 md:h-4 md:mr-1" />
-        <span className="hidden sm:inline">Excel</span>
+        <FileSpreadsheet className="w-5 h-5" />
+        <span className="text-[8px] font-bold uppercase leading-none mt-0.5">Excel</span>
       </Button>
     </div>
+
 
   );
 }

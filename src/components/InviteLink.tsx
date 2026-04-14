@@ -133,16 +133,16 @@ export default function InviteLink() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 relative h-9 px-2 md:px-3">
-
-          <Users className="w-5 h-5 md:w-4 md:h-4 md:mr-1" />
-          <span className="hidden sm:inline">Equipe</span>
+        <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 relative h-10 px-1 flex flex-col items-center justify-center gap-0">
+          <Users className="w-5 h-5" />
+          <span className="text-[8px] font-bold uppercase leading-none mt-0.5">Equipe</span>
           {pendingCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+            <span className="absolute top-0 right-1 bg-destructive text-destructive-foreground text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center border border-primary">
               {pendingCount}
             </span>
           )}
         </Button>
+
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto">
 
