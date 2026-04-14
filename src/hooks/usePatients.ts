@@ -17,8 +17,9 @@ export function usePatients(search: string) {
         query = query.or(`name.ilike.%${search}%,sus_card.ilike.%${search}%,psf.ilike.%${search}%`);
       }
       
-      // Limit to 100 records for performance, since it's search-driven now
-      query = query.limit(100);
+      // Limit to 1000 records for performance, since it's search-driven now
+      query = query.limit(1000);
+
 
       const { data, error } = await query;
       if (error) throw error;

@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, UserPlus, Printer, CheckCircle, Clock, Edit2 } from "lucide-react";
 import type { Appointment, Patient } from "@/hooks/useScheduling";
+import { useIsMobile } from "@/hooks/use-mobile";
 import AppointmentDialog from "./AppointmentDialog";
+
 import { printAppointments } from "./PrintSlip";
 
 interface Props {
@@ -24,7 +26,9 @@ interface Props {
 }
 
 export default function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment }: Props) {
+  const isMobile = useIsMobile();
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
+
   const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
@@ -174,30 +178,31 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                      className={`h-7 w-7 text-primary transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
                       onClick={() => openEditDialog(appt)}
                       title="Editar"
                     >
-                      <Edit2 className="w-3 h-3" />
+                      <Edit2 className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => printAppointments([appt], onRefresh)}
+                      className={`h-7 w-7 text-primary transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                      onClick={() => printAppointments([appt], onRefresh || onPatientsChanged)}
                       title="Imprimir"
                     >
-                      <Printer className="w-3 h-3" />
+                      <Printer className="w-3.5 h-3.5" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => onRemove(appt.id)}
+                      className={`h-7 w-7 text-destructive transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                      onClick={() => { if (window.confirm("Excluir agendamento?")) onRemove(appt.id); }}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
+
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-between">

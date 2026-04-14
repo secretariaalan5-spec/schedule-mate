@@ -124,14 +124,17 @@ export default function PatientManager({ onGetHistory }: Props) {
         </div>
         {debouncedSearch && (
           <p className="text-xs text-muted-foreground mt-2">
-            {totalFiltered === 100 ? "Mais de 100" : totalFiltered} resultado{totalFiltered !== 1 ? "s" : ""} encontrado{totalFiltered !== 1 ? "s" : ""}
+            {totalFiltered === 1000 ? "Mais de 1000" : totalFiltered} resultado{totalFiltered !== 1 ? "s" : ""} encontrado{totalFiltered !== 1 ? "s" : ""}
           </p>
+
         )}
       </div>
 
       {/* Table */}
       <ScrollArea className="flex-1">
-        <Table>
+        <div className="min-w-[800px] md:min-w-0">
+          <Table>
+
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-10 text-center">#</TableHead>
@@ -189,7 +192,9 @@ export default function PatientManager({ onGetHistory }: Props) {
             )}
           </TableBody>
         </Table>
-      </ScrollArea>
+      </div>
+    </ScrollArea>
+
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>{formDialog}</Dialog>
       <Dialog open={!!editPatient} onOpenChange={() => setEditPatient(null)}>{formDialog}</Dialog>
