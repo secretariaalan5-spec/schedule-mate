@@ -60,9 +60,9 @@ export default function Login() {
   };
 
   return (
-  return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#0d4a7a] relative overflow-hidden p-4">
       {/* Decorative background elements */}
+
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 rounded-full blur-[120px] animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-teal-400/10 rounded-full blur-[100px]" />
       
