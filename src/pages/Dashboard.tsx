@@ -246,7 +246,7 @@ export default function Dashboard() {
 
       {/* Mobile bottom navigation */}
       {isMobile && (
-        <nav className="bg-primary/95 backdrop-blur-md border-t border-white/10 flex items-center justify-around pb-[env(safe-area-inset-bottom)] z-40 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
+        <nav className="bg-primary border-t border-white/10 flex items-center justify-around h-[calc(60px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-40 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
           {tabs.map(t => (
             <button
               key={t.id}
@@ -254,30 +254,31 @@ export default function Dashboard() {
                 setTab(t.id); 
                 if (t.id === "agenda") setMobileShowSlots(false); 
               }}
-              className={`flex-1 flex flex-col items-center justify-center py-2 transition-all active:scale-95 ${
+              className={`flex-1 flex flex-col items-center justify-center h-full transition-all active:scale-95 relative ${
                 tab === t.id && !mobileShowSlots ? "text-white" : "text-white/50"
               }`}
             >
-              <div className={`transition-all duration-300 ${tab === t.id && !mobileShowSlots ? "scale-110 mb-0.5" : "scale-100 opacity-80"}`}>
+              <div className={`transition-all duration-300 ${tab === t.id && !mobileShowSlots ? "scale-110" : "scale-100 opacity-80"}`}>
                 {t.icon}
               </div>
-              <span className="text-[9px] font-bold uppercase tracking-wider">
+              <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5">
                 {t.label}
               </span>
               {tab === t.id && !mobileShowSlots && (
-                <div className="absolute bottom-1 w-1 h-1 bg-white rounded-full" />
+                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />
               )}
             </button>
           ))}
           <button
             onClick={signOut}
-            className="flex-1 flex flex-col items-center justify-center py-2 text-white/50 active:text-red-300 transition-all active:scale-95 border-l border-white/5"
+            className="flex-1 flex flex-col items-center justify-center h-full text-white/50 active:text-red-300 transition-all active:scale-95 border-l border-white/5"
           >
             <LogOut className="w-5 h-5 opacity-80" />
-            <span className="text-[9px] font-bold uppercase tracking-wider">Sair</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5">Sair</span>
           </button>
         </nav>
       )}
+
 
 
 
