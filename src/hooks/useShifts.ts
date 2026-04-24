@@ -15,14 +15,16 @@ export function useShifts() {
   return useQuery({
     queryKey: ["scheduling-shifts"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // scheduling_shifts is not yet present in generated Supabase types,
+      // so we cast the client to any to access it.
+      const { data, error } = await (supabase as any)
         .from("scheduling_shifts")
         .select("*")
         .eq("is_active", true)
         .order("start_slot");
 
       if (error) throw error;
-      return data as ShiftConfiguration[];
+      return (data ?? []) as ShiftConfiguration[];
     },
     staleTime: 1000 * 60 * 60, // Cache for 1 hour since configs don't change often
   });

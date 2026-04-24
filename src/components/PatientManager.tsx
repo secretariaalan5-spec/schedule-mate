@@ -44,7 +44,7 @@ export default function PatientManager({ onGetHistory }: Props) {
   const handleSave = async () => {
     const data = { name: form.name.toUpperCase(), sus_card: form.sus_card || null, dob: form.dob || null, psf: form.psf.toUpperCase() || null, observations: form.observations || null };
     if (editPatient) {
-      onUpdate(editPatient.id, data);
+      onUpdate({ id: editPatient.id, updates: data });
       setEditPatient(null);
     } else {
       await onAdd(data);
