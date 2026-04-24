@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Search, Plus, Edit2, Trash2, History, User, CreditCard } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { usePatients } from "@/hooks/usePatients";
@@ -20,15 +31,43 @@ interface Props {
 export default function PatientManager({ onGetHistory }: Props) {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
-  const { patients: filtered, stats, addPatient: onAdd, updatePatient: onUpdate, deletePatient: onDelete, isLoading } = usePatients(debouncedSearch);
+  const {
+    patients: filtered,
+    stats,
+    addPatient: onAdd,
+    updatePatient: onUpdate,
+    deletePatient: onDelete,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = usePatients(debouncedSearch);
 
   const [editPatient, setEditPatient] = useState<Patient | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [historyPatient, setHistoryPatient] = useState<Patient | null>(null);
   const [history, setHistory] = useState<Appointment[]>([]);
   const [form, setForm] = useState({ name: "", sus_card: "", dob: "", psf: "", observations: "" });
+  const [deleteCandidate, setDeleteCandidate] = useState<Patient | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const totalFiltered = filtered.length;
+
+  // Infinite scroll: load next page when sentinel enters viewport
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, filtered.length]);
 
   const openNew = () => { setForm({ name: "", sus_card: "", dob: "", psf: "", observations: "" }); setNewOpen(true); };
   const openEdit = (p: Patient) => {
@@ -124,7 +163,7 @@ export default function PatientManager({ onGetHistory }: Props) {
         </div>
         {debouncedSearch && (
           <p className="text-xs text-muted-foreground mt-2">
-            {totalFiltered === 1000 ? "Mais de 1000" : totalFiltered} resultado{totalFiltered !== 1 ? "s" : ""} encontrado{totalFiltered !== 1 ? "s" : ""}
+            {totalFiltered}{hasNextPage ? "+" : ""} resultado{totalFiltered !== 1 ? "s" : ""} encontrado{totalFiltered !== 1 ? "s" : ""}
           </p>
 
         )}
@@ -133,7 +172,11 @@ export default function PatientManager({ onGetHistory }: Props) {
       <ScrollArea className="flex-1 -mx-4 px-4 md:mx-0 md:px-0">
         <div className="space-y-3 pb-8">
           {isLoading ? (
-            <div className="py-12 text-center text-muted-foreground">Carregando pacientes...</div>
+            <div className="space-y-3 py-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full rounded-xl" />
+              ))}
+            </div>
           ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">
               {debouncedSearch ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
