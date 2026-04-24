@@ -9,7 +9,14 @@ import ImportExport from "@/components/ImportExport";
 import InviteLink from "@/components/InviteLink";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, LogOut, ChevronLeft, Download } from "lucide-react";
+import { CalendarDays, Users, LogOut, ChevronLeft, Download, Filter, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -31,6 +38,11 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
 
   const queryClient = useQueryClient();
+
+  // Agenda filters
+  const [filterPsf, setFilterPsf] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterPrinted, setFilterPrinted] = useState<string>("all");
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["patients"] });
@@ -54,16 +66,54 @@ export default function Dashboard() {
   );
 
   const totalOccupied = sched.appointments.length;
-  const totalSlots = shifts.reduce((acc, s) => acc + (s.end_slot - s.start_slot + 1), 0);
-  
-  const morningShift = shifts.find(s => s.label === "morning");
-  const afternoonShift = shifts.find(s => s.label === "afternoon");
 
-  const morningFree = morningShift ? (morningShift.end_slot - morningShift.start_slot + 1) - sched.appointments.filter(a => a.slot >= morningShift.start_slot && a.slot <= morningShift.end_slot).length : 0;
-  const afternoonFree = afternoonShift ? (afternoonShift.end_slot - afternoonShift.start_slot + 1) - sched.appointments.filter(a => a.slot >= afternoonShift.start_slot && a.slot <= afternoonShift.end_slot).length : 0;
+  const { totalSlots, morningFree, afternoonFree } = useMemo(() => {
+    const total = shifts.reduce((acc, s) => acc + (s.end_slot - s.start_slot + 1), 0);
+    const morningShift = shifts.find(s => s.label === "morning");
+    const afternoonShift = shifts.find(s => s.label === "afternoon");
+    const morningFree = morningShift
+      ? (morningShift.end_slot - morningShift.start_slot + 1) -
+        sched.appointments.filter(a => a.slot >= morningShift.start_slot && a.slot <= morningShift.end_slot).length
+      : 0;
+    const afternoonFree = afternoonShift
+      ? (afternoonShift.end_slot - afternoonShift.start_slot + 1) -
+        sched.appointments.filter(a => a.slot >= afternoonShift.start_slot && a.slot <= afternoonShift.end_slot).length
+      : 0;
+    return { totalSlots: total, morningFree, afternoonFree };
+  }, [shifts, sched.appointments]);
+
+  // Distinct PSFs from current day's appointments
+  const psfOptions = useMemo(() => {
+    const set = new Set<string>();
+    sched.appointments.forEach(a => {
+      if (a.patients?.psf) set.add(a.patients.psf);
+    });
+    return Array.from(set).sort();
+  }, [sched.appointments]);
+
+  // Apply filters
+  const filteredAppointments = useMemo(() => {
+    return sched.appointments.filter(a => {
+      if (filterPsf !== "all" && a.patients?.psf !== filterPsf) return false;
+      if (filterType !== "all" && a.type !== filterType) return false;
+      if (filterPrinted === "printed" && !a.printed) return false;
+      if (filterPrinted === "not_printed" && a.printed) return false;
+      return true;
+    });
+  }, [sched.appointments, filterPsf, filterType, filterPrinted]);
+
+  const hasActiveFilters = filterPsf !== "all" || filterType !== "all" || filterPrinted !== "all";
+  const clearFilters = () => {
+    setFilterPsf("all");
+    setFilterType("all");
+    setFilterPrinted("all");
+  };
 
   const handleExport = () => {
     exportDayExcel(sched.selectedDate, sched.appointments, shifts);
+    toast.success("Excel exportado com sucesso", {
+      description: "O arquivo foi baixado para sua pasta de Downloads.",
+    });
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -202,6 +252,54 @@ export default function Dashboard() {
                     </Button>
                   </div>
                 )}
+                {sched.selectedDate && sched.appointments.length > 0 && (
+                  <div className="px-4 md:px-6 py-2 bg-muted/30 border-b flex items-center gap-2 flex-wrap">
+                    <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Filtros:</span>
+                    <Select value={filterPsf} onValueChange={setFilterPsf}>
+                      <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
+                        <SelectValue placeholder="PSF" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos PSF</SelectItem>
+                        {psfOptions.map(p => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos tipos</SelectItem>
+                        <SelectItem value="NORMAL">Normal</SelectItem>
+                        <SelectItem value="RETORNO">Retorno</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterPrinted} onValueChange={setFilterPrinted}>
+                      <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos status</SelectItem>
+                        <SelectItem value="printed">Impressos</SelectItem>
+                        <SelectItem value="not_printed">Não impressos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {hasActiveFilters && (
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={clearFilters}>
+                        <X className="w-3 h-3" />
+                        Limpar
+                      </Button>
+                    )}
+                    {hasActiveFilters && (
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {filteredAppointments.length} de {sched.appointments.length}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
                   {sched.selectedDate ? (
                     <>
@@ -210,7 +308,7 @@ export default function Dashboard() {
                           <SlotPanel
                             title={shift.display_title}
                             slots={Array.from({ length: shift.end_slot - shift.start_slot + 1 }, (_, i) => i + shift.start_slot)}
-                            appointments={sched.appointments}
+                            appointments={filteredAppointments}
                             date={sched.selectedDate}
                             variant={shift.label as any}
                             defaultTime={shift.default_time}
