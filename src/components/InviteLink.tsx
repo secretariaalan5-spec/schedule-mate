@@ -35,23 +35,6 @@ export default function InviteLink({ trigger, open: openProp, onOpenChange }: In
 
   const inviteUrl = `${window.location.origin}/?tab=signup&invited_by=${user?.id || ""}`;
 
-  const ensureCurrentUserRegistered = async () => {
-    if (!user) return;
-    const { data: existing } = await supabase
-      .from("team_members")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (!existing) {
-      await supabase.from("team_members").insert({
-        user_id: user.id,
-        email: user.email || "",
-        name: user.email?.split("@")[0] || "Admin",
-        status: "approved",
-      });
-    }
-  };
-
   const fetchMembers = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -64,7 +47,7 @@ export default function InviteLink({ trigger, open: openProp, onOpenChange }: In
 
   useEffect(() => {
     if (open) {
-      ensureCurrentUserRegistered().then(() => fetchMembers());
+      fetchMembers();
     }
   }, [open]);
 
