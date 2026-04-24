@@ -136,6 +136,39 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduling_shifts: {
+        Row: {
+          created_at: string | null
+          default_time: string
+          display_title: string
+          end_slot: number
+          id: string
+          is_active: boolean | null
+          label: string
+          start_slot: number
+        }
+        Insert: {
+          created_at?: string | null
+          default_time?: string
+          display_title: string
+          end_slot: number
+          id?: string
+          is_active?: boolean | null
+          label: string
+          start_slot: number
+        }
+        Update: {
+          created_at?: string | null
+          default_time?: string
+          display_title?: string
+          end_slot?: number
+          id?: string
+          is_active?: boolean | null
+          label?: string
+          start_slot?: number
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           created_at: string
