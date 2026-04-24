@@ -205,7 +205,7 @@ export default function PatientManager({ onGetHistory }: Props) {
                         <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => openEdit(p)}>
                           <Edit2 className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { if (window.confirm(`Excluir paciente "${p.name}"?`)) onDelete(p.id); }}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setDeleteCandidate(p)}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -271,7 +271,7 @@ export default function PatientManager({ onGetHistory }: Props) {
                             <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={() => openEdit(p)} title="Editar">
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => { if (window.confirm(`Excluir paciente "${p.name}"?`)) onDelete(p.id); }} title="Excluir">
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteCandidate(p)} title="Excluir">
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
@@ -283,6 +283,16 @@ export default function PatientManager({ onGetHistory }: Props) {
               </div>
             </>
           )}
+          {/* Infinite scroll sentinel + loader */}
+          {!isLoading && filtered.length > 0 && (
+            <div ref={sentinelRef} className="py-4 text-center text-xs text-muted-foreground">
+              {isFetchingNextPage
+                ? "Carregando mais..."
+                : hasNextPage
+                  ? "Role para carregar mais"
+                  : "Fim da lista"}
+            </div>
+          )}
         </div>
       </ScrollArea>
 
@@ -290,6 +300,28 @@ export default function PatientManager({ onGetHistory }: Props) {
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>{formDialog}</Dialog>
       <Dialog open={!!editPatient} onOpenChange={() => setEditPatient(null)}>{formDialog}</Dialog>
+      <AlertDialog open={!!deleteCandidate} onOpenChange={(o) => !o && setDeleteCandidate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir paciente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A paciente <strong>{deleteCandidate?.name}</strong> será removida permanentemente. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteCandidate) onDelete(deleteCandidate.id);
+                setDeleteCandidate(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog open={!!historyPatient} onOpenChange={() => setHistoryPatient(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
