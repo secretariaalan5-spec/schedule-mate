@@ -1,33 +1,44 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Patient } from "./useScheduling";
 import { toast } from "sonner";
 
+const PAGE_SIZE = 50;
+
 export function usePatients(search: string) {
   const queryClient = useQueryClient();
 
-  const patientsQuery = useQuery({
+  // Cursor-based pagination via range(). Loads PAGE_SIZE rows at a time.
+  const patientsQuery = useInfiniteQuery({
     queryKey: ["patients", search],
-    queryFn: async () => {
-      let query = supabase.from("patients").select("*").order("name");
-      
-      if (search) {
-        // ILIKE for case-insensitive search. OR for multiple columns
-        query = query.or(`name.ilike.%${search}%,sus_card.ilike.%${search}%,psf.ilike.%${search}%`);
-      }
-      
-      // Limit to 1000 records for performance, since it's search-driven now
-      query = query.limit(1000);
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0 }) => {
+      const from = (pageParam as number) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let query = supabase
+        .from("patients")
+        .select("*")
+        .order("name")
+        .range(from, to);
 
+      if (search) {
+        query = query.or(
+          `name.ilike.%${search}%,sus_card.ilike.%${search}%,psf.ilike.%${search}%`
+        );
+      }
 
       const { data, error } = await query;
       if (error) throw error;
       return data as Patient[];
     },
-    // Add debounce effect via staleTime if desired, but React Query handles it reasonably well.
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === PAGE_SIZE ? allPages.length : undefined,
+    staleTime: 1000 * 60 * 5,
   });
+
+  const patients: Patient[] =
+    patientsQuery.data?.pages.flat() ?? [];
 
   const totalStatsQuery = useQuery({
     queryKey: ["patients-stats"],
@@ -88,8 +99,11 @@ export function usePatients(search: string) {
   });
 
   return {
-    patients: patientsQuery.data || [],
+    patients,
     isLoading: patientsQuery.isLoading,
+    isFetchingNextPage: patientsQuery.isFetchingNextPage,
+    hasNextPage: !!patientsQuery.hasNextPage,
+    fetchNextPage: patientsQuery.fetchNextPage,
     stats: totalStatsQuery.data || { total: 0, withSus: 0 },
     addPatient: addPatientMutation.mutateAsync,
     updatePatient: updatePatientMutation.mutateAsync,
