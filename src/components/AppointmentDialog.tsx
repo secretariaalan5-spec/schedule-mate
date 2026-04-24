@@ -17,8 +17,6 @@ interface Props {
   onClose: () => void;
   slot: number;
   date: string;
-  slot: number;
-  date: string;
   variant: "morning" | "afternoon";
   defaultTime: string;
   title: string;
