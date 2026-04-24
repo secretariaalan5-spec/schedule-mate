@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Upload, FileSpreadsheet, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,12 @@ import { ptBR } from "date-fns/locale";
 
 interface Props {
   onImportComplete: () => void;
+  /** Render-prop variant: lets the parent embed Import / Export inside another menu */
+  children?: (api: {
+    importing: boolean;
+    triggerImport: () => void;
+    exportExcel: () => Promise<void>;
+  }) => ReactNode;
 }
 
 /* ── helpers ── */
