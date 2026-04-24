@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
 import PatientManager from "@/components/PatientManager";
@@ -29,7 +28,6 @@ import { exportDayExcel } from "@/lib/exportUtils";
 type Tab = "agenda" | "pacientes";
 
 export default function Dashboard() {
-  const { signOut } = useAuth();
   const sched = useScheduling();
   const { data: shifts = [] } = useShifts();
   const [tab, setTab] = useState<Tab>("agenda");
