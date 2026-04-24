@@ -10,7 +10,6 @@ import { printAppointments } from "./PrintSlip";
 
 interface Props {
   title: string;
-  title: string;
   slots: number[];
   appointments: Appointment[];
   date: string;
