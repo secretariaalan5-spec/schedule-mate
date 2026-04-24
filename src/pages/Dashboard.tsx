@@ -35,7 +35,7 @@ export default function Dashboard() {
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["patients"] });
     queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
-    if (sched.selectedDate) sched.fetchAppointments(sched.selectedDate);
+    if (sched.selectedDate) sched.fetchAppointments();
   };
 
   const calendarDate = sched.selectedDate ? new Date(sched.selectedDate + "T12:00:00") : undefined;
@@ -218,7 +218,7 @@ export default function Dashboard() {
                             onAdd={sched.addAppointment}
                             onRemove={sched.removeAppointment}
                             onPatientsChanged={handleRefresh}
-                            onRefresh={() => sched.fetchAppointments(sched.selectedDate!)}
+                            onRefresh={() => sched.fetchAppointments()}
                             onUpdateTime={sched.updateAppointmentTime}
                             onUpdateAppointment={sched.updateAppointment}
                           />
