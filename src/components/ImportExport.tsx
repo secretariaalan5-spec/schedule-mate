@@ -101,7 +101,7 @@ function findDateRow(ws: XLSX.WorkSheet): string {
 
 /* ── component ── */
 
-export default function ImportExport({ onImportComplete }: Props) {
+export default function ImportExport({ onImportComplete, children }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
 
