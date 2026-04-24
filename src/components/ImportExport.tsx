@@ -444,6 +444,18 @@ export default function ImportExport({ onImportComplete }: Props) {
     onImportComplete();
   };
 
+  const triggerImport = () => fileRef.current?.click();
+
+  // Render-prop API (for embedding inside header dropdown menus)
+  if (children) {
+    return (
+      <>
+        <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleImport} className="hidden" />
+        {children({ importing, triggerImport, exportExcel })}
+      </>
+    );
+  }
+
   return (
     <div className="flex items-center gap-1">
       <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleImport} className="hidden" />
@@ -451,7 +463,7 @@ export default function ImportExport({ onImportComplete }: Props) {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => fileRef.current?.click()}
+        onClick={triggerImport}
         disabled={importing}
         className="text-primary-foreground hover:bg-primary-foreground/10 h-10 px-1 flex flex-col items-center justify-center gap-0"
         title="Importar"
@@ -470,7 +482,5 @@ export default function ImportExport({ onImportComplete }: Props) {
         <span className="text-[8px] font-bold uppercase leading-none mt-0.5">Excel</span>
       </Button>
     </div>
-
-
   );
 }
