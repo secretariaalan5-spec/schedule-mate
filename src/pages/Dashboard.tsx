@@ -252,6 +252,54 @@ export default function Dashboard() {
                     </Button>
                   </div>
                 )}
+                {sched.selectedDate && sched.appointments.length > 0 && (
+                  <div className="px-4 md:px-6 py-2 bg-muted/30 border-b flex items-center gap-2 flex-wrap">
+                    <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Filtros:</span>
+                    <Select value={filterPsf} onValueChange={setFilterPsf}>
+                      <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
+                        <SelectValue placeholder="PSF" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos PSF</SelectItem>
+                        {psfOptions.map(p => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos tipos</SelectItem>
+                        <SelectItem value="NORMAL">Normal</SelectItem>
+                        <SelectItem value="RETORNO">Retorno</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterPrinted} onValueChange={setFilterPrinted}>
+                      <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos status</SelectItem>
+                        <SelectItem value="printed">Impressos</SelectItem>
+                        <SelectItem value="not_printed">Não impressos</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {hasActiveFilters && (
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={clearFilters}>
+                        <X className="w-3 h-3" />
+                        Limpar
+                      </Button>
+                    )}
+                    {hasActiveFilters && (
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {filteredAppointments.length} de {sched.appointments.length}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
                   {sched.selectedDate ? (
                     <>
@@ -260,7 +308,7 @@ export default function Dashboard() {
                           <SlotPanel
                             title={shift.display_title}
                             slots={Array.from({ length: shift.end_slot - shift.start_slot + 1 }, (_, i) => i + shift.start_slot)}
-                            appointments={sched.appointments}
+                            appointments={filteredAppointments}
                             date={sched.selectedDate}
                             variant={shift.label as any}
                             defaultTime={shift.default_time}
