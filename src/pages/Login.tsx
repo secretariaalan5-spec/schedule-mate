@@ -50,7 +50,7 @@ export default function Login() {
         email,
         name: name.trim(),
         invited_by: invitedBy || null,
-        status: invitedBy ? "pending" : "approved",
+        // status defaults to 'pending' in the database — never trust client to set it
       });
     }
 
