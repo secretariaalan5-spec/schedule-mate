@@ -185,7 +185,7 @@ export default function Dashboard() {
                   />
                 </div>
                 
-                {isMobile && sched.selectedDate && (
+                {isMobile && !!sched.selectedDate && (
                   <Button className="mt-2 w-full h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all" onClick={() => setMobileShowSlots(true)}>
                     <CalendarDays className="w-5 h-5 mr-2" />
                     Abrir Agenda do Dia
@@ -230,7 +230,7 @@ export default function Dashboard() {
             {/* Slots panel */}
             {(!isMobile || mobileShowSlots) && (
               <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
-                {sched.selectedDate && (
+                {!!sched.selectedDate && (
                   <div className="px-4 md:px-6 py-3 bg-card border-b flex items-center justify-between sticky top-0 z-10 shadow-sm">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Agenda Selecionada</span>
@@ -244,7 +244,7 @@ export default function Dashboard() {
                     </Button>
                   </div>
                 )}
-                {sched.selectedDate && sched.appointments.length > 0 && (
+                {!!sched.selectedDate && sched.appointments.length > 0 && (
                   <div className="px-4 md:px-6 py-2 bg-muted/30 border-b flex items-center gap-2 flex-wrap">
                     <Filter className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Filtros:</span>

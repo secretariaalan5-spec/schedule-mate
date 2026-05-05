@@ -161,7 +161,7 @@ export default function PatientManager({ onGetHistory }: Props) {
             <Plus className="w-4 h-4" /> Nova Paciente
           </Button>
         </div>
-        {debouncedSearch && (
+        {!!debouncedSearch && (
           <p className="text-xs text-muted-foreground mt-2">
             {totalFiltered}{hasNextPage ? "+" : ""} resultado{totalFiltered !== 1 ? "s" : ""} encontrado{totalFiltered !== 1 ? "s" : ""}
           </p>
@@ -226,7 +226,7 @@ export default function PatientManager({ onGetHistory }: Props) {
                       </div>
                     </div>
 
-                    {p.observations && (
+                    {!!p.observations && (
                       <div className="bg-muted/30 p-2 rounded-lg">
                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Observações</p>
                         <p className="text-xs text-muted-foreground line-clamp-2 italic">"{p.observations}"</p>

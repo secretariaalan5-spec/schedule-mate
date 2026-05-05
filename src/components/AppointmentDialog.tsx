@@ -194,7 +194,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
               onFocus={() => search && setShowResults(true)}
               disabled={isEditing}
             />
-            {showResults && search && (
+            {showResults && !!search && (
               <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48">
                 {isSearching ? (
                   <div className="px-3 py-4 text-sm text-center text-muted-foreground">Buscando...</div>

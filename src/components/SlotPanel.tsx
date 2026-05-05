@@ -136,10 +136,10 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                     title="Clique para editar"
                   >
                     <span className="font-medium text-sm">{appt.patients?.name || "—"}</span>
-                    {appt.patients?.psf && (
+                    {!!appt.patients?.psf && (
                       <span className="text-xs text-muted-foreground">({appt.patients.psf})</span>
                     )}
-                    {appt.reason && (
+                    {!!appt.reason && (
                       <span className="text-xs text-primary font-medium">{appt.reason}</span>
                     )}
                     {appt.type === "RETORNO" && (
