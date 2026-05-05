@@ -169,7 +169,7 @@ export default function Dashboard() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden relative">
         {tab === "agenda" && (
-          <>
+          <div className="contents">
             {/* Calendar sidebar */}
             {(!isMobile || !mobileShowSlots) && (
               <div className={`${isMobile ? "flex-1" : "w-[320px] border-r"} bg-card flex-shrink-0 flex flex-col overflow-auto p-4 md:p-6 animate-in fade-in slide-in-from-left-4 duration-300`}>
@@ -327,7 +327,7 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {tab === "pacientes" && (
