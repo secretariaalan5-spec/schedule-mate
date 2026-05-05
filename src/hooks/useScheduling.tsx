@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useShifts } from "./useShifts";
+import { DEFAULT_SHIFTS, useShifts } from "./useShifts";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -30,7 +30,7 @@ export interface Appointment {
 
 export function useScheduling() {
   const queryClient = useQueryClient();
-  const { data: shifts = [] } = useShifts();
+  const { data: shifts = DEFAULT_SHIFTS } = useShifts();
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
   // Query: Appointment Dates
@@ -41,8 +41,11 @@ export function useScheduling() {
         .from("appointments")
         .select("date")
         .order("date");
-      if (error) throw error;
-      return [...new Set(data.map(d => d.date))];
+      if (error) {
+        console.error("Erro ao carregar dias com agendamentos:", error);
+        return [];
+      }
+      return [...new Set((data ?? []).map(d => d.date))];
     }
   });
 
@@ -55,7 +58,11 @@ export function useScheduling() {
         .select("*, patients(*)")
         .eq("date", selectedDate)
         .order("slot");
-      if (error) { throw error; }
+      if (error) {
+        console.error("Erro ao carregar agendamentos:", error);
+        toast.error("Não foi possível carregar a agenda");
+        return [];
+      }
       return (data as any) || [];
     },
     enabled: !!selectedDate
@@ -63,15 +70,23 @@ export function useScheduling() {
 
   // Realtime subscriptions
   useEffect(() => {
-    const channel = supabase
-      .channel("realtime-scheduling")
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, () => {
+    let timer: number | undefined;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["appointments"] });
         queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
-      })
+      }, 250);
+    };
+    const channel = supabase
+      .channel("realtime-scheduling")
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, refresh)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      window.clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   // Mutations

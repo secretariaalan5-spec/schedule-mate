@@ -18,13 +18,16 @@ const Index = () => {
     }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("team_members")
         .select("status")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
-      if (!data) setMemberStatus("none");
+      if (error) {
+        console.error("Erro ao verificar acesso:", error);
+        setMemberStatus("pending");
+      } else if (!data) setMemberStatus("none");
       else if (data.status === "approved") setMemberStatus("approved");
       else if (data.status === "rejected") setMemberStatus("rejected");
       else setMemberStatus("pending");
