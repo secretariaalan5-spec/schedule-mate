@@ -91,7 +91,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
         </div>
         <div className="flex items-center gap-2">
           {occupied > 0 && (
-            <>
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={selectAll}>
                 {selectedIds.size > 0 ? "Limpar" : "Selecionar"}
               </Button>
@@ -101,7 +101,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                   Imprimir ({selectedIds.size})
                 </Button>
               )}
-            </>
+            </div>
           )}
           <span className="text-sm text-muted-foreground">{occupied}/{vacancies}</span>
         </div>
