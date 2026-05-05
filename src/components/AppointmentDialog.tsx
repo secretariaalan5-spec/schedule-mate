@@ -165,22 +165,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Duplicate warning */}
-          {existingAppointments.length > 0 && (
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
-                <p className="font-medium text-destructive">Paciente já possui consulta(s) neste mês:</p>
-                <div className="mt-1 space-y-0.5">
-                  {existingAppointments.map(a => (
-                    <p key={a.id} className="text-xs text-muted-foreground">
-                      {formatDateBR(a.date)} — Vaga {String(a.slot).padStart(2, "0")} — {a.schedule_time} — {a.type}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Duplicate warning removed */}
 
           <div className="space-y-1.5 relative">
             <Label>Nome do Paciente</Label>
