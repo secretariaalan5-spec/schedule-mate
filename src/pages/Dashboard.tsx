@@ -294,7 +294,7 @@ export default function Dashboard() {
                 )}
                 <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
                   {sched.selectedDate ? (
-                    <div className="contents">
+                    <>
                       {shifts.map((shift, idx) => (
                         <div key={shift.id} className={`flex-1 overflow-auto ${isMobile && idx > 0 ? "border-t" : !isMobile && idx > 0 ? "border-l" : ""}`}>
                           <SlotPanel
@@ -314,7 +314,7 @@ export default function Dashboard() {
                           />
                         </div>
                       ))}
-                    </div>
+                    </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
