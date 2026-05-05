@@ -169,7 +169,7 @@ export default function Dashboard() {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden relative">
         {tab === "agenda" && (
-          <>
+          <div className="contents">
             {/* Calendar sidebar */}
             {(!isMobile || !mobileShowSlots) && (
               <div className={`${isMobile ? "flex-1" : "w-[320px] border-r"} bg-card flex-shrink-0 flex flex-col overflow-auto p-4 md:p-6 animate-in fade-in slide-in-from-left-4 duration-300`}>
@@ -294,7 +294,7 @@ export default function Dashboard() {
                 )}
                 <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
                   {sched.selectedDate ? (
-                    <>
+                    <div className="contents">
                       {shifts.map((shift, idx) => (
                         <div key={shift.id} className={`flex-1 overflow-auto ${isMobile && idx > 0 ? "border-t" : !isMobile && idx > 0 ? "border-l" : ""}`}>
                           <SlotPanel
@@ -314,7 +314,7 @@ export default function Dashboard() {
                           />
                         </div>
                       ))}
-                    </>
+                    </div>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
                       <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
@@ -327,7 +327,7 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {tab === "pacientes" && (
