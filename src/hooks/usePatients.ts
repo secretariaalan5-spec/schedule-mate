@@ -33,7 +33,11 @@ export function usePatients(search: string) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao carregar pacientes:", error);
+        toast.error("Não foi possível carregar pacientes");
+        return [];
+      }
       return data as Patient[];
     },
     getNextPageParam: (lastPage, allPages) =>
@@ -47,8 +51,12 @@ export function usePatients(search: string) {
   const totalStatsQuery = useQuery({
     queryKey: ["patients-stats"],
     queryFn: async () => {
-      const { count: total } = await supabase.from("patients").select("*", { count: "exact", head: true });
-      const { count: withSus } = await supabase.from("patients").select("*", { count: "exact", head: true }).not("sus_card", "is", null);
+      const { count: total, error: totalError } = await supabase.from("patients").select("*", { count: "exact", head: true });
+      const { count: withSus, error: withSusError } = await supabase.from("patients").select("*", { count: "exact", head: true }).not("sus_card", "is", null);
+      if (totalError || withSusError) {
+        console.error("Erro ao carregar estatísticas de pacientes:", totalError || withSusError);
+        return { total: 0, withSus: 0 };
+      }
       
       return { total: total || 0, withSus: withSus || 0 };
     },
