@@ -19,7 +19,7 @@ import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-import { useShifts } from "@/hooks/useShifts";
+import { DEFAULT_SHIFTS, useShifts } from "@/hooks/useShifts";
 import logo from "@/assets/logo.png";
 import { exportDayExcel } from "@/lib/exportUtils";
 
@@ -29,7 +29,7 @@ type Tab = "agenda" | "pacientes";
 
 export default function Dashboard() {
   const sched = useScheduling();
-  const { data: shifts = [] } = useShifts();
+  const { data: shifts = DEFAULT_SHIFTS } = useShifts();
   const [tab, setTab] = useState<Tab>("agenda");
   const [mobileShowSlots, setMobileShowSlots] = useState(false);
   const isMobile = useIsMobile();
