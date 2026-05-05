@@ -91,7 +91,7 @@ export default function PatientManager({ onGetHistory }: Props) {
     }
   };
 
-  const formDialog = (
+  const renderFormDialog = () => (
     <DialogContent className="max-w-md">
       <DialogHeader>
         <DialogTitle className="text-primary">{editPatient ? "Editar Paciente" : "Nova Paciente"}</DialogTitle>
@@ -182,7 +182,7 @@ export default function PatientManager({ onGetHistory }: Props) {
               {debouncedSearch ? "Nenhum paciente encontrado" : "Nenhum paciente cadastrado"}
             </div>
           ) : (
-            <>
+            <div className="w-full space-y-3">
               {/* Mobile Cards */}
               <div className="grid grid-cols-1 gap-3 md:hidden">
                 {filtered.map((p, i) => (
@@ -281,7 +281,7 @@ export default function PatientManager({ onGetHistory }: Props) {
                   </TableBody>
                 </Table>
               </div>
-            </>
+            </div>
           )}
           {/* Infinite scroll sentinel + loader */}
           {!isLoading && filtered.length > 0 && (
@@ -298,8 +298,14 @@ export default function PatientManager({ onGetHistory }: Props) {
 
 
 
-      <Dialog open={newOpen} onOpenChange={setNewOpen}>{formDialog}</Dialog>
-      <Dialog open={!!editPatient} onOpenChange={() => setEditPatient(null)}>{formDialog}</Dialog>
+      <Dialog open={newOpen || !!editPatient} onOpenChange={(open) => {
+        if (!open) {
+          setNewOpen(false);
+          setEditPatient(null);
+        }
+      }}>
+        {renderFormDialog()}
+      </Dialog>
       <AlertDialog open={!!deleteCandidate} onOpenChange={(o) => !o && setDeleteCandidate(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
