@@ -23,9 +23,13 @@ export function usePatients(search: string) {
         .range(from, to);
 
       if (search) {
-        query = query.or(
-          `name.ilike.%${search}%,sus_card.ilike.%${search}%,psf.ilike.%${search}%`
-        );
+        // Sanitize: PostgREST .or() breaks on commas, parentheses, quotes
+        const safe = search.replace(/[,()"']/g, " ").trim();
+        if (safe) {
+          query = query.or(
+            `name.ilike.%${safe}%,sus_card.ilike.%${safe}%,psf.ilike.%${safe}%`
+          );
+        }
       }
 
       const { data, error } = await query;
