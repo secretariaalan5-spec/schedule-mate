@@ -221,21 +221,19 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
         })}
       </div>
 
-      {dialogSlot !== null && (
-        <AppointmentDialog
-          open={true}
-          onClose={closeDialog}
-          slot={dialogSlot}
-          date={date}
-          variant={variant as any}
-          defaultTime={defaultTime}
-          title={title}
-          onAdd={onAdd}
-          onPatientsChanged={onPatientsChanged}
-          editAppointment={editAppointment}
-          onUpdate={onUpdateAppointment}
-        />
-      )}
+      <AppointmentDialog
+        open={dialogSlot !== null}
+        onClose={closeDialog}
+        slot={dialogSlot ?? slots[0]}
+        date={date}
+        variant={variant as any}
+        defaultTime={defaultTime}
+        title={title}
+        onAdd={onAdd}
+        onPatientsChanged={onPatientsChanged}
+        editAppointment={editAppointment}
+        onUpdate={onUpdateAppointment}
+      />
     </div>
   );
 }

@@ -152,7 +152,12 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   );
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
@@ -221,7 +226,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
           </div>
 
           {!isEditing && (
-            <div className="contents">
+            <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Cartão SUS</Label>
@@ -237,7 +242,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
                 <Label>PSF / UBS</Label>
                 <Input placeholder="Nome do PSF / UBS" value={psf} onChange={e => setPsf(e.target.value)} />
               </div>
-            </div>
+            </>
           )}
 
           <div className="grid grid-cols-2 gap-3">
