@@ -18,6 +18,21 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   reset = () => this.setState({ error: null });
 
+  handleHardReload = () => {
+    // Unregister all service workers to clear cache
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+        // Force reload from server
+        window.location.href = window.location.href;
+      });
+    } else {
+      window.location.reload();
+    }
+  };
+
   render() {
     if (!this.state.error) return this.props.children;
     return (
@@ -32,9 +47,13 @@ export default class ErrorBoundary extends Component<Props, State> {
               {this.state.error.message || "Ocorreu um erro inesperado."}
             </p>
           </div>
-          <div className="flex gap-2 justify-center">
-            <Button variant="outline" onClick={this.reset}>Tentar novamente</Button>
-            <Button onClick={() => window.location.reload()}>Recarregar</Button>
+          <div className="flex flex-col gap-2 justify-center pt-2">
+            <Button onClick={this.handleHardReload} className="w-full">
+              Recarregar Sistema (Recomendado)
+            </Button>
+            <Button variant="outline" onClick={this.reset} className="w-full">
+              Tentar novamente
+            </Button>
           </div>
         </div>
       </div>

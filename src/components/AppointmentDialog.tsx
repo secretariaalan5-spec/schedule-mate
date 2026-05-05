@@ -185,7 +185,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
               disabled={isEditing}
             />
             {showResults && !!search && (
-              <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48">
+              <div className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48 overflow-y-auto">
                 {isSearching ? (
                   <div className="px-3 py-4 text-sm text-center text-muted-foreground">Buscando...</div>
                 ) : filtered.length === 0 ? (
@@ -206,12 +206,12 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
                     )}
                   </div>
                 )))}
-              </ScrollArea>
+              </div>
             )}
           </div>
 
           {!isEditing && (
-            <>
+            <div className="contents">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Cartão SUS</Label>
@@ -227,7 +227,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
                 <Label>PSF / UBS</Label>
                 <Input placeholder="Nome do PSF / UBS" value={psf} onChange={e => setPsf(e.target.value)} />
               </div>
-            </>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
