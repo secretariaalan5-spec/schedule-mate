@@ -70,7 +70,7 @@ export function useScheduling() {
 
   // Realtime subscriptions
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let timer: number | undefined;
     const refresh = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
