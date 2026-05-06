@@ -50,6 +50,7 @@ export default function PatientManager({ onGetHistory }: Props) {
   const [form, setForm] = useState({ name: "", sus_card: "", dob: "", psf: "", observations: "" });
   const [deleteCandidate, setDeleteCandidate] = useState<Patient | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const historyRequestRef = useRef(0);
 
   const totalFiltered = filtered.length;
 
@@ -75,10 +76,20 @@ export default function PatientManager({ onGetHistory }: Props) {
     setEditPatient(p);
   };
   const openHistory = async (p: Patient) => {
+    const requestId = ++historyRequestRef.current;
     setHistoryPatient(p);
+    setHistory([]);
     const h = await onGetHistory(p.id);
-    setHistory(h);
+    if (historyRequestRef.current === requestId) {
+      setHistory(h);
+    }
   };
+
+  useEffect(() => {
+    return () => {
+      historyRequestRef.current += 1;
+    };
+  }, []);
 
   const handleSave = async () => {
     const data = { name: form.name.toUpperCase(), sus_card: form.sus_card || null, dob: form.dob || null, psf: form.psf.toUpperCase() || null, observations: form.observations || null };
@@ -298,7 +309,7 @@ export default function PatientManager({ onGetHistory }: Props) {
 
 
 
-      <Dialog open={newOpen || !!editPatient} onOpenChange={(open) => {
+      <Dialog key={editPatient?.id ?? (newOpen ? "new-patient" : "form-closed")} open={newOpen || !!editPatient} onOpenChange={(open) => {
         if (!open) {
           setNewOpen(false);
           setEditPatient(null);
@@ -306,7 +317,13 @@ export default function PatientManager({ onGetHistory }: Props) {
       }}>
         {renderFormDialog()}
       </Dialog>
-      <AlertDialog open={!!deleteCandidate} onOpenChange={(o) => !o && setDeleteCandidate(null)}>
+      <AlertDialog
+        key={deleteCandidate?.id ?? "delete-closed"}
+        open={!!deleteCandidate}
+        onOpenChange={(open) => {
+          if (!open) setDeleteCandidate(null);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir paciente?</AlertDialogTitle>
@@ -328,7 +345,17 @@ export default function PatientManager({ onGetHistory }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog open={!!historyPatient} onOpenChange={() => setHistoryPatient(null)}>
+      <Dialog
+        key={historyPatient?.id ?? "history-closed"}
+        open={!!historyPatient}
+        onOpenChange={(open) => {
+          if (!open) {
+            historyRequestRef.current += 1;
+            setHistoryPatient(null);
+            setHistory([]);
+          }
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-primary">Histórico: {historyPatient?.name}</DialogTitle>
