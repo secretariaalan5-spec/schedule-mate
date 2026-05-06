@@ -5,6 +5,11 @@ import { AlertTriangle } from "lucide-react";
 interface Props { children: ReactNode }
 interface State { error: Error | null }
 
+const isTransientDomDetachError = (error: Error) => {
+  const message = (error?.message || "").toLowerCase();
+  return message.includes("removechild") || message.includes("insertbefore");
+};
+
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
@@ -14,6 +19,10 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: unknown) {
     console.error("ErrorBoundary caught:", error, info);
+    if (isTransientDomDetachError(error)) {
+      // Recover from intermittent portal detach race without blocking the session.
+      window.setTimeout(() => this.setState({ error: null }), 0);
+    }
   }
 
   reset = () => this.setState({ error: null });

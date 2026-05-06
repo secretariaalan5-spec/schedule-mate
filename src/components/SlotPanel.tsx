@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, UserPlus, Printer, CheckCircle, Clock, Edit2 } from "lucide-react";
@@ -81,6 +81,14 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
     setDialogSlot(null);
     setEditAppointment(null);
   };
+
+  useEffect(() => {
+    // Reset transient UI state on day switch to avoid stale portal/input interactions.
+    closeDialog();
+    setSelectedIds(new Set());
+    setEditingTimeId(null);
+    setEditTimeValue("");
+  }, [date]);
 
   return (
     <div className="flex flex-col h-full">
@@ -222,6 +230,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
       </div>
 
       <AppointmentDialog
+        key={`${variant}-${date}`}
         open={dialogSlot !== null}
         onClose={closeDialog}
         slot={dialogSlot ?? slots[0]}
