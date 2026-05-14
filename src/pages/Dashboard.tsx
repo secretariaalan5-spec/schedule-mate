@@ -230,68 +230,70 @@ export default function Dashboard() {
             {/* Slots panel */}
             {(!isMobile || mobileShowSlots) && (
               <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
-                {!!sched.selectedDate && (
-                  <div className="px-4 md:px-6 py-3 bg-card border-b flex items-center justify-between sticky top-0 z-10 shadow-sm">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Agenda Selecionada</span>
-                      <h2 className="font-bold text-sm md:text-base capitalize text-foreground">
-                        {formatDateFull(sched.selectedDate)}
-                      </h2>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-9 px-3 text-xs gap-2 rounded-xl border-2 hover:bg-muted" onClick={handleExport}>
-                      <Download className="w-4 h-4" />
-                      Exportar Excel
-                    </Button>
-                  </div>
-                )}
-                {!!sched.selectedDate && sched.appointments.length > 0 && (
-                  <div className="px-4 md:px-6 py-2 bg-muted/30 border-b flex items-center gap-2 flex-wrap">
-                    <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Filtros:</span>
-                    <Select value={filterPsf} onValueChange={setFilterPsf}>
-                      <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
-                        <SelectValue placeholder="PSF" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos PSF</SelectItem>
-                        {psfOptions.map(p => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterType} onValueChange={setFilterType}>
-                      <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
-                        <SelectValue placeholder="Tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos tipos</SelectItem>
-                        <SelectItem value="NORMAL">Normal</SelectItem>
-                        <SelectItem value="RETORNO">Retorno</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterPrinted} onValueChange={setFilterPrinted}>
-                      <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos status</SelectItem>
-                        <SelectItem value="printed">Impressos</SelectItem>
-                        <SelectItem value="not_printed">Não impressos</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {hasActiveFilters && (
-                      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={clearFilters}>
-                        <X className="w-3 h-3" />
-                        Limpar
+                <div className="shrink-0 flex flex-col">
+                  {!!sched.selectedDate && (
+                    <div className="px-4 md:px-6 py-3 bg-card border-b flex items-center justify-between sticky top-0 z-10 shadow-sm">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Agenda Selecionada</span>
+                        <h2 className="font-bold text-sm md:text-base capitalize text-foreground">
+                          {formatDateFull(sched.selectedDate)}
+                        </h2>
+                      </div>
+                      <Button variant="outline" size="sm" className="h-9 px-3 text-xs gap-2 rounded-xl border-2 hover:bg-muted" onClick={handleExport}>
+                        <Download className="w-4 h-4" />
+                        Exportar Excel
                       </Button>
-                    )}
-                    {hasActiveFilters && (
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {filteredAppointments.length} de {sched.appointments.length}
-                      </span>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                  {!!sched.selectedDate && sched.appointments.length > 0 && (
+                    <div className="px-4 md:px-6 py-2 bg-muted/30 border-b flex items-center gap-2 flex-wrap">
+                      <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Filtros:</span>
+                      <Select value={filterPsf} onValueChange={setFilterPsf}>
+                        <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
+                          <SelectValue placeholder="PSF" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos PSF</SelectItem>
+                          {psfOptions.map(p => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={filterType} onValueChange={setFilterType}>
+                        <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
+                          <SelectValue placeholder="Tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos tipos</SelectItem>
+                          <SelectItem value="NORMAL">Normal</SelectItem>
+                          <SelectItem value="RETORNO">Retorno</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={filterPrinted} onValueChange={setFilterPrinted}>
+                        <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos status</SelectItem>
+                          <SelectItem value="printed">Impressos</SelectItem>
+                          <SelectItem value="not_printed">Não impressos</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {hasActiveFilters && (
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={clearFilters}>
+                          <X className="w-3 h-3" />
+                          Limpar
+                        </Button>
+                      )}
+                      {hasActiveFilters && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          {`${filteredAppointments.length} de ${sched.appointments.length}`}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
                   {sched.selectedDate ? (
                     <div className="contents">

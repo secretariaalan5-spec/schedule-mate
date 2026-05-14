@@ -116,106 +116,109 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
 
           return (
             <div
-              key={slot}
+              key={`${date}-${slot}`}
               className={`flex items-center border-b px-4 py-3 hover:bg-muted/30 transition-colors group ${isSelected ? "bg-primary/5" : ""}`}
             >
-              {appt && (
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => toggleSelect(appt.id)}
-                  className="mr-2 accent-primary w-4 h-4 cursor-pointer"
-                />
-              )}
+              <div className="w-6 shrink-0 flex items-center">
+                {appt && (
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(appt.id)}
+                    className="accent-primary w-4 h-4 cursor-pointer"
+                  />
+                )}
+              </div>
               <span className="font-bold text-sm text-muted-foreground w-8">{slotNum}</span>
-              {appt ? (
-                <div className="flex-1 flex items-center justify-between">
-                  <div
-                    className="flex items-center gap-1 flex-wrap cursor-pointer flex-1"
-                    onClick={() => openEditDialog(appt)}
-                    title="Clique para editar"
-                  >
-                    <span className="font-medium text-sm">{appt.patients?.name || "—"}</span>
-                    {!!appt.patients?.psf && (
-                      <span className="text-xs text-muted-foreground">({appt.patients.psf})</span>
-                    )}
-                    {!!appt.reason && (
-                      <span className="text-xs text-primary font-medium">{appt.reason}</span>
-                    )}
-                    {appt.type === "RETORNO" && (
-                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Retorno</span>
-                    )}
-                    {/* Time display/edit */}
-                    {editingTimeId === appt.id ? (
-                      <Input
-                        type="time"
-                        value={editTimeValue}
-                        onChange={e => setEditTimeValue(e.target.value)}
-                        onBlur={saveTime}
-                        onKeyDown={e => e.key === "Enter" && saveTime()}
-                        className="w-24 h-6 text-xs ml-1"
-                        autoFocus
-                        onClick={e => e.stopPropagation()}
-                      />
-                    ) : (
-                      <span
-                        className="text-xs text-muted-foreground ml-1 cursor-pointer hover:text-primary flex items-center gap-0.5"
-                        onClick={e => { e.stopPropagation(); startEditTime(appt); }}
-                        title="Clique para alterar horário"
-                      >
-                        <Clock className="w-3 h-3" />
-                        {appt.schedule_time || defaultTime}
-                      </span>
-                    )}
-                    {isPrinted && (
-                      <span className="text-xs text-green-600 flex items-center gap-0.5" title="Impresso">
-                        <CheckCircle className="w-3 h-3" />
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className={`h-7 w-7 text-primary transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+              <div className="flex-1 flex items-center justify-between">
+                {appt ? (
+                  <div className="contents">
+                    <div
+                      className="flex items-center gap-1 flex-wrap cursor-pointer flex-1"
                       onClick={() => openEditDialog(appt)}
-                      title="Editar"
+                      title="Clique para editar"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
+                      <span className="font-medium text-sm">{appt.patients?.name || "—"}</span>
+                      {!!appt.patients?.psf && (
+                        <span className="text-xs text-muted-foreground">({appt.patients.psf})</span>
+                      )}
+                      {!!appt.reason && (
+                        <span className="text-xs text-primary font-medium">{appt.reason}</span>
+                      )}
+                      {appt.type === "RETORNO" && (
+                        <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Retorno</span>
+                      )}
+                      {/* Time display/edit */}
+                      {editingTimeId === appt.id ? (
+                        <Input
+                          type="time"
+                          value={editTimeValue}
+                          onChange={e => setEditTimeValue(e.target.value)}
+                          onBlur={saveTime}
+                          onKeyDown={e => e.key === "Enter" && saveTime()}
+                          className="w-24 h-6 text-xs ml-1"
+                          autoFocus
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span
+                          className="text-xs text-muted-foreground ml-1 cursor-pointer hover:text-primary flex items-center gap-0.5"
+                          onClick={e => { e.stopPropagation(); startEditTime(appt); }}
+                          title="Clique para alterar horário"
+                        >
+                          <Clock className="w-3 h-3" />
+                          {appt.schedule_time || defaultTime}
+                        </span>
+                      )}
+                      {isPrinted && (
+                        <span className="text-xs text-green-600 flex items-center gap-0.5" title="Impresso">
+                          <CheckCircle className="w-3 h-3" />
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`h-7 w-7 text-primary transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                        onClick={() => openEditDialog(appt)}
+                        title="Editar"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`h-7 w-7 text-primary transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                        onClick={() => printAppointments([appt], onRefresh || onPatientsChanged)}
+                        title="Imprimir"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={`h-7 w-7 text-destructive transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                        onClick={() => { if (window.confirm("Excluir agendamento?")) onRemove(appt.id); }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="contents">
+                    <span className="text-sm text-muted-foreground italic">Livre</span>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className={`h-7 w-7 text-primary transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                      onClick={() => printAppointments([appt], onRefresh || onPatientsChanged)}
-                      title="Imprimir"
+                      className="h-6 w-6 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => { setEditAppointment(null); setDialogSlot(slot); }}
                     >
-                      <Printer className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className={`h-7 w-7 text-destructive transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                      onClick={() => { if (window.confirm("Excluir agendamento?")) onRemove(appt.id); }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <UserPlus className="w-3 h-3" />
                     </Button>
                   </div>
-
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground italic">Livre</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => { setEditAppointment(null); setDialogSlot(slot); }}
-                  >
-                    <UserPlus className="w-3 h-3" />
-                  </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         })}
