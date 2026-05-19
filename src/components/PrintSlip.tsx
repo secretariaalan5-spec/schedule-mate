@@ -43,26 +43,37 @@ function buildSlipHTML(slip: SlipData): string {
   `;
 }
 
+function safeFormatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  try {
+    return format(parseISO(dateStr), "dd/MM/yyyy");
+  } catch (e) {
+    console.error("Invalid date:", dateStr);
+    return "Data Inválida";
+  }
+}
+
 export async function printAppointments(
   appointmentsToPrint: Appointment[],
   onRefresh?: () => void
 ) {
-  if (appointmentsToPrint.length === 0) {
-    toast.error("Nenhuma consulta selecionada para imprimir");
-    return;
-  }
+  try {
+    if (appointmentsToPrint.length === 0) {
+      toast.error("Nenhuma consulta selecionada para imprimir");
+      return;
+    }
 
-  const slips: SlipData[] = appointmentsToPrint.map(appt => {
-    const pt = appt.patients;
-    return {
-      patientName: pt?.name || "—",
-      dob: pt?.dob ? format(parseISO(pt.dob), "dd/MM/yyyy") : "—",
-      psf: pt?.psf || "—",
-      reason: appt.reason || "GINECOLOGIA",
-      date: format(parseISO(appt.date), "dd/MM/yyyy"),
-      time: appt.schedule_time || (appt.slot <= 15 ? "08:00" : "14:00"),
-    };
-  });
+    const slips: SlipData[] = appointmentsToPrint.map(appt => {
+      const pt = appt.patients;
+      return {
+        patientName: pt?.name || "—",
+        dob: safeFormatDate(pt?.dob),
+        psf: pt?.psf || "—",
+        reason: appt.reason || "GINECOLOGIA",
+        date: safeFormatDate(appt.date),
+        time: appt.schedule_time || (appt.slot <= 15 ? "08:00" : "14:00"),
+      };
+    });
 
   let pagesHTML = "";
   for (let i = 0; i < slips.length; i += 2) {
@@ -132,5 +143,9 @@ export async function printAppointments(
   } else {
     toast.success(`${ids.length} comprovante(s) marcado(s) como impresso(s)`);
     onRefresh?.();
+  }
+  } catch (error: any) {
+    console.error("Erro inesperado na impressão:", error);
+    toast.error("Erro inesperado ao gerar comprovante: " + (error?.message || ""));
   }
 }
