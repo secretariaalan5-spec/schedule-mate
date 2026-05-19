@@ -12,13 +12,13 @@ interface SlipData {
   time: string;
 }
 
-function buildSlipHTML(slip: SlipData): string {
+function buildSlipHTML(slip: SlipData, logoUrl: string): string {
   return `
     <div style="width:100%;height:50%;box-sizing:border-box;padding:20px 30px;display:flex;flex-direction:column;font-family:Arial,sans-serif;position:relative;">
       <div style="text-align:center;margin-bottom:8px;">
-        <img src="/images/logo-camocim.png" style="height:50px;margin-bottom:4px;" />
+        <img src="${logoUrl}" style="height:50px;margin-bottom:4px;" onerror="this.style.display='none'" />
         <div style="font-weight:bold;font-size:11px;">SECRETARIA MUNICIPAL DE SAUDE DE CAMOCIM</div>
-        <div style="font-size:9px;color:#555;">RUA JOÃO PESSOA, 1252, BETANIA, CAMOCIM / CE - (88) 2221-0535</div>
+        <div style="font-size:9px;color:#555;">RUA JO&Atilde;O PESSOA, 1252, BETANIA, CAMOCIM / CE - (88) 2221-0535</div>
         <div style="font-weight:bold;font-size:12px;margin-top:8px;">Comprovante de Agendamento</div>
       </div>
       <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px;font-size:12px;line-height:1.6;">
@@ -28,13 +28,13 @@ function buildSlipHTML(slip: SlipData): string {
           <div><b>UBS:</b> &nbsp; ${slip.psf}</div>
         </div>
         <div style="margin-top:8px;border-top:1px solid #ddd;padding-top:8px;">
-          <div><b>Está agendada para:</b> &nbsp; <b>HOSPITAL DEPUTADO MURILO AGUIAR - HDMA</b></div>
-          <div><b>Endereço:</b> &nbsp; R.24 DE MAIO, S/N</div>
+          <div><b>Est&aacute; agendada para:</b> &nbsp; <b>HOSPITAL DEPUTADO MURILO AGUIAR - HDMA</b></div>
+          <div><b>Endere&ccedil;o:</b> &nbsp; R.24 DE MAIO, S/N</div>
           <div><b>Profissional:</b> &nbsp; DR.GEFFERSON</div>
           <div><b>Seu procedimento de:</b> &nbsp; ${slip.reason || "GINECOLOGIA"}</div>
           <div style="display:flex;gap:30px;margin-top:4px;">
             <div><b>Data:</b> &nbsp; ${slip.date}</div>
-            <div><b>Horário Consulta:</b> &nbsp; ${slip.time}</div>
+            <div><b>Hor&aacute;rio Consulta:</b> &nbsp; ${slip.time}</div>
           </div>
         </div>
       </div>
@@ -52,7 +52,11 @@ export async function printAppointments(
     return;
   }
 
-  const slips: SlipData[] = appointmentsToPrint.map(appt => {
+  // Use absolute URL so the logo loads correctly in every environment
+  // (localhost, Vercel deploy, PWA, mobile browsers, etc.)
+  const logoUrl = `${window.location.origin}/images/logo-camocim.png`;
+
+  const slips: SlipData[] = appointmentsToPrint.map((appt) => {
     const pt = appt.patients;
     return {
       patientName: pt?.name || "—",
@@ -66,27 +70,18 @@ export async function printAppointments(
 
   let pagesHTML = "";
   for (let i = 0; i < slips.length; i += 2) {
-    const slip1 = buildSlipHTML(slips[i]);
-    const slip2 = i + 1 < slips.length
-      ? buildSlipHTML(slips[i + 1])
-      : '<div style="height:50%;"></div>';
-    pagesHTML += `
-      <div class="page">
-        ${slip1}
-        ${slip2}
-      </div>
-    `;
+    const slip1 = buildSlipHTML(slips[i], logoUrl);
+    const slip2 =
+      i + 1 < slips.length
+        ? buildSlipHTML(slips[i + 1], logoUrl)
+        : '<div style="height:50%;"></div>';
+    pagesHTML += `<div class="page">${slip1}${slip2}</div>`;
   }
 
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    toast.error("Popup bloqueado. Permita popups para imprimir.");
-    return;
-  }
-
-  printWindow.document.write(`<!DOCTYPE html>
+  const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8" />
 <title>Comprovantes</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -97,7 +92,7 @@ export async function printAppointments(
     height:297mm;
     display:flex;
     flex-direction:column;
-    page-break-after:always;
+    page-break-after: always;
     overflow:hidden;
   }
   @media print {
@@ -106,29 +101,64 @@ export async function printAppointments(
 </style>
 </head>
 <body>${pagesHTML}</body>
-</html>`);
-  printWindow.document.close();
+</html>`;
 
-  const img = printWindow.document.querySelector("img");
-  const doPrint = () => {
-    setTimeout(() => { printWindow.print(); }, 300);
+  // ─── Blob URL + hidden iframe ────────────────────────────────────────────────
+  // Using a hidden iframe avoids popup-blockers completely and works on
+  // mobile browsers, PWA contexts, and all modern desktop browsers.
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("title", "print-frame");
+  iframe.style.cssText =
+    "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;visibility:hidden;";
+  document.body.appendChild(iframe);
+
+  const cleanup = () => {
+    setTimeout(() => {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe);
+      }
+      URL.revokeObjectURL(blobUrl);
+    }, 3000);
   };
-  if (img && !img.complete) {
-    img.onload = doPrint;
-    img.onerror = doPrint;
-  } else {
-    doPrint();
-  }
 
-  // Mark as printed
-  const ids = appointmentsToPrint.map(a => a.id);
+  iframe.onload = () => {
+    // Wait a tick for images to render before calling print
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        // Fallback: open blob in a new tab if iframe.print() is blocked
+        const win = window.open(blobUrl, "_blank");
+        if (!win) {
+          toast.error(
+            "Não foi possível abrir a impressão. Permita popups neste site e tente novamente."
+          );
+        }
+      }
+      cleanup();
+    }, 600);
+  };
+
+  iframe.onerror = () => {
+    cleanup();
+    toast.error("Erro ao preparar o comprovante para impressão.");
+  };
+
+  iframe.src = blobUrl;
+
+  // ─── Mark appointments as printed in Supabase ───────────────────────────────
+  const ids = appointmentsToPrint.map((a) => a.id);
   const { error } = await supabase
     .from("appointments")
     .update({ printed: true } as any)
     .in("id", ids);
 
   if (error) {
-    console.error("Error marking as printed:", error);
+    console.error("Erro ao marcar como impresso:", error);
   } else {
     toast.success(`${ids.length} comprovante(s) marcado(s) como impresso(s)`);
     onRefresh?.();
