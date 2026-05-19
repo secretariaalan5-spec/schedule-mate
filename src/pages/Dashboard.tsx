@@ -41,6 +41,13 @@ export default function Dashboard() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterPrinted, setFilterPrinted] = useState<string>("all");
 
+  // Reset filters when switching dates so stale filters don't hide appointments
+  useEffect(() => {
+    setFilterPsf("all");
+    setFilterType("all");
+    setFilterPrinted("all");
+  }, [sched.selectedDate]);
+
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["patients"] });
     queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
