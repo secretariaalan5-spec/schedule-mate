@@ -91,11 +91,9 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
   }, []);
 
   useEffect(() => {
-    // Reset transient UI state on day switch to avoid stale portal/input interactions.
     // Close dialog PROPERLY (set open=false) before any key change, so Radix
     // cleans up its portal overlay correctly.
     closeDialog();
-    setSelectedIds(new Set());
     setEditingTimeId(null);
     setEditTimeValue("");
   }, [date, closeDialog]);
