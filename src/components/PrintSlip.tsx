@@ -22,25 +22,69 @@ function buildSlipHTML(slip: SlipData, logoUrl: string): string {
         <div style="font-weight:bold;font-size:12px;margin-top:8px;">Comprovante de Agendamento</div>
       </div>
       <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px;font-size:12px;line-height:1.6;">
-        <div><b>Nome:</b> &nbsp; ${slip.patientName}</div>
+        <div><b>Nome:</b>&nbsp; ${slip.patientName}</div>
         <div style="display:flex;gap:30px;">
-          <div><b>Data de Nascimento:</b> &nbsp; ${slip.dob}</div>
-          <div><b>UBS:</b> &nbsp; ${slip.psf}</div>
+          <div><b>Data de Nascimento:</b>&nbsp; ${slip.dob}</div>
+          <div><b>UBS:</b>&nbsp; ${slip.psf}</div>
         </div>
         <div style="margin-top:8px;border-top:1px solid #ddd;padding-top:8px;">
-          <div><b>Est&aacute; agendada para:</b> &nbsp; <b>HOSPITAL DEPUTADO MURILO AGUIAR - HDMA</b></div>
-          <div><b>Endere&ccedil;o:</b> &nbsp; R.24 DE MAIO, S/N</div>
-          <div><b>Profissional:</b> &nbsp; DR.GEFFERSON</div>
-          <div><b>Seu procedimento de:</b> &nbsp; ${slip.reason || "GINECOLOGIA"}</div>
+          <div><b>Est&aacute; agendada para:</b>&nbsp; <b>HOSPITAL DEPUTADO MURILO AGUIAR - HDMA</b></div>
+          <div><b>Endere&ccedil;o:</b>&nbsp; R.24 DE MAIO, S/N</div>
+          <div><b>Profissional:</b>&nbsp; DR.GEFFERSON</div>
+          <div><b>Seu procedimento de:</b>&nbsp; ${slip.reason || "GINECOLOGIA"}</div>
           <div style="display:flex;gap:30px;margin-top:4px;">
-            <div><b>Data:</b> &nbsp; ${slip.date}</div>
-            <div><b>Hor&aacute;rio Consulta:</b> &nbsp; ${slip.time}</div>
+            <div><b>Data:</b>&nbsp; ${slip.date}</div>
+            <div><b>Hor&aacute;rio Consulta:</b>&nbsp; ${slip.time}</div>
           </div>
         </div>
       </div>
       <div style="position:absolute;bottom:0;left:0;right:0;border-bottom:2px dashed #aaa;"></div>
     </div>
   `;
+}
+
+function buildFullHTML(pagesHTML: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Comprovantes</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  @page { size: A4 portrait; margin: 0; }
+  body { width:210mm; background:#fff; }
+  .page {
+    width:210mm;
+    height:297mm;
+    display:flex;
+    flex-direction:column;
+    page-break-after: always;
+    overflow:hidden;
+  }
+  @media print {
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  }
+</style>
+</head>
+<body>${pagesHTML}</body>
+</html>`;
+}
+
+/** Fallback: download the HTML file so the user can open and print manually */
+function downloadAndPrint(htmlContent: string) {
+  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `comprovante_${Date.now()}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast.info(
+    "Popup bloqueado pelo navegador. O arquivo foi baixado — abra-o e pressione Ctrl+P para imprimir.",
+    { duration: 8000 }
+  );
 }
 
 export async function printAppointments(
@@ -52,8 +96,7 @@ export async function printAppointments(
     return;
   }
 
-  // Use absolute URL so the logo loads correctly in every environment
-  // (localhost, Vercel deploy, PWA, mobile browsers, etc.)
+  // Absolute URL so the logo loads correctly in every environment
   const logoUrl = `${window.location.origin}/images/logo-camocim.png`;
 
   const slips: SlipData[] = appointmentsToPrint.map((appt) => {
@@ -78,79 +121,54 @@ export async function printAppointments(
     pagesHTML += `<div class="page">${slip1}${slip2}</div>`;
   }
 
-  const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Comprovantes</title>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  @page { size: A4 portrait; margin: 0; }
-  body { width:210mm; }
-  .page {
-    width:210mm;
-    height:297mm;
-    display:flex;
-    flex-direction:column;
-    page-break-after: always;
-    overflow:hidden;
+  const htmlContent = buildFullHTML(pagesHTML);
+
+  // ─── Open a print window SYNCHRONOUSLY ────────────────────────────────────
+  // MUST be synchronous (no await before this) to preserve the user-gesture
+  // context — otherwise browsers block both window.open() AND print().
+  const printWindow = window.open("", "_blank", "width=800,height=700");
+
+  if (!printWindow) {
+    // Popup was blocked → download as HTML file instead
+    downloadAndPrint(htmlContent);
+    // Still mark as printed
+    await markPrinted(appointmentsToPrint, onRefresh);
+    return;
   }
-  @media print {
-    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  }
-</style>
-</head>
-<body>${pagesHTML}</body>
-</html>`;
 
-  // ─── Blob URL + hidden iframe ────────────────────────────────────────────────
-  // Using a hidden iframe avoids popup-blockers completely and works on
-  // mobile browsers, PWA contexts, and all modern desktop browsers.
-  const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
-  const blobUrl = URL.createObjectURL(blob);
+  // Write the page content
+  printWindow.document.open("text/html", "replace");
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
 
-  const iframe = document.createElement("iframe");
-  iframe.setAttribute("title", "print-frame");
-  iframe.style.cssText =
-    "position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;visibility:hidden;";
-  document.body.appendChild(iframe);
-
-  const cleanup = () => {
-    setTimeout(() => {
-      if (document.body.contains(iframe)) {
-        document.body.removeChild(iframe);
-      }
-      URL.revokeObjectURL(blobUrl);
-    }, 3000);
+  // Trigger print after content (and images) finish loading
+  const doPrint = () => {
+    printWindow.focus();
+    printWindow.print();
   };
 
-  iframe.onload = () => {
-    // Wait a tick for images to render before calling print
-    setTimeout(() => {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } catch {
-        // Fallback: open blob in a new tab if iframe.print() is blocked
-        const win = window.open(blobUrl, "_blank");
-        if (!win) {
-          toast.error(
-            "Não foi possível abrir a impressão. Permita popups neste site e tente novamente."
-          );
-        }
-      }
-      cleanup();
-    }, 600);
-  };
+  // onload fires after all resources (images) finish loading
+  printWindow.onload = () => setTimeout(doPrint, 300);
 
-  iframe.onerror = () => {
-    cleanup();
-    toast.error("Erro ao preparar o comprovante para impressão.");
-  };
+  // Safety fallback: if onload never fires (some browsers skip it for
+  // document.write), trigger print anyway after 1.5 s
+  const safetyTimer = setTimeout(() => {
+    if (!printWindow.closed) doPrint();
+  }, 1500);
 
-  iframe.src = blobUrl;
+  // Cancel the safety timer if onload already fired
+  printWindow.addEventListener("afterprint", () => {
+    clearTimeout(safetyTimer);
+  });
 
-  // ─── Mark appointments as printed in Supabase ───────────────────────────────
+  // ─── Mark appointments as printed in Supabase ─────────────────────────────
+  await markPrinted(appointmentsToPrint, onRefresh);
+}
+
+async function markPrinted(
+  appointmentsToPrint: Appointment[],
+  onRefresh?: () => void
+) {
   const ids = appointmentsToPrint.map((a) => a.id);
   const { error } = await supabase
     .from("appointments")
