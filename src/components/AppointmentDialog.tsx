@@ -41,6 +41,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   const [scheduleTime, setScheduleTime] = useState(defaultTime);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [activeSearchField, setActiveSearchField] = useState<"name" | "susCard" | "dob" | "psf" | null>(null);
   const [patientMonthAppointments, setPatientMonthAppointments] = useState<Appointment[]>([]);
 
   // When a patient is selected, check for existing appointments this month
@@ -95,7 +96,48 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
     setPsf(p.psf || "");
     setSearch(p.name);
     setShowResults(false);
+    setActiveSearchField(null);
     checkMonthAppointments(p.id);
+  };
+
+  const renderSearchResults = (field: "name" | "susCard" | "dob" | "psf") => {
+    if (!showResults || activeSearchField !== field || !search) return null;
+
+    return (
+      <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48">
+        {isSearching ? (
+          <div className="px-3 py-4 text-sm text-center text-muted-foreground">Buscando...</div>
+        ) : filtered.length === 0 ? (
+          <div className="px-3 py-4 text-sm text-center text-muted-foreground">Paciente não encontrado. Ao salvar, um novo será criado.</div>
+        ) : (
+          filtered.map(p => (
+            <div
+              key={p.id}
+              className="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center justify-between"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                selectPatient(p);
+              }}
+            >
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{p.name}</span>
+                  {p.psf && <span className="text-xs text-muted-foreground">({p.psf})</span>}
+                </div>
+                {p.dob && (
+                  <span className="text-xs text-muted-foreground mt-0.5">
+                    Nasc: {formatDateBR(p.dob)}
+                  </span>
+                )}
+              </div>
+              {p.sus_card && (
+                <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
+              )}
+            </div>
+          ))
+        )}
+      </ScrollArea>
+    );
   };
 
   const handleSave = async () => {
@@ -153,7 +195,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[95vw] sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Editar" : "Vaga"} {String(slot).padStart(2, "0")} — {variantLabel}
@@ -180,67 +222,122 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
           <div className="space-y-1.5 relative">
             <Label>Nome do Paciente</Label>
             <Input
-              placeholder="Pesquisar por nome, SUS ou PSF..."
-              value={search}
+              placeholder="Pesquisar por nome, cartão SUS, nascimento ou PSF..."
+              value={name}
               onChange={e => {
-                setSearch(e.target.value);
-                setName(e.target.value);
+                const val = e.target.value;
+                setName(val);
+                setSearch(val);
+                setActiveSearchField("name");
                 setShowResults(true);
-                if (!e.target.value) {
+                if (!val) {
                   setSelectedPatient(null);
                   setPatientMonthAppointments([]);
                 }
               }}
-              onFocus={() => search && setShowResults(true)}
+              onFocus={() => {
+                if (name) {
+                  setSearch(name);
+                  setActiveSearchField("name");
+                  setShowResults(true);
+                }
+              }}
+              onBlur={() => {
+                setShowResults(false);
+                setActiveSearchField(null);
+              }}
               disabled={isEditing}
             />
-            {showResults && !!search && (
-              <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48">
-                {isSearching ? (
-                  <div className="px-3 py-4 text-sm text-center text-muted-foreground">Buscando...</div>
-                ) : filtered.length === 0 ? (
-                  <div className="px-3 py-4 text-sm text-center text-muted-foreground">Paciente não encontrado. Ao salvar, um novo será criado.</div>
-                ) : (
-                  filtered.map(p => (
-                  <div
-                    key={p.id}
-                    className="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center justify-between"
-                    onClick={() => selectPatient(p)}
-                  >
-                    <div>
-                      <span className="font-medium">{p.name}</span>
-                      {p.psf && <span className="ml-2 text-xs text-muted-foreground">({p.psf})</span>}
-                    </div>
-                    {p.sus_card && (
-                      <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
-                    )}
-                  </div>
-                )))}
-              </ScrollArea>
-            )}
+            {renderSearchResults("name")}
           </div>
 
           {!isEditing && (
             <div className="contents">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5 relative">
                   <Label>Cartão SUS</Label>
-                  <Input placeholder="Nº do cartão" value={susCard} onChange={e => setSusCard(e.target.value)} />
+                  <Input 
+                    placeholder="Nº do cartão" 
+                    value={susCard} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setSusCard(val);
+                      setSearch(val);
+                      setActiveSearchField("susCard");
+                      setShowResults(true);
+                    }} 
+                    onFocus={() => {
+                      if (susCard) {
+                        setSearch(susCard);
+                        setActiveSearchField("susCard");
+                        setShowResults(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setShowResults(false);
+                      setActiveSearchField(null);
+                    }}
+                  />
+                  {renderSearchResults("susCard")}
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 relative">
                   <Label>Data de Nascimento</Label>
-                  <Input type="date" value={dob} onChange={e => setDob(e.target.value)} />
+                  <Input 
+                    type="date" 
+                    value={dob} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setDob(val);
+                      setSearch(val);
+                      setActiveSearchField("dob");
+                      setShowResults(true);
+                    }} 
+                    onFocus={() => {
+                      if (dob) {
+                        setSearch(dob);
+                        setActiveSearchField("dob");
+                        setShowResults(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setShowResults(false);
+                      setActiveSearchField(null);
+                    }}
+                  />
+                  {renderSearchResults("dob")}
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 relative">
                 <Label>PSF / UBS</Label>
-                <Input placeholder="Nome do PSF / UBS" value={psf} onChange={e => setPsf(e.target.value)} />
+                <Input 
+                  placeholder="Nome do PSF / UBS" 
+                  value={psf} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    setPsf(val);
+                    setSearch(val);
+                    setActiveSearchField("psf");
+                    setShowResults(true);
+                  }} 
+                  onFocus={() => {
+                    if (psf) {
+                      setSearch(psf);
+                      setActiveSearchField("psf");
+                      setShowResults(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    setShowResults(false);
+                    setActiveSearchField(null);
+                  }}
+                />
+                {renderSearchResults("psf")}
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Horário da Consulta</Label>
               <Input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)} />

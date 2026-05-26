@@ -26,9 +26,54 @@ export function usePatients(search: string) {
         // Sanitize: PostgREST .or() breaks on commas, parentheses, quotes
         const safe = search.replace(/[,()"']/g, " ").trim();
         if (safe) {
-          query = query.or(
-            `name.ilike.%${safe}%,sus_card.ilike.%${safe}%,psf.ilike.%${safe}%`
-          );
+          const orParts = [
+            `name.ilike.%${safe}%`,
+            `sus_card.ilike.%${safe}%`,
+            `psf.ilike.%${safe}%`
+          ];
+
+          // Try to match Brazilian date DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+          const brDateMatch = safe.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
+          if (brDateMatch) {
+            const day = brDateMatch[1].padStart(2, "0");
+            const month = brDateMatch[2].padStart(2, "0");
+            let year = brDateMatch[3];
+            if (year.length === 2) {
+              const currentYear = new Date().getFullYear() % 100;
+              const yearNum = parseInt(year, 10);
+              year = yearNum > currentYear ? `19${year}` : `20${year}`;
+            }
+            orParts.push(`dob.eq.${year}-${month}-${day}`);
+          }
+
+          // Try to match DDMMYYYY or DDMMYY (digits only, length 6 or 8)
+          const digitsMatch = safe.match(/^(\d{2})(\d{2})(\d{2}|\d{4})$/);
+          if (digitsMatch && !brDateMatch) {
+            const day = digitsMatch[1];
+            const month = digitsMatch[2];
+            let year = digitsMatch[3];
+            if (year.length === 2) {
+              const currentYear = new Date().getFullYear() % 100;
+              const yearNum = parseInt(year, 10);
+              year = yearNum > currentYear ? `19${year}` : `20${year}`;
+            }
+            const d = parseInt(day, 10);
+            const m = parseInt(month, 10);
+            if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+              orParts.push(`dob.eq.${year}-${month}-${day}`);
+            }
+          }
+
+          // Try to match ISO date YYYY-MM-DD
+          const isoDateMatch = safe.match(/^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$/);
+          if (isoDateMatch) {
+            const year = isoDateMatch[1];
+            const month = isoDateMatch[2].padStart(2, "0");
+            const day = isoDateMatch[3].padStart(2, "0");
+            orParts.push(`dob.eq.${year}-${month}-${day}`);
+          }
+
+          query = query.or(orParts.join(","));
         }
       }
 
