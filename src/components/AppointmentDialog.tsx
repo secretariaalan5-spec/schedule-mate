@@ -104,10 +104,47 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
 
   const variantLabel = title;
 
+  // Sort: exact > starts-with > contains
   const filtered = useMemo(() => {
-    if (!search || isEditing) return [];
-    return searchResults.slice(0, 10);
-  }, [searchResults, search, isEditing]);
+    if (!effectiveSearch || isEditing) return [];
+    const q = effectiveSearch.toUpperCase();
+    const score = (p: Patient) => {
+      const n = (p.name || "").toUpperCase();
+      if (n === q) return 0;
+      if (n.startsWith(q)) return 1;
+      if (n.includes(q)) return 2;
+      return 3;
+    };
+    return [...searchResults]
+      .sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name))
+      .slice(0, 15);
+  }, [searchResults, effectiveSearch, isEditing]);
+
+  useEffect(() => { setActiveIndex(0); }, [filtered]);
+
+  const calcAge = (dobStr: string | null) => {
+    if (!dobStr) return null;
+    const d = new Date(dobStr + "T12:00:00");
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+    return age;
+  };
+
+  const highlight = (text: string, q: string) => {
+    if (!q) return text as any;
+    const i = text.toUpperCase().indexOf(q.toUpperCase());
+    if (i < 0) return text as any;
+    return (
+      <>
+        {text.slice(0, i)}
+        <mark className="bg-primary/20 text-primary rounded px-0.5">{text.slice(i, i + q.length)}</mark>
+        {text.slice(i + q.length)}
+      </>
+    );
+  };
 
   const selectPatient = (p: Patient) => {
     setSelectedPatient(p);
@@ -122,43 +159,73 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   };
 
   const renderSearchResults = (field: "name" | "susCard" | "dob" | "psf") => {
-    if (!showResults || activeSearchField !== field || !search) return null;
+    if (!showResults || activeSearchField !== field || !effectiveSearch) return null;
 
     return (
-      <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48">
+      <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-64">
         {isSearching ? (
           <div className="px-3 py-4 text-sm text-center text-muted-foreground">Buscando...</div>
         ) : filtered.length === 0 ? (
           <div className="px-3 py-4 text-sm text-center text-muted-foreground">Paciente não encontrado. Ao salvar, um novo será criado.</div>
         ) : (
-          filtered.map(p => (
-            <div
-              key={p.id}
-              className="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center justify-between"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                selectPatient(p);
-              }}
-            >
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{p.name}</span>
-                  {p.psf && <span className="text-xs text-muted-foreground">({p.psf})</span>}
+          filtered.map((p, idx) => {
+            const age = calcAge(p.dob);
+            const hasMonth = monthPatientIds.has(p.id);
+            const isActive = idx === activeIndex;
+            return (
+              <div
+                key={p.id}
+                className={`px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${isActive ? "bg-primary/15" : "hover:bg-primary/10"}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectPatient(p);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+              >
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium">{highlight(p.name, effectiveSearch)}</span>
+                    {age !== null && (
+                      <span className="text-[10px] font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{age}a</span>
+                    )}
+                    {p.psf && <span className="text-xs text-muted-foreground">({p.psf})</span>}
+                    {hasMonth && (
+                      <span className="text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                        <CalendarClock className="w-2.5 h-2.5" /> já no mês
+                      </span>
+                    )}
+                  </div>
+                  {p.dob && (
+                    <span className="text-xs text-muted-foreground mt-0.5">
+                      Nasc: {formatDateBR(p.dob)}
+                    </span>
+                  )}
                 </div>
-                {p.dob && (
-                  <span className="text-xs text-muted-foreground mt-0.5">
-                    Nasc: {formatDateBR(p.dob)}
-                  </span>
+                {p.sus_card && (
+                  <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
                 )}
               </div>
-              {p.sus_card && (
-                <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </ScrollArea>
     );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showResults || filtered.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex(i => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      selectPatient(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setShowResults(false);
+    }
   };
 
   const handleSave = async () => {
