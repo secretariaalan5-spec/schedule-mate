@@ -1,11 +1,10 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CalendarClock } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,8 +28,9 @@ interface Props {
 export default function AppointmentDialog({ open, onClose, slot, date, variant, defaultTime, title, onAdd, onPatientsChanged, editAppointment, onUpdate }: Props) {
   const isEditing = !!editAppointment;
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
-  const { patients: searchResults, isLoading: isSearching } = usePatients(debouncedSearch);
+  const debouncedSearch = useDebounce(search, 200);
+  const effectiveSearch = debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : "";
+  const { patients: searchResults, isLoading: isSearching } = usePatients(effectiveSearch);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [name, setName] = useState("");
   const [susCard, setSusCard] = useState("");
@@ -43,6 +43,9 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   const [showResults, setShowResults] = useState(false);
   const [activeSearchField, setActiveSearchField] = useState<"name" | "susCard" | "dob" | "psf" | null>(null);
   const [patientMonthAppointments, setPatientMonthAppointments] = useState<Appointment[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [monthPatientIds, setMonthPatientIds] = useState<Set<string>>(new Set());
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // When a patient is selected, check for existing appointments this month
   const checkMonthAppointments = useCallback(async (patientId: string) => {
@@ -61,6 +64,24 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
       .order("date");
     setPatientMonthAppointments((data as any) || []);
   }, [date]);
+
+  // Load patient_ids already booked this month — used to flag duplicates inside dropdown
+  useEffect(() => {
+    if (!open) return;
+    const monthStart = date.substring(0, 7) + "-01";
+    const month = parseInt(date.substring(5, 7));
+    const year = parseInt(date.substring(0, 4));
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthEnd = date.substring(0, 7) + "-" + String(lastDay).padStart(2, "0");
+    supabase
+      .from("appointments")
+      .select("patient_id")
+      .gte("date", monthStart)
+      .lte("date", monthEnd)
+      .then(({ data }) => {
+        setMonthPatientIds(new Set((data ?? []).map((d: any) => d.patient_id)));
+      });
+  }, [open, date]);
 
   // Pre-fill when editing
   useEffect(() => {
