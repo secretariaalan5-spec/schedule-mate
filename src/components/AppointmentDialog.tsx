@@ -310,6 +310,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
           <div className="space-y-1.5 relative">
             <Label>Nome do Paciente</Label>
             <Input
+              ref={nameInputRef}
               placeholder="Pesquisar por nome, cartão SUS, nascimento ou PSF..."
               value={name}
               onChange={e => {
@@ -334,6 +335,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
                 setShowResults(false);
                 setActiveSearchField(null);
               }}
+              onKeyDown={handleKeyDown}
               disabled={isEditing}
             />
             {renderSearchResults("name")}
