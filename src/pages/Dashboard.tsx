@@ -64,10 +64,23 @@ export default function Dashboard() {
     // Now the user must explicitly click "Abrir Agenda do Dia" as requested.
   };
 
-  const appointmentDateObjects = useMemo(
-    () => sched.appointmentDates.map(d => new Date(d + "T12:00:00")),
-    [sched.appointmentDates]
-  );
+  // Build occupancy-tier date buckets for the calendar heatmap
+  const occupancyModifiers = useMemo(() => {
+    const total = shifts.reduce((acc, s) => acc + (s.end_slot - s.start_slot + 1), 0) || 32;
+    const low: Date[] = [];
+    const medium: Date[] = [];
+    const high: Date[] = [];
+    const full: Date[] = [];
+    Object.entries(sched.appointmentCounts).forEach(([d, count]) => {
+      const date = new Date(d + "T12:00:00");
+      const ratio = count / total;
+      if (count >= total) full.push(date);
+      else if (ratio >= 0.8) high.push(date);
+      else if (ratio >= 0.5) medium.push(date);
+      else low.push(date);
+    });
+    return { low, medium, high, full };
+  }, [sched.appointmentCounts, shifts]);
 
   const totalOccupied = sched.appointments.length;
 
@@ -186,10 +199,27 @@ export default function Dashboard() {
                     selected={calendarDate}
                     onSelect={handleCalendarSelect}
                     locale={ptBR}
-                    modifiers={{ hasAppointments: appointmentDateObjects }}
-                    modifiersClassNames={{ hasAppointments: "hasAppointments" }}
+                    modifiers={{
+                      occLow: occupancyModifiers.low,
+                      occMedium: occupancyModifiers.medium,
+                      occHigh: occupancyModifiers.high,
+                      occFull: occupancyModifiers.full,
+                    }}
+                    modifiersClassNames={{
+                      occLow: "occLow",
+                      occMedium: "occMedium",
+                      occHigh: "occHigh",
+                      occFull: "occFull",
+                    }}
                     className="w-full"
                   />
+                  {/* Legend */}
+                  <div className="mt-2 px-2 pb-1 flex items-center justify-between gap-1 text-[9px] font-medium text-muted-foreground">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400/70"></span>Baixa</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400/80"></span>Média</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-500/80"></span>Alta</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-rose-500/80"></span>Lotado</span>
+                  </div>
                 </div>
                 
                 {isMobile && !!sched.selectedDate && (
