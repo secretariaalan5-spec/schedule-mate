@@ -1,11 +1,10 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CalendarClock } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,8 +28,9 @@ interface Props {
 export default function AppointmentDialog({ open, onClose, slot, date, variant, defaultTime, title, onAdd, onPatientsChanged, editAppointment, onUpdate }: Props) {
   const isEditing = !!editAppointment;
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
-  const { patients: searchResults, isLoading: isSearching } = usePatients(debouncedSearch);
+  const debouncedSearch = useDebounce(search, 200);
+  const effectiveSearch = debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : "";
+  const { patients: searchResults, isLoading: isSearching } = usePatients(effectiveSearch);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [name, setName] = useState("");
   const [susCard, setSusCard] = useState("");
@@ -43,6 +43,9 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   const [showResults, setShowResults] = useState(false);
   const [activeSearchField, setActiveSearchField] = useState<"name" | "susCard" | "dob" | "psf" | null>(null);
   const [patientMonthAppointments, setPatientMonthAppointments] = useState<Appointment[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [monthPatientIds, setMonthPatientIds] = useState<Set<string>>(new Set());
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // When a patient is selected, check for existing appointments this month
   const checkMonthAppointments = useCallback(async (patientId: string) => {
@@ -61,6 +64,24 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
       .order("date");
     setPatientMonthAppointments((data as any) || []);
   }, [date]);
+
+  // Load patient_ids already booked this month — used to flag duplicates inside dropdown
+  useEffect(() => {
+    if (!open) return;
+    const monthStart = date.substring(0, 7) + "-01";
+    const month = parseInt(date.substring(5, 7));
+    const year = parseInt(date.substring(0, 4));
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthEnd = date.substring(0, 7) + "-" + String(lastDay).padStart(2, "0");
+    supabase
+      .from("appointments")
+      .select("patient_id")
+      .gte("date", monthStart)
+      .lte("date", monthEnd)
+      .then(({ data }) => {
+        setMonthPatientIds(new Set((data ?? []).map((d: any) => d.patient_id)));
+      });
+  }, [open, date]);
 
   // Pre-fill when editing
   useEffect(() => {
@@ -83,10 +104,47 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
 
   const variantLabel = title;
 
+  // Sort: exact > starts-with > contains
   const filtered = useMemo(() => {
-    if (!search || isEditing) return [];
-    return searchResults.slice(0, 10);
-  }, [searchResults, search, isEditing]);
+    if (!effectiveSearch || isEditing) return [];
+    const q = effectiveSearch.toUpperCase();
+    const score = (p: Patient) => {
+      const n = (p.name || "").toUpperCase();
+      if (n === q) return 0;
+      if (n.startsWith(q)) return 1;
+      if (n.includes(q)) return 2;
+      return 3;
+    };
+    return [...searchResults]
+      .sort((a, b) => score(a) - score(b) || a.name.localeCompare(b.name))
+      .slice(0, 15);
+  }, [searchResults, effectiveSearch, isEditing]);
+
+  useEffect(() => { setActiveIndex(0); }, [filtered]);
+
+  const calcAge = (dobStr: string | null) => {
+    if (!dobStr) return null;
+    const d = new Date(dobStr + "T12:00:00");
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+    return age;
+  };
+
+  const highlight = (text: string, q: string) => {
+    if (!q) return text as any;
+    const i = text.toUpperCase().indexOf(q.toUpperCase());
+    if (i < 0) return text as any;
+    return (
+      <>
+        {text.slice(0, i)}
+        <mark className="bg-primary/20 text-primary rounded px-0.5">{text.slice(i, i + q.length)}</mark>
+        {text.slice(i + q.length)}
+      </>
+    );
+  };
 
   const selectPatient = (p: Patient) => {
     setSelectedPatient(p);
@@ -101,43 +159,73 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   };
 
   const renderSearchResults = (field: "name" | "susCard" | "dob" | "psf") => {
-    if (!showResults || activeSearchField !== field || !search) return null;
+    if (!showResults || activeSearchField !== field || !effectiveSearch) return null;
 
     return (
-      <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-48">
+      <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-64">
         {isSearching ? (
           <div className="px-3 py-4 text-sm text-center text-muted-foreground">Buscando...</div>
         ) : filtered.length === 0 ? (
           <div className="px-3 py-4 text-sm text-center text-muted-foreground">Paciente não encontrado. Ao salvar, um novo será criado.</div>
         ) : (
-          filtered.map(p => (
-            <div
-              key={p.id}
-              className="px-3 py-2 text-sm cursor-pointer hover:bg-primary/10 transition-colors flex items-center justify-between"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                selectPatient(p);
-              }}
-            >
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{p.name}</span>
-                  {p.psf && <span className="text-xs text-muted-foreground">({p.psf})</span>}
+          filtered.map((p, idx) => {
+            const age = calcAge(p.dob);
+            const hasMonth = monthPatientIds.has(p.id);
+            const isActive = idx === activeIndex;
+            return (
+              <div
+                key={p.id}
+                className={`px-3 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between ${isActive ? "bg-primary/15" : "hover:bg-primary/10"}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  selectPatient(p);
+                }}
+                onMouseEnter={() => setActiveIndex(idx)}
+              >
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium">{highlight(p.name, effectiveSearch)}</span>
+                    {age !== null && (
+                      <span className="text-[10px] font-semibold bg-muted text-muted-foreground px-1.5 py-0.5 rounded">{age}a</span>
+                    )}
+                    {p.psf && <span className="text-xs text-muted-foreground">({p.psf})</span>}
+                    {hasMonth && (
+                      <span className="text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                        <CalendarClock className="w-2.5 h-2.5" /> já no mês
+                      </span>
+                    )}
+                  </div>
+                  {p.dob && (
+                    <span className="text-xs text-muted-foreground mt-0.5">
+                      Nasc: {formatDateBR(p.dob)}
+                    </span>
+                  )}
                 </div>
-                {p.dob && (
-                  <span className="text-xs text-muted-foreground mt-0.5">
-                    Nasc: {formatDateBR(p.dob)}
-                  </span>
+                {p.sus_card && (
+                  <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
                 )}
               </div>
-              {p.sus_card && (
-                <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </ScrollArea>
     );
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showResults || filtered.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex(i => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex(i => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      selectPatient(filtered[activeIndex]);
+    } else if (e.key === "Escape") {
+      setShowResults(false);
+    }
   };
 
   const handleSave = async () => {
@@ -222,6 +310,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
           <div className="space-y-1.5 relative">
             <Label>Nome do Paciente</Label>
             <Input
+              ref={nameInputRef}
               placeholder="Pesquisar por nome, cartão SUS, nascimento ou PSF..."
               value={name}
               onChange={e => {
@@ -246,6 +335,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
                 setShowResults(false);
                 setActiveSearchField(null);
               }}
+              onKeyDown={handleKeyDown}
               disabled={isEditing}
             />
             {renderSearchResults("name")}

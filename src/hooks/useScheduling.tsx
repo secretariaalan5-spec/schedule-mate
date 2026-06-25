@@ -33,9 +33,9 @@ export function useScheduling() {
   const { data: shifts = DEFAULT_SHIFTS } = useShifts();
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
-  // Query: Appointment Dates
-  const { data: appointmentDates = [] } = useQuery({
-    queryKey: ["appointmentDates"],
+  // Query: Appointment counts per date (used for calendar occupancy heatmap)
+  const { data: appointmentCounts = {} } = useQuery<Record<string, number>>({
+    queryKey: ["appointmentCounts"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
@@ -43,11 +43,16 @@ export function useScheduling() {
         .order("date");
       if (error) {
         console.error("Erro ao carregar dias com agendamentos:", error);
-        return [];
+        return {};
       }
-      return [...new Set((data ?? []).map(d => d.date))];
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach(d => {
+        counts[d.date] = (counts[d.date] || 0) + 1;
+      });
+      return counts;
     }
   });
+  const appointmentDates = Object.keys(appointmentCounts);
 
   // Query: Appointments for selectedDate
   const { data: appointments = [], isLoading: loading } = useQuery({
@@ -75,7 +80,7 @@ export function useScheduling() {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["appointments"] });
-        queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
+        queryClient.invalidateQueries({ queryKey: ["appointmentCounts"] });
       }, 250);
     };
     const channel = supabase
@@ -106,7 +111,7 @@ export function useScheduling() {
     onSuccess: () => {
       toast.success("Consulta agendada");
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
+      queryClient.invalidateQueries({ queryKey: ["appointmentCounts"] });
     },
     onError: (error) => toast.error("Erro: " + error.message)
   });
@@ -143,7 +148,7 @@ export function useScheduling() {
     onSuccess: () => {
       toast.success("Consulta removida");
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
+      queryClient.invalidateQueries({ queryKey: ["appointmentCounts"] });
     },
     onError: (error) => toast.error("Erro: " + error.message)
   });
@@ -190,12 +195,12 @@ export function useScheduling() {
   };
 
   const fetchAppointmentDates = () => {
-    queryClient.invalidateQueries({ queryKey: ["appointmentDates"] });
+    queryClient.invalidateQueries({ queryKey: ["appointmentCounts"] });
   };
 
   return {
     selectedDate, setSelectedDate, appointments, loading,
-    appointmentDates,
+    appointmentDates, appointmentCounts,
     addAppointment, updateAppointment, removeAppointment,
     getPatientHistory,
     updateAppointmentTime,

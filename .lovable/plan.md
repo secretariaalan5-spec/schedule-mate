@@ -1,65 +1,63 @@
+# Plano de melhorias do uso diário
 
+Análise focada nos 3 pontos que você levantou + ajustes menores que aparecem no mesmo fluxo.
 
-# Sugestões de melhoria do sistema
+## 1. Autocomplete da marcação (prioridade alta)
 
-Antes de novas funcionalidades, há **erros de build ativos** que precisam ser corrigidos — o sistema pode estar rodando com versão antiga em cache. Depois disso, sugiro melhorias de qualidade, performance e usabilidade.
+**Hoje:** ao digitar nome no diálogo, a busca espera 400ms, mostra no máximo 10 resultados e fecha ao clicar fora. PSF/SUS/Nascimento usam o mesmo campo de busca, o que confunde. Sem feedback de carregamento inline.
 
-## 1. Correções urgentes (erros de build atuais)
+**Melhorias:**
+- Reduzir debounce de 400ms → 200ms para resposta mais ágil.
+- Buscar a partir de 2 caracteres (hoje busca a cada tecla, gerando ruído).
+- Mostrar **idade calculada** (ex: "45 anos") junto do nome — facilita confirmar paciente certo.
+- Destacar (highlight) o trecho digitado dentro do nome encontrado.
+- Navegação por teclado: ↑ ↓ Enter para escolher sem mouse (acelera muito o uso diário).
+- Mostrar até 15 resultados com scroll, ordenados por: nome exato → começa com → contém.
+- Indicador visual quando o paciente **já tem consulta no mês** (badge laranja na própria lista, antes de selecionar).
+- Reaproveitar a mesma lista para todos os campos (nome, SUS, nascimento, PSF) — uma única dropdown em vez de quatro.
 
-Sem essas correções, qualquer próximo deploy pode quebrar:
+## 2. Calendário — destacar dias com marcações de forma clara
 
-- **`AppointmentDialog.tsx`**: `slot` e `date` declarados duas vezes na interface `Props`.
-- **`SlotPanel.tsx`**: `title: string` declarado duas vezes na interface `Props`.
-- **`PatientManager.tsx` (linha 47)**: `onUpdate(editPatient.id, data)` precisa virar `onUpdate({ id: editPatient.id, updates: data })`.
-- **`Dashboard.tsx` (linhas 38 e 221)**: `sched.fetchAppointments(date)` chamado com argumento, mas a função não aceita parâmetro.
-- **`useShifts.ts`**: a tabela `scheduling_shifts` existe no banco mas **não está nos types do Supabase** (`src/integrations/supabase/types.ts`). Solução: regenerar os types do Supabase para incluir a tabela.
+**Hoje:** dias com marcações ficam com um leve tom esverdeado + bolinha — pouco perceptível, principalmente quando há vários dias no mês.
 
-## 2. Melhorias de segurança e dados
+**Melhorias:**
+- Aumentar contraste: fundo mais sólido (azul/teal cheio) com texto branco em dias ocupados.
+- **Indicador de lotação** por dia: pequena barrinha no rodapé do dia com cor variando por ocupação (verde <50%, amarelo 50–80%, vermelho >80%, cinza-listrado = lotado/sem vagas).
+- Tooltip ao passar o mouse: "12/32 vagas ocupadas".
+- Dia de hoje com ring distinto mesmo quando não tem marcação.
+- Dias passados em cinza claro (visual de "histórico").
+- Legenda compacta abaixo do calendário explicando as cores.
 
-- **Sistema de papéis (admin/usuário)**: hoje qualquer usuário autenticado pode deletar pacientes, marcações e até unidades de saúde. Criar tabela `user_roles` + função `has_role()` e restringir ações destrutivas a `admin`.
-- **Soft delete para pacientes**: trocar `DELETE` por uma flag `deleted_at`, evitando perda acidental de histórico clínico.
-- **Auditoria mínima**: tabela `audit_log` registrando quem criou/editou/excluiu marcações (importante em ambiente de saúde).
-- **Validação de duplicatas no cadastro**: impedir client-side a criação de paciente com nome igual antes de bater no banco (hoje só o índice único barra, gerando erro genérico).
+## 3. Painel de marcações — visualizar impresso/não impresso
 
-## 3. Melhorias de funcionalidade
+**Hoje:** o ícone verde de "impresso" é um check pequeno ao lado do horário, fácil de não ver. Não dá pra distinguir a linha inteira de relance.
 
-- **Filtros na agenda**: filtrar marcações por PSF, tipo (NORMAL/RETORNO) ou status (impresso/não-impresso).
-- **Busca global**: buscar paciente direto da agenda (atalho de teclado) sem trocar de aba.
-- **Relatório mensal em Excel**: exportar todas as marcações do mês com totais por PSF, por tipo e por dia.
-- **Indicador de "faltas"**: marcar paciente que não compareceu, gerando estatística por paciente no histórico.
-- **Lista de espera**: quando todas as vagas do dia estão ocupadas, permitir adicionar paciente em fila e notificar quando vaga abrir.
-- **Histórico do paciente exportável**: botão para imprimir/exportar o histórico completo de consultas dentro do diálogo de histórico.
+**Melhorias:**
+- **Fundo da linha** muda quando impresso: leve verde-claro com borda esquerda verde (3px). Não-impressos ficam com borda esquerda âmbar.
+- Badge textual "IMPRESSO" / "PENDENTE" no canto direito da linha, com cor.
+- Cabeçalho do painel mostra contadores: "✓ 8 impressos · ⏳ 4 pendentes · 20 livres".
+- Filtro de status (já existe) ganha botão de atalho rápido no cabeçalho ("Ver pendentes").
+- Ordem visual de hierarquia na linha: **Nome (grande) → PSF · Horário · Tipo → status**. Hoje tudo concorre em tamanho parecido.
+- Tipo "RETORNO" com cor diferente de "NORMAL" também na borda (azul vs roxo, por exemplo).
+- Densidade ajustável: botão compacto/confortável (algumas funcionárias preferem ver mais de uma vez na tela).
 
-## 4. Performance
+## 4. Quick wins extras que aparecem no fluxo (opcional)
 
-- **Paginação real na lista de pacientes**: hoje carrega até 1000 registros de uma vez. Usar paginação por cursor (`range()`) ou virtualização (`@tanstack/react-virtual`).
-- **Índices no banco**: garantir índices em `appointments(date)`, `appointments(patient_id)` e `patients(sus_card)` para queries mais rápidas.
-- **Memoizar derivações pesadas** no `Dashboard.tsx` (cálculos de `morningFree`/`afternoonFree` reexecutam a cada render).
+- **Atalho Ctrl/Cmd+K:** abrir busca de paciente de qualquer tela.
+- **Setas ← → no calendário:** trocar de dia rapidamente.
+- **Imprimir todos pendentes** com 1 clique no topo do painel.
+- **Última marcação do paciente** mostrada no autocomplete (data + PSF) para evitar repetir.
 
-## 5. UX e qualidade
+## Sugestão de execução
 
-- **Confirmação visual padronizada**: substituir `window.confirm()` por `AlertDialog` do shadcn (visual consistente, melhor em mobile).
-- **Loading skeleton** na lista de pacientes em vez de "Carregando...".
-- **Toast de sucesso ao exportar Excel** com link "Abrir arquivo".
-- **Atalhos de teclado**: `Ctrl+K` para busca, setas para navegar entre dias.
-- **Modo escuro**: toggle no header (já há suporte parcial via Tailwind).
+Sugiro fazer em 2 entregas:
 
-## 6. Manutenibilidade
+**Entrega 1 (impacto imediato no dia a dia):**
+- Autocomplete melhorado (item 1)
+- Destaque visual de impresso/pendente no painel (item 3)
+- Calendário com cores de lotação (item 2)
 
-- **Configurar CI** com checagem de TypeScript no PR (evitaria os erros atuais chegarem ao main).
-- **Testes para fluxos críticos**: já há `playwright.config.ts` e `vitest.config.ts` configurados, mas só um teste de exemplo. Adicionar testes para: criar marcação, editar marcação, busca de paciente.
-- **Limpar imports não usados** e código duplicado nos componentes (vários re-renders desnecessários).
+**Entrega 2 (refinos):**
+- Atalhos de teclado + densidade ajustável + ações em lote (item 4)
 
----
-
-## Como proceder
-
-Posso seguir em qualquer combinação dessas frentes. Recomendo esta ordem:
-
-1. **Corrigir os erros de build** (rápido, destrava o sistema).
-2. **Sistema de papéis + soft delete** (segurança crítica em saúde).
-3. **Paginação + filtros na agenda** (ganho de performance e usabilidade imediato).
-4. Demais melhorias conforme prioridade.
-
-Me diga **quais itens você quer que eu implemente agora** (ex: "1 e 2", "só corrigir os erros", "tudo da seção 3") e eu sigo na sequência.
-
+Me confirma se posso começar pela **Entrega 1** ou se quer ajustar a ordem / tirar algum item.

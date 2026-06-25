@@ -38,6 +38,9 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
   const getAppointment = (slot: number) => appointments.find(a => a.slot === slot);
 
   const occupied = slots.filter(s => getAppointment(s)).length;
+  const printedCount = appointments.filter(a => a.printed).length;
+  const pendingCount = occupied - printedCount;
+  const freeCount = vacancies - occupied;
   const dotColor = variant === "morning" ? "bg-morning" : "bg-afternoon";
 
   const toggleSelect = (id: string) => {
@@ -103,7 +106,14 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
       <div className="px-4 py-3 flex items-center justify-between border-b bg-card">
         <div className="flex items-center gap-2">
           <span className={`w-3 h-3 rounded-full ${dotColor}`}></span>
-          <h3 className="font-bold text-sm tracking-wide">{title}</h3>
+          <div className="flex flex-col leading-tight">
+            <h3 className="font-bold text-sm tracking-wide">{title}</h3>
+            <div className="flex items-center gap-2 text-[10px] font-medium mt-0.5">
+              <span className="text-emerald-600 dark:text-emerald-400">✓ {printedCount}</span>
+              <span className="text-amber-600 dark:text-amber-400">⏳ {pendingCount}</span>
+              <span className="text-muted-foreground">{freeCount} livre{freeCount !== 1 ? "s" : ""}</span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {occupied > 0 && (
@@ -133,7 +143,13 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
           return (
             <div
               key={slot}
-              className={`flex items-center border-b px-4 py-3 hover:bg-muted/30 transition-colors group ${isSelected ? "bg-primary/5" : ""}`}
+              className={`flex items-center border-b px-4 py-3 hover:bg-muted/30 transition-colors group border-l-4 ${
+                appt
+                  ? isPrinted
+                    ? "border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
+                    : "border-l-amber-400 bg-amber-50/30 dark:bg-amber-950/10"
+                  : "border-l-transparent"
+              } ${isSelected ? "bg-primary/10" : ""}`}
             >
               {appt && (
                 <input
@@ -151,7 +167,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                     onClick={() => openEditDialog(appt)}
                     title="Clique para editar"
                   >
-                    <span className="font-medium text-sm">{appt.patients?.name || "—"}</span>
+                    <span className="font-semibold text-[15px] leading-tight">{appt.patients?.name || "—"}</span>
                     {!!appt.patients?.psf && (
                       <span className="text-xs text-muted-foreground">({appt.patients.psf})</span>
                     )}
@@ -183,11 +199,20 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                         {appt.schedule_time || defaultTime}
                       </span>
                     )}
-                    {isPrinted && (
-                      <span className="text-xs text-green-600 flex items-center gap-0.5" title="Impresso">
-                        <CheckCircle className="w-3 h-3" />
-                      </span>
-                    )}
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ml-1 ${
+                        isPrinted
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                          : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                      }`}
+                      title={isPrinted ? "Impresso" : "Pendente"}
+                    >
+                      {isPrinted ? (
+                        <span className="flex items-center gap-0.5"><CheckCircle className="w-2.5 h-2.5" /> Impresso</span>
+                      ) : (
+                        "Pendente"
+                      )}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button
