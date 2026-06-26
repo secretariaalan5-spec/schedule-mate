@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -10,6 +11,32 @@ export interface HealthUnit {
 }
 
 export function useHealthUnits() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    let timer: number | undefined;
+    const CHANNEL_NAME = "realtime-health-units";
+    const existing = supabase.getChannels().find((c) => c.topic === `realtime:${CHANNEL_NAME}`);
+    if (existing) supabase.removeChannel(existing);
+
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["health_units"] });
+        queryClient.invalidateQueries({ queryKey: ["health_units_patient_counts"] });
+      }, 250);
+    };
+    const channel = supabase
+      .channel(CHANNEL_NAME)
+      .on("postgres_changes", { event: "*", schema: "public", table: "health_units" }, refresh)
+      .subscribe();
+
+    return () => {
+      window.clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return useQuery<HealthUnit[]>({
     queryKey: ["health_units"],
     queryFn: async () => {

@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface ShiftConfiguration {
@@ -33,6 +34,34 @@ export const DEFAULT_SHIFTS: ShiftConfiguration[] = [
 ];
 
 export function useShifts() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    let timer: number | undefined;
+    // Remove any existing channel with this name before creating a new one
+    // This prevents the React StrictMode double-invoke error:
+    // "cannot add postgres_changes callbacks after subscribe()"
+    const CHANNEL_NAME = "realtime-shifts";
+    const existing = supabase.getChannels().find((c) => c.topic === `realtime:${CHANNEL_NAME}`);
+    if (existing) supabase.removeChannel(existing);
+
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["scheduling-shifts"] });
+      }, 250);
+    };
+    const channel = supabase
+      .channel(CHANNEL_NAME)
+      .on("postgres_changes", { event: "*", schema: "public", table: "scheduling_shifts" }, refresh)
+      .subscribe();
+
+    return () => {
+      window.clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ["scheduling-shifts"],
     queryFn: async () => {

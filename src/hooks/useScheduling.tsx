@@ -82,6 +82,10 @@ export function useScheduling() {
   // Realtime subscriptions
   useEffect(() => {
     let timer: number | undefined;
+    const CHANNEL_NAME = "realtime-scheduling";
+    const existing = supabase.getChannels().find((c) => c.topic === `realtime:${CHANNEL_NAME}`);
+    if (existing) supabase.removeChannel(existing);
+
     const refresh = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
@@ -90,7 +94,7 @@ export function useScheduling() {
       }, 250);
     };
     const channel = supabase
-      .channel("realtime-scheduling")
+      .channel(CHANNEL_NAME)
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments" }, refresh)
       .subscribe();
 

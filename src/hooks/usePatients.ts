@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Patient } from "./useScheduling";
@@ -123,6 +123,33 @@ export function usePatients(search: string, filter: PatientsFilter = "all") {
     },
     staleTime: 1000 * 60 * 30, // 30 min
   });
+
+  // Realtime subscription for patients
+  useEffect(() => {
+    let timer: number | undefined;
+    const CHANNEL_NAME = "realtime-patients";
+    const existing = supabase.getChannels().find((c) => c.topic === `realtime:${CHANNEL_NAME}`);
+    if (existing) supabase.removeChannel(existing);
+
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["patients"] });
+        queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["health_units_patient_counts"] });
+        queryClient.invalidateQueries({ queryKey: ["unit-patients"] });
+      }, 250);
+    };
+    const channel = supabase
+      .channel(CHANNEL_NAME)
+      .on("postgres_changes", { event: "*", schema: "public", table: "patients" }, refresh)
+      .subscribe();
+
+    return () => {
+      window.clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const addPatientMutation = useMutation({
     mutationFn: async (patient: Omit<Patient, "id" | "legacy_id">) => {
