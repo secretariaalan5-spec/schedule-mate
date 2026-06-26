@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Search, AlertTriangle, Info, ArrowLeftRight,
-  CreditCard, Calendar, MapPin, HelpCircle, CheckCircle2, Trash2
+  CreditCard, Calendar, MapPin, HelpCircle, CheckCircle2, Trash2, X
 } from "lucide-react";
 import type { Patient } from "@/hooks/useScheduling";
 import { usePatients } from "@/hooks/usePatients";
@@ -21,18 +21,18 @@ interface MergePatientsDialogProps {
   mergePatients: (args: { masterId: string; duplicateId: string }) => Promise<any>;
 }
 
-// Compute the merged result preview
-function computeMergedPreview(master: Patient, duplicate: Patient): Patient {
-  return {
-    ...master,
-    sus_card: master.sus_card ?? duplicate.sus_card,
-    dob: master.dob ?? duplicate.dob,
-    psf: master.psf ?? duplicate.psf,
+// Compute the merged result preview against multiple duplicates
+function computeMergedPreview(master: Patient, duplicates: Patient[]): Patient {
+  return duplicates.reduce<Patient>((acc, dup) => ({
+    ...acc,
+    sus_card: acc.sus_card ?? dup.sus_card,
+    dob: acc.dob ?? dup.dob,
+    psf: acc.psf ?? dup.psf,
     observations:
-      master.observations && duplicate.observations && master.observations !== duplicate.observations
-        ? `${master.observations}\n[Unificado] ${duplicate.observations}`
-        : master.observations ?? duplicate.observations,
-  };
+      acc.observations && dup.observations && acc.observations !== dup.observations
+        ? `${acc.observations}\n[Unificado] ${dup.observations}`
+        : acc.observations ?? dup.observations,
+  }), { ...master });
 }
 
 // Inline patient data row
@@ -59,19 +59,24 @@ function PatientCard({
   role,
   appointmentsCount,
   onSelect,
+  onRemove,
+  selected,
 }: {
   patient: Patient;
   role: "master" | "duplicate" | "merged";
   appointmentsCount?: number | null;
   onSelect?: () => void;
+  onRemove?: () => void;
+  selected?: boolean;
 }) {
   const borderColor =
     role === "master" ? "border-primary/30 bg-primary/5" :
     role === "merged" ? "border-primary/40 bg-card" :
+    selected ? "border-primary/50 bg-primary/5" :
     "border-border bg-card";
 
   return (
-    <div className={`rounded-lg border-2 ${borderColor} p-4`}>
+    <div className={`rounded-lg border-2 ${borderColor} p-4 transition-colors`}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 min-w-0">
           <p className="font-bold text-base uppercase truncate">{patient.name}</p>
@@ -80,12 +85,24 @@ function PatientCard({
               Cadastro principal
             </Badge>
           )}
+          {selected && role === "duplicate" && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+              Selecionado
+            </Badge>
+          )}
         </div>
-        {onSelect && (
-          <Button size="sm" className="shrink-0 h-8 text-xs px-3" onClick={onSelect}>
-            Selecionar como duplicado
-          </Button>
-        )}
+        <div className="flex gap-1.5 shrink-0">
+          {onSelect && !selected && (
+            <Button size="sm" className="h-8 text-xs px-3" onClick={onSelect}>
+              Selecionar
+            </Button>
+          )}
+          {onRemove && (
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={onRemove} title="Remover da seleção">
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
@@ -131,50 +148,78 @@ export default function MergePatientsDialog({
   const debouncedSearch = useDebounce(search, 300);
   const { patients: searchResults, isLoading: isSearching } = usePatients(debouncedSearch, "all");
 
-  const [duplicatePatient, setDuplicatePatient] = useState<Patient | null>(null);
-  const [duplicateApptsCount, setDuplicateApptsCount] = useState<number | null>(null);
+  // Multiple duplicates support
+  const [selectedDuplicates, setSelectedDuplicates] = useState<Patient[]>([]);
+  const [duplicateApptsCounts, setDuplicateApptsCounts] = useState<Record<string, number | null>>({});
   const [loading, setLoading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
 
-  const filteredResults = searchResults.filter((p) => p.id !== primaryPatient?.id);
+  // Exclude primary + already selected from results
+  const filteredResults = searchResults.filter(
+    (p) => p.id !== primaryPatient?.id && !selectedDuplicates.some((d) => d.id === p.id)
+  );
 
+  // Fetch appointment counts for all selected duplicates
   useEffect(() => {
-    if (!duplicatePatient) { setDuplicateApptsCount(null); return; }
-    supabase
-      .from("appointments")
-      .select("*", { count: "exact", head: true })
-      .eq("patient_id", duplicatePatient.id)
-      .then(({ count, error }) => { if (!error) setDuplicateApptsCount(count || 0); });
-  }, [duplicatePatient]);
+    for (const dup of selectedDuplicates) {
+      if (duplicateApptsCounts[dup.id] !== undefined) continue;
+      supabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("patient_id", dup.id)
+        .then(({ count, error }) => {
+          if (!error) {
+            setDuplicateApptsCounts((prev) => ({ ...prev, [dup.id]: count || 0 }));
+          }
+        });
+    }
+  }, [selectedDuplicates]);
 
+  // Reset on open
   useEffect(() => {
     if (open) {
       setPhase("select");
       setSearch("");
-      setDuplicatePatient(null);
-      setDuplicateApptsCount(null);
+      setSelectedDuplicates([]);
+      setDuplicateApptsCounts({});
       setConfirmed(false);
     }
   }, [open, primaryPatient]);
 
   const handleSelect = (p: Patient) => {
-    setDuplicatePatient(p);
+    setSelectedDuplicates((prev) => [...prev, p]);
     setConfirmed(false);
-    setPhase("confirm");
+    setSearch("");
+  };
+
+  const handleRemove = (id: string) => {
+    setSelectedDuplicates((prev) => prev.filter((d) => d.id !== id));
+    setDuplicateApptsCounts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setConfirmed(false);
   };
 
   const handleBack = () => {
-    setDuplicatePatient(null);
-    setDuplicateApptsCount(null);
     setConfirmed(false);
     setPhase("select");
   };
 
+  const handleGoToConfirm = () => {
+    if (selectedDuplicates.length === 0) return;
+    setPhase("confirm");
+  };
+
   const handleConfirm = async () => {
-    if (!primaryPatient || !duplicatePatient) return;
+    if (!primaryPatient || selectedDuplicates.length === 0) return;
     setLoading(true);
     try {
-      await mergePatients({ masterId: primaryPatient.id, duplicateId: duplicatePatient.id });
+      // Merge duplicates one by one into master
+      for (const dup of selectedDuplicates) {
+        await mergePatients({ masterId: primaryPatient.id, duplicateId: dup.id });
+      }
       onMergeSuccess();
       onClose();
     } catch (err) {
@@ -185,9 +230,14 @@ export default function MergePatientsDialog({
   };
 
   const mergedPreview =
-    primaryPatient && duplicatePatient
-      ? computeMergedPreview(primaryPatient, duplicatePatient)
+    primaryPatient && selectedDuplicates.length > 0
+      ? computeMergedPreview(primaryPatient, selectedDuplicates)
       : null;
+
+  const totalTransferAppts = Object.values(duplicateApptsCounts).reduce<number>(
+    (sum, c) => sum + (c ?? 0), 0
+  );
+  const allCountsReady = selectedDuplicates.every((d) => duplicateApptsCounts[d.id] !== undefined);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !loading && onClose()}>
@@ -201,19 +251,19 @@ export default function MergePatientsDialog({
           </DialogTitle>
           <DialogDescription className="text-sm">
             {phase === "select"
-              ? "Selecione o cadastro duplicado. O cadastro atual ficará como principal e seus dados irão prevalecer."
-              : "Deseja confirmar a unificação de cadastros?"}
+              ? "Selecione um ou mais cadastros duplicados. O cadastro atual ficará como principal e seus dados irão prevalecer."
+              : "Verifique os dados e confirme a unificação."}
           </DialogDescription>
         </DialogHeader>
 
         {/* ── PHASE: SELECT ── */}
         {phase === "select" && (
           <div className="flex-1 overflow-y-auto">
-            {/* Info banner — like PEC */}
+            {/* Info banner */}
             <div className="mx-6 mt-4 flex items-start gap-2 text-xs bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 rounded-lg px-3 py-2.5">
               <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>
-                O cadastro principal definirá os dados que irão prevalecer. Campos vazios no principal serão preenchidos com os dados do duplicado.
+                O cadastro principal definirá os dados que irão prevalecer. Campos vazios serão preenchidos com os dados dos duplicados. Você pode selecionar <strong>um ou mais</strong> cadastros duplicados.
               </span>
             </div>
 
@@ -223,9 +273,31 @@ export default function MergePatientsDialog({
                 <PatientCard patient={primaryPatient} role="master" />
               )}
 
+              {/* Selected duplicates list */}
+              {selectedDuplicates.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    Duplicados selecionados
+                    <Badge variant="secondary" className="font-semibold">{selectedDuplicates.length}</Badge>
+                  </p>
+                  {selectedDuplicates.map((dup) => (
+                    <PatientCard
+                      key={dup.id}
+                      patient={dup}
+                      role="duplicate"
+                      selected
+                      appointmentsCount={duplicateApptsCounts[dup.id] ?? null}
+                      onRemove={() => handleRemove(dup.id)}
+                    />
+                  ))}
+                </div>
+              )}
+
               {/* Search */}
               <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Buscar cadastro duplicado</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {selectedDuplicates.length === 0 ? "Buscar cadastro duplicado" : "Adicionar mais duplicados"}
+                </p>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -240,7 +312,7 @@ export default function MergePatientsDialog({
 
               {/* Results */}
               {!search.trim() ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">
+                <div className="text-center py-8 text-muted-foreground text-sm">
                   <Search className="w-8 h-8 mx-auto mb-2 opacity-20" />
                   Digite o nome ou CNS para buscar
                 </div>
@@ -251,7 +323,7 @@ export default function MergePatientsDialog({
                   ))}
                 </div>
               ) : filteredResults.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground text-sm">
+                <div className="text-center py-8 text-muted-foreground text-sm">
                   Nenhum resultado encontrado para "{search}"
                 </div>
               ) : (
@@ -271,37 +343,45 @@ export default function MergePatientsDialog({
         )}
 
         {/* ── PHASE: CONFIRM ── */}
-        {phase === "confirm" && primaryPatient && duplicatePatient && mergedPreview && (
+        {phase === "confirm" && primaryPatient && selectedDuplicates.length > 0 && mergedPreview && (
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
 
-            {/* Question icon + subtitle — like PEC */}
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <HelpCircle className="w-5 h-5 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground">
-                O cadastro da paciente ficará com os seguintes dados após a unificação:
+                O cadastro ficará com os seguintes dados após a unificação de <strong>{selectedDuplicates.length + 1} cadastros</strong>:
               </p>
             </div>
 
-            {/* Merged preview card */}
-            <PatientCard
-              patient={mergedPreview}
-              role="merged"
-              appointmentsCount={duplicateApptsCount}
-            />
+            {/* Merged preview */}
+            <PatientCard patient={mergedPreview} role="merged" />
 
-            {/* What will be deleted */}
-            <div className="flex items-start gap-2 text-sm bg-muted/40 border rounded-lg px-3 py-2.5">
-              <Trash2 className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-              <span>
-                O cadastro <strong className="uppercase">{duplicatePatient.name}</strong> será{" "}
-                <strong className="text-destructive">excluído permanentemente</strong>
-                {duplicateApptsCount !== null && duplicateApptsCount > 0 && (
-                  <> e suas <strong>{duplicateApptsCount}</strong> consultas serão transferidas.</>
-                )}
-              </span>
+            {/* List of what will be deleted */}
+            <div className="space-y-2">
+              {selectedDuplicates.map((dup) => (
+                <div key={dup.id} className="flex items-start gap-2 text-sm bg-muted/40 border rounded-lg px-3 py-2.5">
+                  <Trash2 className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="uppercase">{dup.name}</strong> será{" "}
+                    <strong className="text-destructive">excluído permanentemente</strong>
+                    {(duplicateApptsCounts[dup.id] ?? 0) > 0 && (
+                      <> — <strong>{duplicateApptsCounts[dup.id]}</strong> consulta{(duplicateApptsCounts[dup.id] ?? 0) !== 1 ? "s" : ""} serão transferidas</>
+                    )}
+                  </span>
+                </div>
+              ))}
             </div>
+
+            {totalTransferAppts > 0 && (
+              <div className="flex items-start gap-2 text-xs bg-sky-50 dark:bg-sky-950/20 border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300 rounded-lg px-3 py-2.5">
+                <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>
+                  No total, <strong>{totalTransferAppts} consulta{totalTransferAppts !== 1 ? "s" : ""}</strong> serão transferidas para o cadastro principal.
+                </span>
+              </div>
+            )}
 
             {/* Warning + checkbox */}
             <div className="border border-amber-400/40 bg-amber-50 dark:bg-amber-950/20 rounded-lg px-3 py-3 space-y-2">
@@ -318,7 +398,7 @@ export default function MergePatientsDialog({
                   className="mt-0.5 accent-primary w-3.5 h-3.5 shrink-0"
                 />
                 <span className="text-xs text-muted-foreground leading-snug">
-                  Confirmo que desejo unificar estes dois cadastros e estou ciente que o cadastro duplicado será excluído permanentemente.
+                  Confirmo que desejo unificar {selectedDuplicates.length + 1} cadastros e estou ciente que os cadastros duplicados serão excluídos permanentemente.
                 </span>
               </label>
             </div>
@@ -326,23 +406,35 @@ export default function MergePatientsDialog({
         )}
 
         {/* ── Footer buttons ── */}
-        <div className="px-6 py-4 border-t shrink-0 flex items-center justify-end gap-3">
+        <div className="px-6 py-4 border-t shrink-0 flex items-center justify-between gap-3">
           {phase === "select" ? (
-            <Button variant="outline" onClick={onClose} disabled={loading}>
-              Cancelar
-            </Button>
-          ) : (
             <>
-              <Button variant="outline" onClick={handleBack} disabled={loading}>
-                Limpar seleção
+              <Button variant="outline" onClick={onClose} disabled={loading}>
+                Cancelar
               </Button>
               <Button
-                onClick={handleConfirm}
-                disabled={loading || !confirmed || duplicateApptsCount === null}
+                onClick={handleGoToConfirm}
+                disabled={selectedDuplicates.length === 0 || !allCountsReady}
                 className="gap-2"
               >
                 <ArrowLeftRight className="w-4 h-4" />
-                {loading ? "Unificando..." : "Confirmar unificação"}
+                Revisar unificação{selectedDuplicates.length > 0 ? ` (${selectedDuplicates.length})` : ""}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleBack} disabled={loading}>
+                Voltar
+              </Button>
+              <Button
+                onClick={handleConfirm}
+                disabled={loading || !confirmed || !allCountsReady}
+                className="gap-2"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                {loading
+                  ? `Unificando... (${selectedDuplicates.length})`
+                  : `Confirmar unificação (${selectedDuplicates.length} duplicado${selectedDuplicates.length !== 1 ? "s" : ""})`}
               </Button>
             </>
           )}
