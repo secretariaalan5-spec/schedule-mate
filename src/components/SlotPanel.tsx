@@ -5,7 +5,6 @@ import { Trash2, UserPlus, Printer, CheckCircle, Clock, Edit2 } from "lucide-rea
 import type { Appointment, Patient } from "@/hooks/useScheduling";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AppointmentDialog from "./AppointmentDialog";
-
 import { printAppointments } from "./PrintSlip";
 
 interface Props {
@@ -82,6 +81,14 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
   const openEditDialog = (appt: Appointment) => {
     setEditAppointment(appt);
     setDialogSlot(appt.slot);
+  };
+
+  const handlePatientClick = (e: React.MouseEvent, appt: Appointment) => {
+    const selection = window.getSelection()?.toString();
+    if (selection && selection.trim().length > 0) {
+      return;
+    }
+    openEditDialog(appt);
   };
 
   const openNewDialog = useCallback((slot: number) => {
@@ -166,11 +173,18 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
               {appt ? (
                 <div className="flex-1 flex items-center justify-between">
                   <div
-                    className="flex items-center gap-1 flex-wrap cursor-pointer flex-1"
-                    onClick={() => openEditDialog(appt)}
+                    className="flex items-center gap-2 flex-wrap cursor-pointer flex-1"
+                    onClick={(e) => handlePatientClick(e, appt)}
                     title="Clique para editar"
                   >
-                    <span className="font-semibold text-[15px] leading-tight">{appt.patients?.name || "—"}</span>
+                    <span className="font-semibold text-[15px] leading-tight select-text">{appt.patients?.name || "—"}</span>
+
+                    {appt.patients?.sus_card && (
+                      <span className="font-mono text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded shrink-0 select-text">
+                        {appt.patients.sus_card}
+                      </span>
+                    )}
+
                     {!!appt.patients?.psf && (
                       <span className="text-xs text-muted-foreground">({appt.patients.psf})</span>
                     )}

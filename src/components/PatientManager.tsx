@@ -278,11 +278,11 @@ export default function PatientManager({ onGetHistory }: Props) {
                   <div key={p.id} className="bg-card border rounded-xl p-4 shadow-sm space-y-3">
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 select-text">
                           <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">{i + 1}</span>
                           <h3 className="font-bold text-base truncate">{p.name}</h3>
                         </div>
-                        <div className="flex items-center gap-1.5 text-primary text-xs font-semibold">
+                        <div className="flex items-center gap-1.5 text-primary text-xs font-semibold select-text">
                           <CreditCard className="w-3.5 h-3.5" />
                           {p.sus_card || "Sem Cartão SUS"}
                         </div>
@@ -347,9 +347,9 @@ export default function PatientManager({ onGetHistory }: Props) {
                       <TableRow key={p.id} className="hover:bg-primary/5 transition-colors">
                         <TableCell className="text-center text-xs text-muted-foreground font-mono">{i + 1}</TableCell>
                         <TableCell className="font-medium text-sm">
-                          <div>{p.name}</div>
+                          <div className="select-text">{p.name}</div>
                         </TableCell>
-                        <TableCell className="text-sm font-mono">{p.sus_card || "—"}</TableCell>
+                        <TableCell className="text-sm font-mono select-text">{p.sus_card || "—"}</TableCell>
                         <TableCell className="text-sm">{p.dob ? formatDateBR(p.dob) : "—"}</TableCell>
                         <TableCell>
                           {p.psf ? (
