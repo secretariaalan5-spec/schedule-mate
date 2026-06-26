@@ -25,12 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Edit2, Trash2, History, User, CreditCard } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, History, User, CreditCard, ArrowLeftRight } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { usePatients, type PatientsFilter } from "@/hooks/usePatients";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { useHealthUnits } from "@/hooks/useHealthUnits";
+import MergePatientsDialog from "@/components/MergePatientsDialog";
 
 interface Props {
   onGetHistory: (id: string) => Promise<Appointment[]>;
@@ -46,6 +47,7 @@ export default function PatientManager({ onGetHistory }: Props) {
     addPatient: onAdd,
     updatePatient: onUpdate,
     deletePatient: onDelete,
+    mergePatients,
     isLoading,
     isFetchingNextPage,
     hasNextPage,
@@ -57,6 +59,7 @@ export default function PatientManager({ onGetHistory }: Props) {
   const [historyPatient, setHistoryPatient] = useState<Patient | null>(null);
   const [history, setHistory] = useState<Appointment[]>([]);
   const { data: healthUnits = [] } = useHealthUnits();
+  const [mergePrimaryPatient, setMergePrimaryPatient] = useState<Patient | null>(null);
   const [form, setForm] = useState({
     name: "",
     sus_card: "",
@@ -191,14 +194,14 @@ export default function PatientManager({ onGetHistory }: Props) {
               </div>
             </CardContent>
           </Card>
-          <Card className={`border-emerald-500/20 cursor-pointer transition-all hover:shadow-md ${filter === "no_sus" ? "ring-2 ring-emerald-500" : ""}`} onClick={() => setFilter(filter === "no_sus" ? "all" : "no_sus")}>
+          <Card className={`border-amber-500/20 cursor-pointer transition-all hover:shadow-md ${filter === "no_sus" ? "ring-2 ring-amber-500" : ""}`} onClick={() => setFilter(filter === "no_sus" ? "all" : "no_sus")}>
             <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <CreditCard className="w-4 h-4 text-emerald-600" />
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <CreditCard className="w-4 h-4 text-amber-600" />
               </div>
               <div>
-                <p className="text-xl font-bold text-emerald-600">{stats.withSus}</p>
-                <p className="text-xs text-muted-foreground">Com SUS</p>
+                <p className="text-xl font-bold text-amber-600">{stats.total - stats.withSus}</p>
+                <p className="text-xs text-muted-foreground">Sem SUS</p>
               </div>
             </CardContent>
           </Card>
@@ -285,13 +288,16 @@ export default function PatientManager({ onGetHistory }: Props) {
                         </div>
                       </div>
                       <div className="flex gap-1 shrink-0">
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => openHistory(p)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => openHistory(p)} title="Histórico">
                           <History className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => openEdit(p)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => openEdit(p)} title="Editar">
                           <Edit2 className="w-4 h-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setDeleteCandidate(p)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={() => setMergePrimaryPatient(p)} title="Unificar cadastros">
+                          <ArrowLeftRight className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setDeleteCandidate(p)} title="Excluir">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -358,6 +364,9 @@ export default function PatientManager({ onGetHistory }: Props) {
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={() => openEdit(p)} title="Editar">
                               <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={() => setMergePrimaryPatient(p)} title="Unificar com duplicado">
+                              <ArrowLeftRight className="w-3.5 h-3.5" />
                             </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setDeleteCandidate(p)} title="Excluir">
                               <Trash2 className="w-3.5 h-3.5" />
@@ -462,6 +471,14 @@ export default function PatientManager({ onGetHistory }: Props) {
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      <MergePatientsDialog
+        open={!!mergePrimaryPatient}
+        onClose={() => setMergePrimaryPatient(null)}
+        primaryPatient={mergePrimaryPatient}
+        onMergeSuccess={() => {}}
+        mergePatients={mergePatients}
+      />
     </div>
   );
 }

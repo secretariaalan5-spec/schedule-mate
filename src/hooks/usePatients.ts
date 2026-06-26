@@ -174,6 +174,26 @@ export function usePatients(search: string, filter: PatientsFilter = "all") {
     }
   });
 
+  const mergePatientsMutation = useMutation({
+    mutationFn: async ({ masterId, duplicateId }: { masterId: string; duplicateId: string }) => {
+      const { data, error } = await supabase.rpc("merge_patients", {
+        master_id: masterId,
+        duplicate_id: duplicateId,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Cadastros unificados com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+      queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["health_units_patient_counts"] });
+    },
+    onError: (error) => {
+      toast.error("Erro ao unificar: " + error.message);
+    }
+  });
+
   return {
     patients,
     isLoading: patientsQuery.isLoading,
@@ -184,5 +204,6 @@ export function usePatients(search: string, filter: PatientsFilter = "all") {
     addPatient: addPatientMutation.mutateAsync,
     updatePatient: updatePatientMutation.mutateAsync,
     deletePatient: deletePatientMutation.mutateAsync,
+    mergePatients: mergePatientsMutation.mutateAsync,
   };
 }
