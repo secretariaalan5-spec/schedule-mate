@@ -14,6 +14,10 @@ export interface Patient {
   dob: string | null;
   psf: string | null;
   observations: string | null;
+  is_pregnant?: boolean | null;
+  dum?: string | null;
+  risk_classification?: 'BAIXO' | 'ALTO' | null;
+  gestational_notes?: string | null;
 }
 
 export interface Appointment {
@@ -34,23 +38,24 @@ export function useScheduling() {
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
   // Query: Appointment counts per date (used for calendar occupancy heatmap)
+  // Uses a database view that does GROUP BY on the server — much faster than downloading every row
   const { data: appointmentCounts = {} } = useQuery<Record<string, number>>({
     queryKey: ["appointmentCounts"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("appointments")
-        .select("date")
-        .order("date");
+        .from("appointment_counts_by_date" as any)
+        .select("date, count");
       if (error) {
         console.error("Erro ao carregar dias com agendamentos:", error);
         return {};
       }
       const counts: Record<string, number> = {};
-      (data ?? []).forEach(d => {
-        counts[d.date] = (counts[d.date] || 0) + 1;
+      (data ?? []).forEach((row: any) => {
+        counts[row.date] = row.count;
       });
       return counts;
-    }
+    },
+    staleTime: 1000 * 60 * 2, // 2 min — refreshed by realtime anyway
   });
   const appointmentDates = Object.keys(appointmentCounts);
 
@@ -60,7 +65,7 @@ export function useScheduling() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("appointments")
-        .select("*, patients(*)")
+        .select("id, slot, date, patient_id, reason, type, schedule_time, printed, patients(id, name, sus_card, dob, psf, observations, is_pregnant, risk_classification)")
         .eq("date", selectedDate)
         .order("slot");
       if (error) {
@@ -70,7 +75,8 @@ export function useScheduling() {
       }
       return (data as any) || [];
     },
-    enabled: !!selectedDate
+    enabled: !!selectedDate,
+    staleTime: 1000 * 30, // 30s — refreshed by realtime
   });
 
   // Realtime subscriptions
@@ -208,10 +214,26 @@ export function useScheduling() {
   };
 }
 
-export function formatDateBR(dateStr: string) {
-  return format(parseISO(dateStr), "dd/MM/yyyy", { locale: ptBR });
+export function formatDateBR(dateStr: string | null | undefined) {
+  if (!dateStr) return "—";
+  try {
+    const parsed = parseISO(dateStr);
+    if (isNaN(parsed.getTime())) return dateStr;
+    return format(parsed, "dd/MM/yyyy", { locale: ptBR });
+  } catch (e) {
+    console.error("Erro ao formatar data (formatDateBR):", dateStr, e);
+    return dateStr;
+  }
 }
 
-export function formatDateFull(dateStr: string) {
-  return format(parseISO(dateStr), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+export function formatDateFull(dateStr: string | null | undefined) {
+  if (!dateStr) return "—";
+  try {
+    const parsed = parseISO(dateStr);
+    if (isNaN(parsed.getTime())) return dateStr;
+    return format(parsed, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+  } catch (e) {
+    console.error("Erro ao formatar data por extenso (formatDateFull):", dateStr, e);
+    return dateStr;
+  }
 }

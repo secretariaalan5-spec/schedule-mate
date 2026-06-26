@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Menu,
   Users,
@@ -15,11 +16,13 @@ import {
   FileSpreadsheet,
   LogOut,
   Loader2,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import InviteLink from "@/components/InviteLink";
 import ImportExport from "@/components/ImportExport";
+import HealthUnitManager from "@/components/HealthUnitManager";
 import { useEffect } from "react";
 
 interface HeaderMenuProps {
@@ -29,6 +32,7 @@ interface HeaderMenuProps {
 export default function HeaderMenu({ onImportComplete }: HeaderMenuProps) {
   const { signOut } = useAuth();
   const [teamOpen, setTeamOpen] = useState(false);
+  const [healthUnitsOpen, setHealthUnitsOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
   // Lightweight pending count for the badge (kept in sync via realtime).
@@ -86,6 +90,10 @@ export default function HeaderMenu({ onImportComplete }: HeaderMenuProps) {
                   </span>
                 )}
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setHealthUnitsOpen(true)}>
+                <Building2 className="w-4 h-4 mr-2" />
+                <span>Unidades de Saúde</span>
+              </DropdownMenuItem>
 
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Dados</DropdownMenuLabel>
@@ -110,12 +118,27 @@ export default function HeaderMenu({ onImportComplete }: HeaderMenuProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Team dialog (controlled, opened by the menu item above) */}
+          {/* Team dialog */}
           <InviteLink
             open={teamOpen}
             onOpenChange={setTeamOpen}
             trigger={<span className="hidden" />}
           />
+
+          {/* Health Units dialog */}
+          <Dialog open={healthUnitsOpen} onOpenChange={setHealthUnitsOpen}>
+            <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col p-0">
+              <DialogHeader className="px-6 pt-6 pb-2 border-b shrink-0">
+                <DialogTitle className="flex items-center gap-2 text-primary">
+                  <Building2 className="w-5 h-5" />
+                  Unidades de Saúde (PSF / UBS)
+                </DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 overflow-hidden">
+                <HealthUnitManager />
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </ImportExport>

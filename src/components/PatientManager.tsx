@@ -18,11 +18,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Search, Plus, Edit2, Trash2, History, User, CreditCard } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
-import { usePatients } from "@/hooks/usePatients";
+import { usePatients, type PatientsFilter } from "@/hooks/usePatients";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatDateBR } from "@/hooks/useScheduling";
+import { useHealthUnits } from "@/hooks/useHealthUnits";
 
 interface Props {
   onGetHistory: (id: string) => Promise<Appointment[]>;
@@ -30,6 +38,7 @@ interface Props {
 
 export default function PatientManager({ onGetHistory }: Props) {
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<PatientsFilter>("all");
   const debouncedSearch = useDebounce(search, 400);
   const {
     patients: filtered,
@@ -41,13 +50,20 @@ export default function PatientManager({ onGetHistory }: Props) {
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
-  } = usePatients(debouncedSearch);
+  } = usePatients(debouncedSearch, filter);
 
   const [editPatient, setEditPatient] = useState<Patient | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [historyPatient, setHistoryPatient] = useState<Patient | null>(null);
   const [history, setHistory] = useState<Appointment[]>([]);
-  const [form, setForm] = useState({ name: "", sus_card: "", dob: "", psf: "", observations: "" });
+  const { data: healthUnits = [] } = useHealthUnits();
+  const [form, setForm] = useState({
+    name: "",
+    sus_card: "",
+    dob: "",
+    psf: "",
+    observations: "",
+  });
   const [deleteCandidate, setDeleteCandidate] = useState<Patient | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -69,9 +85,24 @@ export default function PatientManager({ onGetHistory }: Props) {
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, filtered.length]);
 
-  const openNew = () => { setForm({ name: "", sus_card: "", dob: "", psf: "", observations: "" }); setNewOpen(true); };
+  const openNew = () => {
+    setForm({
+      name: "",
+      sus_card: "",
+      dob: "",
+      psf: "",
+      observations: "",
+    });
+    setNewOpen(true);
+  };
   const openEdit = (p: Patient) => {
-    setForm({ name: p.name, sus_card: p.sus_card || "", dob: p.dob || "", psf: p.psf || "", observations: p.observations || "" });
+    setForm({
+      name: p.name,
+      sus_card: p.sus_card || "",
+      dob: p.dob || "",
+      psf: p.psf || "",
+      observations: p.observations || "",
+    });
     setEditPatient(p);
   };
   const openHistory = async (p: Patient) => {
@@ -81,7 +112,17 @@ export default function PatientManager({ onGetHistory }: Props) {
   };
 
   const handleSave = async () => {
-    const data = { name: form.name.toUpperCase(), sus_card: form.sus_card || null, dob: form.dob || null, psf: form.psf.toUpperCase() || null, observations: form.observations || null };
+    const data = {
+      name: form.name.toUpperCase(),
+      sus_card: form.sus_card || null,
+      dob: form.dob || null,
+      psf: form.psf || null,
+      observations: form.observations || null,
+      is_pregnant: false,
+      dum: null,
+      risk_classification: null,
+      gestational_notes: null,
+    };
     if (editPatient) {
       onUpdate({ id: editPatient.id, updates: data });
       setEditPatient(null);
@@ -113,12 +154,22 @@ export default function PatientManager({ onGetHistory }: Props) {
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">PSF / UBS</Label>
-          <Input value={form.psf} onChange={e => setForm(f => ({ ...f, psf: e.target.value }))} placeholder="Nome do PSF" />
+          <Select value={form.psf} onValueChange={val => setForm(f => ({ ...f, psf: val }))}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecionar unidade..." />
+            </SelectTrigger>
+            <SelectContent>
+              {healthUnits.map(u => (
+                <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Observações</Label>
           <Input value={form.observations} onChange={e => setForm(f => ({ ...f, observations: e.target.value }))} placeholder="Observações adicionais" />
         </div>
+
         <Button onClick={handleSave} className="w-full" disabled={!form.name}>Salvar</Button>
       </div>
     </DialogContent>
@@ -128,44 +179,79 @@ export default function PatientManager({ onGetHistory }: Props) {
     <div className="flex flex-col h-full">
       {/* Stats bar */}
       <div className="p-4 border-b bg-card">
-        <div className="flex items-center gap-4 mb-3">
-          <Card className="flex-1 border-primary/20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <Card className={`border-primary/20 cursor-pointer transition-all hover:shadow-md ${filter === "all" ? "ring-2 ring-primary" : ""}`} onClick={() => setFilter("all")}>
             <CardContent className="p-3 flex items-center gap-3">
               <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
                 <User className="w-4 h-4 text-primary" />
               </div>
               <div>
                 <p className="text-xl font-bold text-primary">{stats.total}</p>
-                <p className="text-xs text-muted-foreground">Pacientes</p>
+                <p className="text-xs text-muted-foreground">Total</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="flex-1 border-primary/20">
+          <Card className={`border-emerald-500/20 cursor-pointer transition-all hover:shadow-md ${filter === "no_sus" ? "ring-2 ring-emerald-500" : ""}`} onClick={() => setFilter(filter === "no_sus" ? "all" : "no_sus")}>
             <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <CreditCard className="w-4 h-4 text-primary" />
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <CreditCard className="w-4 h-4 text-emerald-600" />
               </div>
               <div>
-                <p className="text-xl font-bold text-primary">{stats.withSus}</p>
-                <p className="text-xs text-muted-foreground">Com Cartão SUS</p>
+                <p className="text-xl font-bold text-emerald-600">{stats.withSus}</p>
+                <p className="text-xs text-muted-foreground">Com SUS</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className={`border-amber-500/20 cursor-pointer transition-all hover:shadow-md ${filter === "no_dob" ? "ring-2 ring-amber-500" : ""}`} onClick={() => setFilter(filter === "no_dob" ? "all" : "no_dob")}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <User className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-amber-600">{stats.withoutDob}</p>
+                <p className="text-xs text-muted-foreground">Sem Nascimento</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className={`border-rose-500/20 cursor-pointer transition-all hover:shadow-md ${filter === "no_psf" ? "ring-2 ring-rose-500" : ""}`} onClick={() => setFilter(filter === "no_psf" ? "all" : "no_psf")}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                <User className="w-4 h-4 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-rose-600">{stats.withoutPsf}</p>
+                <p className="text-xs text-muted-foreground">Sem PSF</p>
               </div>
             </CardContent>
           </Card>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar por nome, cartão SUS ou PSF..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
           </div>
-          <Button onClick={openNew} size="sm" className="gap-1.5">
+
+          <Select value={filter} onValueChange={(val: any) => setFilter(val)}>
+            <SelectTrigger className="w-[180px] shrink-0">
+              <SelectValue placeholder="Filtro de Cadastro" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Cadastros</SelectItem>
+              <SelectItem value="incomplete">Cadastro Incompleto</SelectItem>
+              <SelectItem value="no_sus">Sem Cartão SUS</SelectItem>
+              <SelectItem value="no_dob">Sem Data Nascimento</SelectItem>
+              <SelectItem value="no_psf">Sem PSF/UBS</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button onClick={openNew} size="sm" className="gap-1.5 shrink-0">
             <Plus className="w-4 h-4" /> Nova Paciente
           </Button>
         </div>
-        {!!debouncedSearch && (
+        {(!!debouncedSearch || filter !== "all") && (
           <p className="text-xs text-muted-foreground mt-2">
             {totalFiltered}{hasNextPage ? "+" : ""} resultado{totalFiltered !== 1 ? "s" : ""} encontrado{totalFiltered !== 1 ? "s" : ""}
           </p>
-
         )}
       </div>
 
@@ -254,7 +340,9 @@ export default function PatientManager({ onGetHistory }: Props) {
                     {filtered.map((p, i) => (
                       <TableRow key={p.id} className="hover:bg-primary/5 transition-colors">
                         <TableCell className="text-center text-xs text-muted-foreground font-mono">{i + 1}</TableCell>
-                        <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                        <TableCell className="font-medium text-sm">
+                          <div>{p.name}</div>
+                        </TableCell>
                         <TableCell className="text-sm font-mono">{p.sus_card || "—"}</TableCell>
                         <TableCell className="text-sm">{p.dob ? formatDateBR(p.dob) : "—"}</TableCell>
                         <TableCell>

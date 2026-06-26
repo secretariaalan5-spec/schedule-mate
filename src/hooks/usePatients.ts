@@ -6,12 +6,14 @@ import { toast } from "sonner";
 
 const PAGE_SIZE = 50;
 
-export function usePatients(search: string) {
+export type PatientsFilter = "all" | "incomplete" | "no_sus" | "no_dob" | "no_psf";
+
+export function usePatients(search: string, filter: PatientsFilter = "all") {
   const queryClient = useQueryClient();
 
   // Cursor-based pagination via range(). Loads PAGE_SIZE rows at a time.
   const patientsQuery = useInfiniteQuery({
-    queryKey: ["patients", search],
+    queryKey: ["patients", search, filter],
     initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
       const from = (pageParam as number) * PAGE_SIZE;
@@ -21,6 +23,16 @@ export function usePatients(search: string) {
         .select("*")
         .order("name")
         .range(from, to);
+
+      if (filter === "incomplete") {
+        query = query.or("sus_card.is.null,dob.is.null,psf.is.null");
+      } else if (filter === "no_sus") {
+        query = query.is("sus_card", null);
+      } else if (filter === "no_dob") {
+        query = query.is("dob", null);
+      } else if (filter === "no_psf") {
+        query = query.is("psf", null);
+      }
 
       if (search) {
         // Sanitize: PostgREST .or() breaks on commas, parentheses, quotes
@@ -96,16 +108,20 @@ export function usePatients(search: string) {
   const totalStatsQuery = useQuery({
     queryKey: ["patients-stats"],
     queryFn: async () => {
-      const { count: total, error: totalError } = await supabase.from("patients").select("*", { count: "exact", head: true });
-      const { count: withSus, error: withSusError } = await supabase.from("patients").select("*", { count: "exact", head: true }).not("sus_card", "is", null);
-      if (totalError || withSusError) {
-        console.error("Erro ao carregar estatísticas de pacientes:", totalError || withSusError);
-        return { total: 0, withSus: 0 };
-      }
-      
-      return { total: total || 0, withSus: withSus || 0 };
+      const [totalRes, susRes, dobRes, psfRes] = await Promise.all([
+        supabase.from("patients").select("*", { count: "exact", head: true }),
+        supabase.from("patients").select("*", { count: "exact", head: true }).not("sus_card", "is", null),
+        supabase.from("patients").select("*", { count: "exact", head: true }).is("dob", null),
+        supabase.from("patients").select("*", { count: "exact", head: true }).is("psf", null),
+      ]);
+      return {
+        total: totalRes.count || 0,
+        withSus: susRes.count || 0,
+        withoutDob: dobRes.count || 0,
+        withoutPsf: psfRes.count || 0,
+      };
     },
-    staleTime: 1000 * 60 * 60, // 1 hour
+    staleTime: 1000 * 60 * 30, // 30 min
   });
 
   const addPatientMutation = useMutation({
@@ -118,6 +134,7 @@ export function usePatients(search: string) {
       toast.success("Paciente cadastrada");
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["health_units_patient_counts"] });
     },
     onError: (error) => {
       toast.error("Erro: " + error.message);
@@ -133,6 +150,7 @@ export function usePatients(search: string) {
     onSuccess: () => {
       toast.success("Paciente atualizada");
       queryClient.invalidateQueries({ queryKey: ["patients"] });
+      queryClient.invalidateQueries({ queryKey: ["health_units_patient_counts"] });
     },
     onError: (error) => {
       toast.error("Erro: " + error.message);
@@ -149,6 +167,7 @@ export function usePatients(search: string) {
       toast.success("Paciente removida");
       queryClient.invalidateQueries({ queryKey: ["patients"] });
       queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["health_units_patient_counts"] });
     },
     onError: (error) => {
       toast.error("Erro: " + error.message);
@@ -161,7 +180,7 @@ export function usePatients(search: string) {
     isFetchingNextPage: patientsQuery.isFetchingNextPage,
     hasNextPage: !!patientsQuery.hasNextPage,
     fetchNextPage: patientsQuery.fetchNextPage,
-    stats: totalStatsQuery.data || { total: 0, withSus: 0 },
+    stats: totalStatsQuery.data || { total: 0, withSus: 0, withoutDob: 0, withoutPsf: 0 },
     addPatient: addPatientMutation.mutateAsync,
     updatePatient: updatePatientMutation.mutateAsync,
     deletePatient: deletePatientMutation.mutateAsync,

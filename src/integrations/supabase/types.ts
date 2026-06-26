@@ -87,6 +87,10 @@ export type Database = {
           created_at: string
           dob: string | null
           id: string
+          is_pregnant: boolean | null
+          dum: string | null
+          risk_classification: string | null
+          gestational_notes: string | null
           legacy_id: string | null
           name: string
           observations: string | null
@@ -98,6 +102,10 @@ export type Database = {
           created_at?: string
           dob?: string | null
           id?: string
+          is_pregnant?: boolean | null
+          dum?: string | null
+          risk_classification?: string | null
+          gestational_notes?: string | null
           legacy_id?: string | null
           name: string
           observations?: string | null
@@ -109,6 +117,10 @@ export type Database = {
           created_at?: string
           dob?: string | null
           id?: string
+          is_pregnant?: boolean | null
+          dum?: string | null
+          risk_classification?: string | null
+          gestational_notes?: string | null
           legacy_id?: string | null
           name?: string
           observations?: string | null

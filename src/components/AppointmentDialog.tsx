@@ -4,12 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AlertTriangle, CalendarClock } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
 import { usePatients } from "@/hooks/usePatients";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useHealthUnits } from "@/hooks/useHealthUnits";
 
 interface Props {
   open: boolean;
@@ -23,29 +31,31 @@ interface Props {
   onPatientsChanged: () => void;
   editAppointment?: Appointment | null;
   onUpdate?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
+  preselectedPatient?: Patient | null;
 }
 
-export default function AppointmentDialog({ open, onClose, slot, date, variant, defaultTime, title, onAdd, onPatientsChanged, editAppointment, onUpdate }: Props) {
+export default function AppointmentDialog({ open, onClose, slot, date, variant, defaultTime, title, onAdd, onPatientsChanged, editAppointment, onUpdate, preselectedPatient }: Props) {
   const isEditing = !!editAppointment;
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 200);
   const effectiveSearch = debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : "";
   const { patients: searchResults, isLoading: isSearching } = usePatients(effectiveSearch);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [name, setName] = useState("");
-  const [susCard, setSusCard] = useState("");
-  const [dob, setDob] = useState("");
-  const [psf, setPsf] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(preselectedPatient || null);
+  const [name, setName] = useState(preselectedPatient?.name || "");
+  const [susCard, setSusCard] = useState(preselectedPatient?.sus_card || "");
+  const [dob, setDob] = useState(preselectedPatient?.dob || "");
+  const [psf, setPsf] = useState(preselectedPatient?.psf || "");
   const [reason, setReason] = useState("");
   const [type, setType] = useState("NORMAL");
   const [scheduleTime, setScheduleTime] = useState(defaultTime);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [activeSearchField, setActiveSearchField] = useState<"name" | "susCard" | "dob" | "psf" | null>(null);
+  const [activeSearchField, setActiveSearchField] = useState<"name" | "susCard" | "dob" | null>(null);
   const [patientMonthAppointments, setPatientMonthAppointments] = useState<Appointment[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [monthPatientIds, setMonthPatientIds] = useState<Set<string>>(new Set());
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const { data: healthUnits = [] } = useHealthUnits();
 
   // When a patient is selected, check for existing appointments this month
   const checkMonthAppointments = useCallback(async (patientId: string) => {
@@ -82,6 +92,13 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
         setMonthPatientIds(new Set((data ?? []).map((d: any) => d.patient_id)));
       });
   }, [open, date]);
+
+  // Check month appointments if a patient is preselected
+  useEffect(() => {
+    if (preselectedPatient && open) {
+      checkMonthAppointments(preselectedPatient.id);
+    }
+  }, [preselectedPatient, open, checkMonthAppointments]);
 
   // Pre-fill when editing
   useEffect(() => {
@@ -158,7 +175,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
     checkMonthAppointments(p.id);
   };
 
-  const renderSearchResults = (field: "name" | "susCard" | "dob" | "psf") => {
+  const renderSearchResults = (field: "name" | "susCard" | "dob") => {
     if (!showResults || activeSearchField !== field || !effectiveSearch) return null;
 
     return (
@@ -398,31 +415,18 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
                 </div>
               </div>
 
-              <div className="space-y-1.5 relative">
+              <div className="space-y-1.5">
                 <Label>PSF / UBS</Label>
-                <Input 
-                  placeholder="Nome do PSF / UBS" 
-                  value={psf} 
-                  onChange={e => {
-                    const val = e.target.value;
-                    setPsf(val);
-                    setSearch(val);
-                    setActiveSearchField("psf");
-                    setShowResults(true);
-                  }} 
-                  onFocus={() => {
-                    if (psf) {
-                      setSearch(psf);
-                      setActiveSearchField("psf");
-                      setShowResults(true);
-                    }
-                  }}
-                  onBlur={() => {
-                    setShowResults(false);
-                    setActiveSearchField(null);
-                  }}
-                />
-                {renderSearchResults("psf")}
+                <Select value={psf} onValueChange={setPsf}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar unidade..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {healthUnits.map(u => (
+                      <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}

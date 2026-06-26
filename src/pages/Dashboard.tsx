@@ -1,13 +1,15 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
-import PatientManager from "@/components/PatientManager";
+const PatientManager = lazy(() => import("@/components/PatientManager"));
+const HealthUnitsManager = lazy(() => import("@/components/HealthUnitsManager"));
 import HeaderMenu from "@/components/HeaderMenu";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, ChevronLeft, Download, Filter, X } from "lucide-react";
+import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building } from "lucide-react";
+import type { Patient } from "@/hooks/useScheduling";
 import {
   Select,
   SelectContent,
@@ -25,7 +27,7 @@ import { exportDayExcel } from "@/lib/exportUtils";
 
 
 
-type Tab = "agenda" | "pacientes";
+type Tab = "agenda" | "pacientes" | "unidades";
 
 export default function Dashboard() {
   const sched = useScheduling();
@@ -33,6 +35,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState<Tab>("agenda");
   const [mobileShowSlots, setMobileShowSlots] = useState(false);
   const isMobile = useIsMobile();
+  const [preselectedPatient, setPreselectedPatient] = useState<Patient | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -51,6 +54,8 @@ export default function Dashboard() {
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["patients"] });
     queryClient.invalidateQueries({ queryKey: ["patients-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["health_units"] });
+    queryClient.invalidateQueries({ queryKey: ["health_units_patient_counts"] });
     if (sched.selectedDate) sched.fetchAppointments();
   };
 
@@ -136,6 +141,7 @@ export default function Dashboard() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-5 h-5" /> },
     { id: "pacientes", label: "Pacientes", icon: <Users className="w-5 h-5" /> },
+    { id: "unidades", label: "Unidades", icon: <Building className="w-5 h-5" /> },
   ];
 
   return (
@@ -350,6 +356,8 @@ export default function Dashboard() {
                             onRefresh={() => sched.fetchAppointments()}
                             onUpdateTime={sched.updateAppointmentTime}
                             onUpdateAppointment={sched.updateAppointment}
+                            preselectedPatient={preselectedPatient}
+                            onClearPreselectedPatient={() => setPreselectedPatient(null)}
                           />
                         </div>
                       ))}
@@ -371,9 +379,19 @@ export default function Dashboard() {
 
         {tab === "pacientes" && (
           <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
-            <PatientManager
-              onGetHistory={sched.getPatientHistory}
-            />
+            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+              <PatientManager
+                onGetHistory={sched.getPatientHistory}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {tab === "unidades" && (
+          <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
+            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+              <HealthUnitsManager />
+            </Suspense>
           </div>
         )}
       </div>

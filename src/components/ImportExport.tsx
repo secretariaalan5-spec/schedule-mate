@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import type { Patient } from "@/hooks/useScheduling";
+import { formatDateBR } from "@/hooks/useScheduling";
 import { format, parseISO, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -129,14 +130,19 @@ export default function ImportExport({ onImportComplete, children }: Props) {
         const morning = appts.filter((a: any) => a.slot <= 15).sort((a: any, b: any) => a.slot - b.slot);
         const afternoon = appts.filter((a: any) => a.slot > 15).sort((a: any, b: any) => a.slot - b.slot);
 
-        const dateFormatted = format(parseISO(date), "dd/MM/yyyy", { locale: ptBR });
+        const dateFormatted = formatDateBR(date);
 
         for (const [label, group, time] of [
           ["M", morning, "07:30 h"],
           ["T", afternoon, "14:00 h"],
         ] as [string, any[], string][]) {
           if (group.length === 0) continue;
-          const dayPart = format(parseISO(date), "dd_MM");
+          let dayPart = "agenda";
+          try {
+            dayPart = format(parseISO(date), "dd_MM");
+          } catch (e) {
+            console.error("Erro ao formatar dia:", date, e);
+          }
           const sheetName = `${dayPart} ${label}`.substring(0, 31);
 
           const rows: any[][] = [
@@ -152,7 +158,7 @@ export default function ImportExport({ onImportComplete, children }: Props) {
               String(a.slot <= 15 ? a.slot : a.slot - 15),
               pt?.name || "",
               pt?.sus_card || "",
-              pt?.dob ? format(parseISO(pt.dob), "dd/MM/yyyy") : "",
+              pt?.dob ? formatDateBR(pt.dob) : "",
               pt?.psf || "",
               a.reason || "",
             ]);
@@ -169,7 +175,7 @@ export default function ImportExport({ onImportComplete, children }: Props) {
         "Nº": i + 1,
         "Nome": p.name,
         "Cartão SUS": p.sus_card || "",
-        "Data Nascimento": p.dob ? format(parseISO(p.dob), "dd/MM/yyyy") : "",
+        "Data Nascimento": p.dob ? formatDateBR(p.dob) : "",
         "PSF / UBS": p.psf || "",
         "Observações": p.observations || "",
       }));

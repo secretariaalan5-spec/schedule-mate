@@ -22,9 +22,11 @@ interface Props {
   onRefresh?: () => void;
   onUpdateTime?: (id: string, time: string) => void;
   onUpdateAppointment?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
+  preselectedPatient?: Patient | null;
+  onClearPreselectedPatient?: () => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment }: Props) {
+export default function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment, preselectedPatient, onClearPreselectedPatient }: Props) {
   const isMobile = useIsMobile();
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
 
@@ -91,7 +93,8 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
   const closeDialog = useCallback(() => {
     setDialogSlot(null);
     setEditAppointment(null);
-  }, []);
+    onClearPreselectedPatient?.();
+  }, [onClearPreselectedPatient]);
 
   useEffect(() => {
     // Close dialog PROPERLY (set open=false) before any key change, so Radix
@@ -272,6 +275,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
         onPatientsChanged={onPatientsChanged}
         editAppointment={editAppointment}
         onUpdate={onUpdateAppointment}
+        preselectedPatient={preselectedPatient}
       />
     </div>
   );
