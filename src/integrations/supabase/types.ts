@@ -86,45 +86,45 @@ export type Database = {
         Row: {
           created_at: string
           dob: string | null
+          dum: string | null
+          gestational_notes: string | null
           id: string
           is_pregnant: boolean | null
-          dum: string | null
-          risk_classification: string | null
-          gestational_notes: string | null
           legacy_id: string | null
           name: string
           observations: string | null
           psf: string | null
+          risk_classification: string | null
           sus_card: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           dob?: string | null
+          dum?: string | null
+          gestational_notes?: string | null
           id?: string
           is_pregnant?: boolean | null
-          dum?: string | null
-          risk_classification?: string | null
-          gestational_notes?: string | null
           legacy_id?: string | null
           name: string
           observations?: string | null
           psf?: string | null
+          risk_classification?: string | null
           sus_card?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           dob?: string | null
+          dum?: string | null
+          gestational_notes?: string | null
           id?: string
           is_pregnant?: boolean | null
-          dum?: string | null
-          risk_classification?: string | null
-          gestational_notes?: string | null
           legacy_id?: string | null
           name?: string
           observations?: string | null
           psf?: string | null
+          risk_classification?: string | null
           sus_card?: string | null
           updated_at?: string
         }
@@ -216,10 +216,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      appointment_counts_by_date: {
+        Row: {
+          count: number | null
+          date: string | null
+        }
+        Relationships: []
+      }
+      health_unit_patient_counts: {
+        Row: {
+          name: string | null
+          patient_count: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       is_approved_member: { Args: { _user_id: string }; Returns: boolean }
+      merge_patients: {
+        Args: { duplicate_id: string; master_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
