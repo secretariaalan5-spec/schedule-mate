@@ -1,15 +1,15 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
 const PatientManager = lazy(() => import("@/components/PatientManager"));
 const HealthUnitsManager = lazy(() => import("@/components/HealthUnitsManager"));
-const MetricsDashboard = lazy(() => import("@/components/MetricsDashboard"));
+import { lazy, Suspense } from "react";
 import HeaderMenu from "@/components/HeaderMenu";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building, BarChart3 } from "lucide-react";
+import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building } from "lucide-react";
 import type { Patient } from "@/hooks/useScheduling";
 import {
   Select,
