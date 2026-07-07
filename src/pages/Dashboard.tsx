@@ -1,15 +1,15 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
 const PatientManager = lazy(() => import("@/components/PatientManager"));
 const HealthUnitsManager = lazy(() => import("@/components/HealthUnitsManager"));
-const MetricsDashboard = lazy(() => import("@/components/MetricsDashboard"));
+import { lazy, Suspense } from "react";
 import HeaderMenu from "@/components/HeaderMenu";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building, BarChart3 } from "lucide-react";
+import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building } from "lucide-react";
 import type { Patient } from "@/hooks/useScheduling";
 import {
   Select,
@@ -28,7 +28,7 @@ import { exportDayExcel } from "@/lib/exportUtils";
 
 
 
-type Tab = "agenda" | "metricas" | "pacientes" | "unidades";
+type Tab = "agenda" | "pacientes" | "unidades";
 
 export default function Dashboard() {
   const sched = useScheduling();
@@ -141,7 +141,6 @@ export default function Dashboard() {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-5 h-5" /> },
-    { id: "metricas", label: "Métricas", icon: <BarChart3 className="w-5 h-5" /> },
     { id: "pacientes", label: "Pacientes", icon: <Users className="w-5 h-5" /> },
     { id: "unidades", label: "Unidades", icon: <Building className="w-5 h-5" /> },
   ];
@@ -385,14 +384,6 @@ export default function Dashboard() {
               <PatientManager
                 onGetHistory={sched.getPatientHistory}
               />
-            </Suspense>
-          </div>
-        )}
-
-        {tab === "metricas" && (
-          <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
-            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
-              <MetricsDashboard />
             </Suspense>
           </div>
         )}
