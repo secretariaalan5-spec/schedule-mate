@@ -17,13 +17,11 @@ export default defineConfig(({ mode }) => ({
     react(), 
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // Official cleanup worker: replaces and unregisters the stale worker that
+      // has been serving outdated bundles in the Lovable preview.
+      selfDestroying: true,
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-      workbox: {
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
-      },
       manifest: {
         name: 'Saúde da Mulher — Agendamento',
         short_name: 'Saúde Mulher',
