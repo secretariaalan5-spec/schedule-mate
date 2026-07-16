@@ -6,6 +6,7 @@ import SlotPanel from "@/components/SlotPanel";
 const PatientManager = lazy(() => import("@/components/PatientManager"));
 const HealthUnitsManager = lazy(() => import("@/components/HealthUnitsManager"));
 import HeaderMenu from "@/components/HeaderMenu";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building, HandCoins, Wrench } from "lucide-react";
@@ -206,25 +207,27 @@ export default function Dashboard() {
             {(!isMobile || !mobileShowSlots) && (
               <div className={`${isMobile ? "flex-1" : "w-[320px] border-r"} bg-card flex-shrink-0 flex flex-col overflow-auto p-4 md:p-6 animate-in fade-in slide-in-from-left-4 duration-300`}>
                 <div className="bg-muted/30 rounded-2xl p-2 mb-4 border border-border/50 shadow-inner">
-                  <CalendarUI
-                    mode="single"
-                    selected={calendarDate}
-                    onSelect={handleCalendarSelect}
-                    locale={ptBR}
-                    modifiers={{
-                      occLow: occupancyModifiers.low,
-                      occMedium: occupancyModifiers.medium,
-                      occHigh: occupancyModifiers.high,
-                      occFull: occupancyModifiers.full,
-                    }}
-                    modifiersClassNames={{
-                      occLow: "occLow",
-                      occMedium: "occMedium",
-                      occHigh: "occHigh",
-                      occFull: "occFull",
-                    }}
-                    className="w-full"
-                  />
+                  <ErrorBoundary>
+                    <CalendarUI
+                      mode="single"
+                      selected={calendarDate}
+                      onSelect={handleCalendarSelect}
+                      locale={ptBR}
+                      modifiers={{
+                        occLow: occupancyModifiers.low.filter(d => d instanceof Date && !isNaN(d.getTime())),
+                        occMedium: occupancyModifiers.medium.filter(d => d instanceof Date && !isNaN(d.getTime())),
+                        occHigh: occupancyModifiers.high.filter(d => d instanceof Date && !isNaN(d.getTime())),
+                        occFull: occupancyModifiers.full.filter(d => d instanceof Date && !isNaN(d.getTime())),
+                      }}
+                      modifiersClassNames={{
+                        occLow: "occLow",
+                        occMedium: "occMedium",
+                        occHigh: "occHigh",
+                        occFull: "occFull",
+                      }}
+                      className="w-full"
+                    />
+                  </ErrorBoundary>
                   {/* Legend */}
                   <div className="mt-2 px-2 pb-1 flex items-center justify-between gap-1 text-[9px] font-medium text-muted-foreground">
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400/70"></span>Baixa</span>
