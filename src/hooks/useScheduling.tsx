@@ -11,6 +11,9 @@ export interface Patient {
   legacy_id: string | null;
   name: string;
   sus_card: string | null;
+  cpf: string | null;
+  acs: string | null;
+  phone: string | null;
   dob: string | null;
   psf: string | null;
   observations: string | null;

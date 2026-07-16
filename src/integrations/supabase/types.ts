@@ -177,6 +177,9 @@ export type Database = {
           psf: string | null
           risk_classification: string | null
           sus_card: string | null
+          cpf: string | null
+          acs: string | null
+          phone: string | null
           updated_at: string
         }
         Insert: {
@@ -192,6 +195,9 @@ export type Database = {
           psf?: string | null
           risk_classification?: string | null
           sus_card?: string | null
+          cpf?: string | null
+          acs?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Update: {
@@ -207,6 +213,9 @@ export type Database = {
           psf?: string | null
           risk_classification?: string | null
           sus_card?: string | null
+          cpf?: string | null
+          acs?: string | null
+          phone?: string | null
           updated_at?: string
         }
         Relationships: []
