@@ -32,6 +32,8 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { useHealthUnits } from "@/hooks/useHealthUnits";
 import MergePatientsDialog from "@/components/MergePatientsDialog";
+import { useLoans } from "@/hooks/useLoans";
+import { HandCoins } from "lucide-react";
 
 interface Props {
   onGetHistory: (id: string) => Promise<Appointment[]>;
@@ -437,6 +439,7 @@ export default function PatientManager({ onGetHistory }: Props) {
               <p><span className="font-medium">Nascimento:</span> {historyPatient.dob ? formatDateBR(historyPatient.dob) : "—"}</p>
             </div>
           )}
+          {historyPatient && <PatientLoansSection patientId={historyPatient.id} />}
           <ScrollArea className="max-h-80">
             {history.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Sem consultas registradas</p>
