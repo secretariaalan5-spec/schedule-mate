@@ -78,6 +78,7 @@ export default function Dashboard() {
     const full: Date[] = [];
     Object.entries(sched.appointmentCounts).forEach(([d, count]) => {
       const date = new Date(d + "T12:00:00");
+      if (isNaN(date.getTime())) return;
       const ratio = count / total;
       if (count >= total) full.push(date);
       else if (ratio >= 0.8) high.push(date);
