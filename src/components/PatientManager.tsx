@@ -32,6 +32,35 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { useHealthUnits } from "@/hooks/useHealthUnits";
 import MergePatientsDialog from "@/components/MergePatientsDialog";
+import { useLoans } from "@/hooks/useLoans";
+import { HandCoins } from "lucide-react";
+
+function PatientLoansSection({ patientId }: { patientId: string }) {
+  const { data = [] } = useLoans(patientId);
+  if (data.length === 0) return null;
+  const active = data.filter((l) => !l.returned_at);
+  const past = data.filter((l) => l.returned_at);
+  return (
+    <div className="mb-3 p-3 rounded-lg border bg-primary/5 space-y-2">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+        <HandCoins className="w-3.5 h-3.5" /> Empréstimos
+      </div>
+      {active.map((l) => (
+        <div key={l.id} className="text-xs flex flex-wrap gap-x-3">
+          <span className="font-semibold text-emerald-700">Ativo:</span>
+          <span className="font-mono">{l.glucometer?.code}</span>
+          <span>Devolução: {formatDateBR(l.expected_return_date)}</span>
+        </div>
+      ))}
+      {past.length > 0 && (
+        <div className="text-xs text-muted-foreground">
+          Histórico: {past.length} devolução(ões) — última em{" "}
+          {formatDateBR(past[past.length - 1].returned_at as string)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   onGetHistory: (id: string) => Promise<Appointment[]>;
@@ -437,6 +466,7 @@ export default function PatientManager({ onGetHistory }: Props) {
               <p><span className="font-medium">Nascimento:</span> {historyPatient.dob ? formatDateBR(historyPatient.dob) : "—"}</p>
             </div>
           )}
+          {historyPatient && <PatientLoansSection patientId={historyPatient.id} />}
           <ScrollArea className="max-h-80">
             {history.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Sem consultas registradas</p>

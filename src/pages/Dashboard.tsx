@@ -5,11 +5,12 @@ import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
 const PatientManager = lazy(() => import("@/components/PatientManager"));
 const HealthUnitsManager = lazy(() => import("@/components/HealthUnitsManager"));
+const LoanManager = lazy(() => import("@/components/LoanManager"));
 import HeaderMenu from "@/components/HeaderMenu";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building, HandCoins, Wrench } from "lucide-react";
+import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building, HandCoins } from "lucide-react";
 import type { Patient } from "@/hooks/useScheduling";
 import {
   Select,
@@ -405,20 +406,10 @@ export default function Dashboard() {
         )}
 
         {tab === "emprestimos" && (
-          <div className="flex-1 overflow-auto animate-in fade-in duration-300 p-6 md:p-10 flex items-center justify-center">
-            <div className="max-w-xl w-full text-center bg-card border border-primary/10 rounded-3xl p-8 md:p-12 shadow-sm">
-              <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-primary/10 flex items-center justify-center ring-2 ring-primary/10">
-                <HandCoins className="w-8 h-8 text-primary" />
-              </div>
-              <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 mb-3">
-                <Wrench className="w-3 h-3" />
-                Em produção
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Empréstimos</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Este módulo está sendo desenvolvido. Em breve você poderá registrar e acompanhar empréstimos diretamente por aqui.
-              </p>
-            </div>
+          <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
+            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
+              <LoanManager />
+            </Suspense>
           </div>
         )}
       </div>
