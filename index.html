@@ -40,6 +40,33 @@
       }
     </style>
 
+    <script>
+      // One-time cleanup for browsers left with the previously-broken
+      // service worker/cache that kept re-serving a stale hashed bundle.
+      // Safe no-op if nothing is registered. Reloads at most once
+      // (sessionStorage guard) so there is no reload loop.
+      (function () {
+        if (!('serviceWorker' in navigator)) return;
+        var GUARD = 'pwa-stale-cleanup-done';
+        if (sessionStorage.getItem(GUARD) === '1') return;
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+          var hadStale = regs.length > 0;
+          return Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
+            if (!('caches' in window)) return hadStale;
+            return caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); })).then(function () {
+                return hadStale || keys.length > 0;
+              });
+            });
+          });
+        }).then(function (didCleanup) {
+          sessionStorage.setItem(GUARD, '1');
+          if (didCleanup) window.location.reload();
+        }).catch(function () {
+          sessionStorage.setItem(GUARD, '1');
+        });
+      })();
+    </script>
   </head>
 
   <body>
