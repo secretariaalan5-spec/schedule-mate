@@ -44,6 +44,10 @@ export const exportDayExcel = (selectedDate: string | undefined, appointments: A
   }
 
   const parsedDate = new Date(`${selectedDate}T12:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    toast.error("Data inválida — não foi possível exportar.");
+    return;
+  }
   const formattedDate = capitalizeText(format(parsedDate, "dd/MM/yyyy (EEEE)", { locale: ptBR }));
   
   const sheetRows: any[][] = [

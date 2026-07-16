@@ -46,7 +46,8 @@ function buildSlipHTML(slip: SlipData): string {
 function safeFormatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   try {
-    return format(parseISO(dateStr), "dd/MM/yyyy");
+    const parsed = parseISO(dateStr);
+    return Number.isNaN(parsed.getTime()) ? "Data Inválida" : format(parsed, "dd/MM/yyyy");
   } catch (e) {
     console.error("Invalid date:", dateStr);
     return "Data Inválida";
