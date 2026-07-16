@@ -59,7 +59,11 @@ export default function Dashboard() {
     if (sched.selectedDate) sched.fetchAppointments();
   };
 
-  const calendarDate = sched.selectedDate ? new Date(sched.selectedDate + "T12:00:00") : undefined;
+  const calendarDate = (() => {
+    if (!sched.selectedDate) return undefined;
+    const d = new Date(sched.selectedDate + "T12:00:00");
+    return isNaN(d.getTime()) ? undefined : d;
+  })();
 
   const handleCalendarSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -78,6 +82,7 @@ export default function Dashboard() {
     const full: Date[] = [];
     Object.entries(sched.appointmentCounts).forEach(([d, count]) => {
       const date = new Date(d + "T12:00:00");
+      if (isNaN(date.getTime())) return;
       const ratio = count / total;
       if (count >= total) full.push(date);
       else if (ratio >= 0.8) high.push(date);
