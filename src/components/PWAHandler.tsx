@@ -1,23 +1,30 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { toast } from 'sonner';
+
+const RELOAD_GUARD_KEY = 'pwa-sw-reload-guard';
 
 export default function PWAHandler() {
   const {
     offlineReady: [offlineReady, setOfflineReady],
-    needRefresh: [needRefresh],
+    needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    immediate: true,
-    onRegistered(r) {
-      console.log('SW Registered:', r);
-      void r?.update();
+    // No-op outside production builds (see vite.config.ts `disable`).
+    onRegisteredSW(_url, registration) {
+      if (!registration) return;
+      // Official recommended pattern: periodically ask the browser to
+      // re-check for a new SW in the background. No manual polling of
+      // visibilitychange/controllerchange — that duplicated the library's
+      // own reload logic and could trigger reload loops.
+      setInterval(() => {
+        void registration.update();
+      }, 60 * 60 * 1000); // hourly
     },
     onRegisterError(error) {
-      console.log('SW registration error', error);
+      console.error('SW registration error', error);
     },
   });
-  const isReloading = useRef(false);
 
   useEffect(() => {
     if (offlineReady) {
@@ -30,33 +37,18 @@ export default function PWAHandler() {
   }, [offlineReady, setOfflineReady]);
 
   useEffect(() => {
-    if (needRefresh) {
-      void updateServiceWorker(true);
+    if (!needRefresh) return;
+
+    // Guard against reload loops: only reload once per new SW activation.
+    // updateServiceWorker(true) already reloads the page once the new SW
+    // takes control; we just make sure it can't retrigger itself.
+    if (sessionStorage.getItem(RELOAD_GUARD_KEY) === '1') {
+      setNeedRefresh(false);
+      return;
     }
-  }, [needRefresh, updateServiceWorker]);
-
-  useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
-
-    const reloadWithNewVersion = () => {
-      if (isReloading.current) return;
-      isReloading.current = true;
-      window.location.reload();
-    };
-    const checkForUpdate = () => {
-      if (document.visibilityState !== 'visible') return;
-      void navigator.serviceWorker.getRegistration().then(registration => registration?.update());
-    };
-
-    navigator.serviceWorker.addEventListener('controllerchange', reloadWithNewVersion);
-    document.addEventListener('visibilitychange', checkForUpdate);
-    checkForUpdate();
-
-    return () => {
-      navigator.serviceWorker.removeEventListener('controllerchange', reloadWithNewVersion);
-      document.removeEventListener('visibilitychange', checkForUpdate);
-    };
-  }, []);
+    sessionStorage.setItem(RELOAD_GUARD_KEY, '1');
+    void updateServiceWorker(true);
+  }, [needRefresh, setNeedRefresh, updateServiceWorker]);
 
   return null;
 }

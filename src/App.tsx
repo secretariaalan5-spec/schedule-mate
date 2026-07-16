@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import PWAHandler from "./components/PWAHandler.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 
 const queryClient = new QueryClient({
@@ -26,7 +25,6 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <PWAHandler />
         <Toaster />
         <Sonner />
 
