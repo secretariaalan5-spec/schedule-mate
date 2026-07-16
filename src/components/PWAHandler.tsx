@@ -1,27 +1,23 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { toast } from 'sonner';
-import { Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export default function PWAHandler() {
   const {
     offlineReady: [offlineReady, setOfflineReady],
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [needRefresh],
     updateServiceWorker,
   } = useRegisterSW({
+    immediate: true,
     onRegistered(r) {
       console.log('SW Registered:', r);
+      void r?.update();
     },
     onRegisterError(error) {
       console.log('SW registration error', error);
     },
   });
-
-  const close = () => {
-    setOfflineReady(false);
-    setNeedRefresh(false);
-  };
+  const isReloading = useRef(false);
 
   useEffect(() => {
     if (offlineReady) {
@@ -35,16 +31,32 @@ export default function PWAHandler() {
 
   useEffect(() => {
     if (needRefresh) {
-      toast('Nova versão disponível!', {
-        description: 'Clique para atualizar e obter as melhorias mais recentes.',
-        action: {
-          label: 'Atualizar Agora',
-          onClick: () => updateServiceWorker(true),
-        },
-        duration: 10000,
-      });
+      void updateServiceWorker(true);
     }
   }, [needRefresh, updateServiceWorker]);
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const reloadWithNewVersion = () => {
+      if (isReloading.current) return;
+      isReloading.current = true;
+      window.location.reload();
+    };
+    const checkForUpdate = () => {
+      if (document.visibilityState !== 'visible') return;
+      void navigator.serviceWorker.getRegistration().then(registration => registration?.update());
+    };
+
+    navigator.serviceWorker.addEventListener('controllerchange', reloadWithNewVersion);
+    document.addEventListener('visibilitychange', checkForUpdate);
+    checkForUpdate();
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', reloadWithNewVersion);
+      document.removeEventListener('visibilitychange', checkForUpdate);
+    };
+  }, []);
 
   return null;
 }
