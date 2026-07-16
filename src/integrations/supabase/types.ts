@@ -61,6 +61,87 @@ export type Database = {
           },
         ]
       }
+      glucometer_loans: {
+        Row: {
+          created_at: string
+          expected_return_date: string
+          glucometer_id: string
+          id: string
+          loaned_at: string
+          notes: string | null
+          patient_id: string
+          returned_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expected_return_date: string
+          glucometer_id: string
+          id?: string
+          loaned_at?: string
+          notes?: string | null
+          patient_id: string
+          returned_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expected_return_date?: string
+          glucometer_id?: string
+          id?: string
+          loaned_at?: string
+          notes?: string | null
+          patient_id?: string
+          returned_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "glucometer_loans_glucometer_id_fkey"
+            columns: ["glucometer_id"]
+            isOneToOne: false
+            referencedRelation: "glucometers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "glucometer_loans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      glucometers: {
+        Row: {
+          brand: string | null
+          code: string
+          created_at: string
+          id: string
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       health_units: {
         Row: {
           address: string | null
