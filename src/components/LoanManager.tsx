@@ -55,6 +55,12 @@ import {
   History,
   HardDrive,
   FilterX,
+  Phone,
+  User,
+  MapPin,
+  CalendarDays,
+  CreditCard,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -74,6 +80,13 @@ function daysDiff(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
   const target = new Date(y, (m ?? 1) - 1, d ?? 1);
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/** Formata numero de telefone para link do WhatsApp (remove tudo que não é dígito, adiciona 55 se necessário) */
+function whatsappLink(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
+  return `https://wa.me/${withCountry}`;
 }
 
 export default function LoanManager() {
@@ -96,12 +109,11 @@ export default function LoanManager() {
 
   const active = useMemo(() => loans.filter((l) => !l.returned_at), [loans]);
   const historyList = useMemo(() => loans.filter((l) => l.returned_at), [loans]);
-  
+
   const available = gluc.filter((g) => g.status === "available").length;
   const loanedCount = active.length;
   const overdue = active.filter((l) => daysDiff(l.expected_return_date) < 0);
 
-  // Clear filters helper
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedPsf("all");
@@ -118,9 +130,7 @@ export default function LoanManager() {
         patient?.name.toUpperCase().includes(q) ||
         patientCpf.includes(q) ||
         l.glucometer?.code.toUpperCase().includes(q);
-
       const matchesPsf = selectedPsf === "all" || patient?.psf === selectedPsf;
-
       return matchesSearch && matchesPsf;
     });
   }, [active, searchQuery, selectedPsf]);
@@ -136,9 +146,7 @@ export default function LoanManager() {
         patient?.name.toUpperCase().includes(q) ||
         patientCpf.includes(q) ||
         l.glucometer?.code.toUpperCase().includes(q);
-
       const matchesPsf = selectedPsf === "all" || patient?.psf === selectedPsf;
-
       return matchesSearch && matchesPsf;
     });
   }, [historyList, searchQuery, selectedPsf]);
@@ -158,7 +166,7 @@ export default function LoanManager() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
-      {/* Metrics Header Grid */}
+      {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="p-4 md:p-6 border-b bg-card space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -166,7 +174,7 @@ export default function LoanManager() {
               <HandCoins className="w-5 h-5 text-primary" /> Painel de Empréstimos
             </h1>
             <p className="text-xs text-muted-foreground">
-              Cadastro e controle simplificado de glicosímetros
+              Controle de glicosímetros emprestados às pacientes
             </p>
           </div>
           <Button onClick={() => setOpenNew(true)} className="gap-1.5 shadow-sm">
@@ -174,49 +182,49 @@ export default function LoanManager() {
           </Button>
         </div>
 
+        {/* KPI cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Card className="shadow-none border-emerald-500/20 bg-emerald-500/5">
-            <CardContent className="p-3.5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
                 <PackageCheck className="w-5 h-5 text-emerald-600" />
               </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold text-emerald-600 tracking-tight">{available}</p>
-                <p className="text-xs text-emerald-700/80">Aparelhos Disponíveis</p>
+              <div>
+                <p className="text-2xl font-bold text-emerald-600 tabular-nums">{available}</p>
+                <p className="text-xs text-emerald-700/80 font-medium">Aparelhos Disponíveis</p>
               </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-none border-blue-500/20 bg-blue-500/5">
-            <CardContent className="p-3.5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
                 <HandCoins className="w-5 h-5 text-blue-600" />
               </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold text-blue-600 tracking-tight">{loanedCount}</p>
-                <p className="text-xs text-blue-700/80">Aparelhos Emprestados (Ativos)</p>
+              <div>
+                <p className="text-2xl font-bold text-blue-600 tabular-nums">{loanedCount}</p>
+                <p className="text-xs text-blue-700/80 font-medium">Emprestados (Ativos)</p>
               </div>
             </CardContent>
           </Card>
 
           <Card className="shadow-none border-rose-500/20 bg-rose-500/5">
-            <CardContent className="p-3.5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center flex-shrink-0">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-rose-500/15 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-5 h-5 text-rose-600" />
               </div>
-              <div className="min-w-0">
-                <p className="text-2xl font-bold text-rose-600 tracking-tight">{overdue.length}</p>
-                <p className="text-xs text-rose-700/80">Empréstimos Vencidos</p>
+              <div>
+                <p className="text-2xl font-bold text-rose-600 tabular-nums">{overdue.length}</p>
+                <p className="text-xs text-rose-700/80 font-medium">Empréstimos Vencidos</p>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Simplified Filter Toolbar */}
+      {/* ── Filter toolbar ───────────────────────────────────────────── */}
       <div className="bg-card px-4 md:px-6 py-2.5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          {/* General Search Input */}
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -231,7 +239,6 @@ export default function LoanManager() {
             />
           </div>
 
-          {/* PSF filter dropdown */}
           {activeTab !== "stock" && (
             <Select value={selectedPsf} onValueChange={setSelectedPsf}>
               <SelectTrigger className="w-full md:w-56 h-9 text-xs">
@@ -240,15 +247,12 @@ export default function LoanManager() {
               <SelectContent>
                 <SelectItem value="all">Todas as Unidades (PSF)</SelectItem>
                 {healthUnits.map((u) => (
-                  <SelectItem key={u.id} value={u.name}>
-                    {u.name}
-                  </SelectItem>
+                  <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           )}
 
-          {/* Clear Filters Button */}
           {(searchQuery || selectedPsf !== "all") && (
             <Button
               variant="ghost"
@@ -256,24 +260,20 @@ export default function LoanManager() {
               onClick={clearFilters}
               className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
             >
-              <FilterX className="w-3.5 h-3.5 mr-1" /> Limpar Filtro
+              <FilterX className="w-3.5 h-3.5 mr-1" /> Limpar
             </Button>
           )}
         </div>
 
-        <div className="text-xs text-muted-foreground">
-          {activeTab === "active" && `Mostrando ${filteredActive.length} empréstimo(s)`}
-          {activeTab === "history" && `Mostrando ${filteredHistory.length} devolução(ões)`}
-          {activeTab === "stock" && `Mostrando ${filteredGluc.length} aparelho(s)`}
-        </div>
+        <p className="text-xs text-muted-foreground">
+          {activeTab === "active" && `${filteredActive.length} empréstimo(s)`}
+          {activeTab === "history" && `${filteredHistory.length} devolução(ões)`}
+          {activeTab === "stock" && `${filteredGluc.length} aparelho(s)`}
+        </p>
       </div>
 
-      {/* Main Tabs Container */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="flex-1 flex flex-col overflow-hidden"
-      >
+      {/* ── Tabs ─────────────────────────────────────────────────────── */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
         <div className="bg-card border-b px-4 md:px-6 py-0.5">
           <TabsList className="bg-transparent h-10 p-0 justify-start gap-4">
             <TabsTrigger
@@ -292,7 +292,7 @@ export default function LoanManager() {
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2 text-sm font-medium shadow-none gap-1.5"
             >
               <History className="w-4 h-4" />
-              Histórico de Devoluções
+              Histórico
               <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px]">
                 {historyList.length}
               </Badge>
@@ -303,7 +303,7 @@ export default function LoanManager() {
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2 text-sm font-medium shadow-none gap-1.5"
             >
               <HardDrive className="w-4 h-4" />
-              Estoque de Glicosímetros
+              Estoque
               <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px]">
                 {gluc.length}
               </Badge>
@@ -311,153 +311,211 @@ export default function LoanManager() {
           </TabsList>
         </div>
 
-        {/* Tab 1: Active Loans */}
+        {/* ── Tab 1: Active Loans — CARD GRID ─────────────────────────── */}
         <TabsContent value="active" className="flex-1 overflow-auto p-4 md:p-6 m-0">
           {filteredActive.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 border rounded-xl bg-card border-dashed text-center">
-              <SlidersHorizontal className="w-8 h-8 text-muted-foreground/45 mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhum empréstimo ativo encontrado.</p>
+            <div className="flex flex-col items-center justify-center py-16 border rounded-xl bg-card border-dashed text-center gap-2">
+              <SlidersHorizontal className="w-9 h-9 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">Nenhum empréstimo ativo.</p>
+              <Button variant="outline" size="sm" onClick={() => setOpenNew(true)} className="mt-1 gap-1.5 text-xs">
+                <Plus className="w-3.5 h-3.5" /> Registrar Empréstimo
+              </Button>
             </div>
           ) : (
-            <div className="border rounded-xl bg-card shadow-sm overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/20">
-                    <TableHead className="font-semibold text-xs">Paciente (Dados Gerais)</TableHead>
-                    <TableHead className="font-semibold text-xs">Glicosímetro</TableHead>
-                    <TableHead className="font-semibold text-xs">Datas</TableHead>
-                    <TableHead className="font-semibold text-xs">Situação</TableHead>
-                    <TableHead className="text-center w-28 font-semibold text-xs">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredActive.map((l) => {
-                    const diff = daysDiff(l.expected_return_date);
-                    let statusBadge: React.ReactNode = null;
-                    if (diff < 0) {
-                      statusBadge = (
-                        <Badge className="bg-rose-500/10 text-rose-700 hover:bg-rose-500/10 border-0 flex items-center gap-1 w-fit text-[10px] py-0.5">
-                          <AlertTriangle className="w-3 h-3" /> Vencido ({Math.abs(diff)}d)
-                        </Badge>
-                      );
-                    } else if (diff <= 3) {
-                      statusBadge = (
-                        <Badge className="bg-amber-500/10 text-amber-700 hover:bg-amber-500/10 border-0 flex items-center gap-1 w-fit text-[10px] py-0.5">
-                          <Clock className="w-3 h-3" /> Vence em {diff}d
-                        </Badge>
-                      );
-                    } else {
-                      statusBadge = (
-                        <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 border-0 flex items-center gap-1 w-fit text-[10px] py-0.5">
-                          <CheckCircle2 className="w-3 h-3" /> Em dia
-                        </Badge>
-                      );
-                    }
-                    
-                    const patient = l.patient;
-                    const cpf = (patient as any)?.cpf ? `CPF: ${(patient as any).cpf}` : "";
-                    const sus = patient?.sus_card ? `CNS: ${patient.sus_card}` : "";
-                    const contact = (patient as any)?.phone ? `Tel: ${(patient as any).phone}` : "";
-                    const acs = (patient as any)?.acs ? `ACS: ${(patient as any).acs}` : "";
-                    const psf = patient?.psf ? `PSF: ${patient.psf}` : "";
-                    
-                    const details = [cpf, sus, contact, acs, psf].filter(Boolean).join(" | ");
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filteredActive.map((l) => {
+                const diff = daysDiff(l.expected_return_date);
+                const patient = l.patient;
+                const phone = (patient as any)?.phone as string | undefined;
+                const cpf = (patient as any)?.cpf as string | undefined;
+                const acs = (patient as any)?.acs as string | undefined;
 
-                    return (
-                      <TableRow key={l.id} className="hover:bg-muted/5">
-                        <TableCell>
-                          <div className="font-semibold text-sm text-foreground">{patient?.name ?? "—"}</div>
-                          <div className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{details || "Sem dados adicionais"}</div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-mono font-bold text-xs text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
-                            {l.glucometer?.code ?? "—"}
-                          </span>
-                          {l.glucometer?.brand && (
-                            <span className="text-[10px] text-muted-foreground ml-2">({l.glucometer.brand})</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs">Retirada: {fmtBR(l.loaned_at)}</div>
-                          <div className="text-[10px] text-muted-foreground">Prazo: {fmtBR(l.expected_return_date)}</div>
-                        </TableCell>
-                        <TableCell>{statusBadge}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1 justify-center">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/5"
-                              title="Registrar Devolução"
-                              onClick={() => setReturnLoan(l)}
-                            >
-                              <CheckCircle2 className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                              title="Reimprimir Termo"
-                              onClick={() => printLoanReceipt(l)}
-                            >
-                              <Printer className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/5"
-                              title="Excluir Registro"
-                              onClick={() => setDeleteLoan(l)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                let statusColor = "emerald";
+                let StatusIcon = CheckCircle2;
+                let statusLabel = "Em dia";
+                if (diff < 0) { statusColor = "rose"; StatusIcon = AlertTriangle; statusLabel = `Vencido há ${Math.abs(diff)}d`; }
+                else if (diff <= 3) { statusColor = "amber"; StatusIcon = Clock; statusLabel = `Vence em ${diff}d`; }
+
+                const statusClasses: Record<string, string> = {
+                  emerald: "bg-emerald-500/10 text-emerald-700 border-emerald-200/60",
+                  amber:   "bg-amber-500/10  text-amber-700  border-amber-200/60",
+                  rose:    "bg-rose-500/10   text-rose-700   border-rose-200/60",
+                };
+                const cardBorder: Record<string, string> = {
+                  emerald: "border-l-4 border-l-emerald-400",
+                  amber:   "border-l-4 border-l-amber-400",
+                  rose:    "border-l-4 border-l-rose-400",
+                };
+
+                return (
+                  <Card key={l.id} className={`shadow-sm ${cardBorder[statusColor]} bg-card hover:shadow-md transition-shadow`}>
+                    <CardContent className="p-4 space-y-3">
+                      {/* Row 1: name + status badge */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-primary" />
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm text-foreground truncate leading-tight">
+                              {patient?.name ?? "—"}
+                            </p>
+                            {patient?.psf && (
+                              <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                                <MapPin className="w-2.5 h-2.5" /> {patient.psf}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Badge className={`flex-shrink-0 text-[10px] px-2 py-0.5 border font-medium ${statusClasses[statusColor]}`}>
+                          <StatusIcon className="w-3 h-3 mr-1" />
+                          {statusLabel}
+                        </Badge>
+                      </div>
+
+                      {/* Separator */}
+                      <div className="border-t border-dashed border-border/70" />
+
+                      {/* Row 2: patient details grid */}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
+                        {cpf && (
+                          <div className="flex items-center gap-1 text-muted-foreground col-span-2">
+                            <CreditCard className="w-3 h-3 flex-shrink-0" />
+                            <span className="font-mono">{cpf}</span>
+                          </div>
+                        )}
+                        {phone && (
+                          <a
+                            href={whatsappLink(phone)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 col-span-2 font-medium hover:underline transition-colors"
+                            title="Abrir no WhatsApp"
+                          >
+                            {/* WhatsApp icon via SVG inline */}
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                            </svg>
+                            {phone}
+                          </a>
+                        )}
+                        {acs && (
+                          <div className="flex items-center gap-1 text-muted-foreground col-span-2">
+                            <Activity className="w-3 h-3 flex-shrink-0" />
+                            <span>ACS: {acs}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Row 3: Glucometer info */}
+                      <div className="flex items-center justify-between bg-muted/40 rounded-lg px-3 py-2">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Glicosímetro</p>
+                          <p className="font-mono font-bold text-sm text-primary">{l.glucometer?.code ?? "—"}</p>
+                          {l.glucometer?.brand && (
+                            <p className="text-[10px] text-muted-foreground">{l.glucometer.brand}</p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Prazo</p>
+                          <p className="flex items-center gap-1 text-xs font-medium text-foreground">
+                            <CalendarDays className="w-3 h-3 text-muted-foreground" />
+                            {fmtBR(l.expected_return_date)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">Saída: {fmtBR(l.loaned_at)}</p>
+                        </div>
+                      </div>
+
+                      {/* Notes */}
+                      {l.notes && (
+                        <p className="text-[11px] text-muted-foreground italic border-l-2 border-muted pl-2">{l.notes}</p>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-8 text-xs gap-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+                          onClick={() => setReturnLoan(l)}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Devolver
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          title="Reimprimir Recibo"
+                          onClick={() => printLoanReceipt(l)}
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/5 hover:border-destructive/40"
+                          title="Excluir"
+                          onClick={() => setDeleteLoan(l)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
 
-        {/* Tab 2: Loan History */}
+        {/* ── Tab 2: History — TABLE ───────────────────────────────────── */}
         <TabsContent value="history" className="flex-1 overflow-auto p-4 md:p-6 m-0">
           {filteredHistory.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 border rounded-xl bg-card border-dashed text-center">
-              <SlidersHorizontal className="w-8 h-8 text-muted-foreground/45 mb-2" />
-              <p className="text-sm text-muted-foreground">Nenhuma devolução encontrada.</p>
+            <div className="flex flex-col items-center justify-center py-16 border rounded-xl bg-card border-dashed text-center gap-2">
+              <History className="w-9 h-9 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">Nenhuma devolução registrada.</p>
             </div>
           ) : (
             <div className="border rounded-xl bg-card shadow-sm overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/20">
-                    <TableHead className="font-semibold text-xs">Paciente (Dados Gerais)</TableHead>
+                    <TableHead className="font-semibold text-xs">Paciente</TableHead>
+                    <TableHead className="font-semibold text-xs">Contato</TableHead>
                     <TableHead className="font-semibold text-xs">Glicosímetro</TableHead>
                     <TableHead className="font-semibold text-xs">Retirado em</TableHead>
                     <TableHead className="font-semibold text-xs">Devolvido em</TableHead>
-                    <TableHead className="font-semibold text-xs">Status</TableHead>
                     <TableHead className="text-center w-20 font-semibold text-xs">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredHistory.map((l) => {
                     const patient = l.patient;
-                    const cpf = (patient as any)?.cpf ? `CPF: ${(patient as any).cpf}` : "";
-                    const sus = patient?.sus_card ? `CNS: ${patient.sus_card}` : "";
-                    const contact = (patient as any)?.phone ? `Tel: ${(patient as any).phone}` : "";
-                    const acs = (patient as any)?.acs ? `ACS: ${(patient as any).acs}` : "";
-                    const psf = patient?.psf ? `PSF: ${patient.psf}` : "";
-                    
-                    const details = [cpf, sus, contact, acs, psf].filter(Boolean).join(" | ");
-
+                    const phone = (patient as any)?.phone as string | undefined;
                     return (
                       <TableRow key={l.id} className="hover:bg-muted/5">
                         <TableCell>
-                          <div className="font-semibold text-sm text-foreground">{patient?.name ?? "—"}</div>
-                          <div className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{details || "Sem dados adicionais"}</div>
+                          <div className="font-semibold text-sm">{patient?.name ?? "—"}</div>
+                          {patient?.psf && (
+                            <div className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                              <MapPin className="w-2.5 h-2.5" /> {patient.psf}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {phone ? (
+                            <a
+                              href={whatsappLink(phone)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-medium hover:underline text-xs transition-colors"
+                              title="Abrir no WhatsApp"
+                            >
+                              <Phone className="w-3 h-3" /> {phone}
+                            </a>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded border">
@@ -472,17 +530,12 @@ export default function LoanManager() {
                           {fmtBR(l.returned_at)}
                         </TableCell>
                         <TableCell>
-                          <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 border-0 text-[10px] py-0.5">
-                            Devolvido
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           <div className="flex gap-1 justify-center">
                             <Button
                               size="icon"
                               variant="ghost"
                               className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                              title="Reimprimir Termo"
+                              title="Reimprimir Recibo"
                               onClick={() => printLoanReceipt(l)}
                             >
                               <Printer className="w-4 h-4" />
@@ -491,7 +544,7 @@ export default function LoanManager() {
                               size="icon"
                               variant="ghost"
                               className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/5"
-                              title="Excluir Registro"
+                              title="Excluir"
                               onClick={() => setDeleteLoan(l)}
                             >
                               <Trash2 className="w-4 h-4" />
@@ -507,20 +560,17 @@ export default function LoanManager() {
           )}
         </TabsContent>
 
-        {/* Tab 3: Glucometers Stock Management */}
+        {/* ── Tab 3: Glucometers Stock ─────────────────────────────────── */}
         <TabsContent value="stock" className="flex-1 overflow-auto p-4 md:p-6 m-0 space-y-6">
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Add Glucometer Card Form */}
             <div className="md:col-span-1">
               <AddGlucometerCard />
             </div>
-
-            {/* Glucometer List Table */}
             <div className="md:col-span-2">
               <div className="border rounded-xl bg-card shadow-sm overflow-hidden">
                 <div className="p-4 border-b bg-muted/15">
                   <h3 className="font-semibold text-sm">Aparelhos no Inventário</h3>
-                  <p className="text-xs text-muted-foreground">Cadastre novos aparelhos ao lado e consulte o status atual</p>
+                  <p className="text-xs text-muted-foreground">Status atual de todos os glicosímetros cadastrados</p>
                 </div>
                 <Table>
                   <TableHeader>
@@ -544,9 +594,7 @@ export default function LoanManager() {
                         <TableRow key={g.id} className="hover:bg-muted/10">
                           <TableCell className="font-mono font-semibold text-sm text-foreground">{g.code}</TableCell>
                           <TableCell className="text-xs font-medium">{g.brand ?? "—"}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                            {g.notes ?? "—"}
-                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{g.notes ?? "—"}</TableCell>
                           <TableCell>
                             {g.status === "available" ? (
                               <Badge className="bg-emerald-500/10 text-emerald-700 border-0 text-[10px]">Disponível</Badge>
@@ -577,7 +625,7 @@ export default function LoanManager() {
         </TabsContent>
       </Tabs>
 
-      {/* New Loan dialog */}
+      {/* ── New Loan Dialog ─────────────────────────────────────────── */}
       <NewLoanDialog
         open={openNew}
         onOpenChange={setOpenNew}
@@ -587,7 +635,7 @@ export default function LoanManager() {
         }}
       />
 
-      {/* Return confirmation dialog */}
+      {/* ── Return confirmation dialog ──────────────────────────────── */}
       <AlertDialog open={!!returnLoan} onOpenChange={(o) => !o && setReturnLoan(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -604,14 +652,13 @@ export default function LoanManager() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete confirmation dialog */}
+      {/* ── Delete confirmation dialog ──────────────────────────────── */}
       <AlertDialog open={!!deleteLoan} onOpenChange={(o) => !o && setDeleteLoan(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir empréstimo</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. Se o empréstimo estiver ativo, o aparelho voltará
-              para disponível.
+              Esta ação não pode ser desfeita. Se o empréstimo estiver ativo, o aparelho voltará para disponível.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -624,7 +671,7 @@ export default function LoanManager() {
   );
 }
 
-// Inline card for adding a new Glucometer device
+// ─── AddGlucometerCard ───────────────────────────────────────────────────────
 function AddGlucometerCard() {
   const { add } = useGlucometers();
   const [code, setCode] = useState("");
@@ -632,21 +679,16 @@ function AddGlucometerCard() {
   const [notes, setNotes] = useState("");
 
   const submit = async () => {
-    if (!code.trim()) {
-      toast.error("Informe o código do aparelho");
-      return;
-    }
+    if (!code.trim()) { toast.error("Informe o código do aparelho"); return; }
     await add.mutateAsync({ code, brand, notes });
-    setCode("");
-    setBrand("");
-    setNotes("");
+    setCode(""); setBrand(""); setNotes("");
   };
 
   return (
     <Card className="border-border bg-card shadow-sm">
       <CardHeader>
         <CardTitle className="text-sm font-semibold">Novo Aparelho</CardTitle>
-        <CardDescription className="text-xs">Registre um novo glicosímetro no inventário geral da unidade</CardDescription>
+        <CardDescription className="text-xs">Registre um novo glicosímetro no inventário</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
@@ -669,7 +711,7 @@ function AddGlucometerCard() {
   );
 }
 
-// Form logic for registering a new loan
+// ─── NewLoanDialog ────────────────────────────────────────────────────────────
 function NewLoanDialog({
   open,
   onOpenChange,
@@ -684,7 +726,6 @@ function NewLoanDialog({
   const available = (glucQ.data ?? []).filter((g) => g.status === "available");
   const { data: healthUnits = [] } = useHealthUnits();
 
-  // Patient search state
   const [name, setName] = useState("");
   const [susCard, setSusCard] = useState("");
   const [cpf, setCpf] = useState("");
@@ -695,18 +736,15 @@ function NewLoanDialog({
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showResults, setShowResults] = useState(false);
 
-  // Loan fields
   const [glucId, setGlucId] = useState("");
   const [expected, setExpected] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Debounced search
   const debouncedSearch = useDebounce(name, 250);
   const effectiveSearch = debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : "";
   const { patients: searchResults, isLoading: isSearching } = usePatients(effectiveSearch);
 
-  // Sort results: exact > starts-with > contains
   const filtered = useMemo(() => {
     if (!effectiveSearch) return [];
     const q = effectiveSearch.toUpperCase();
@@ -722,22 +760,11 @@ function NewLoanDialog({
       .slice(0, 12);
   }, [searchResults, effectiveSearch]);
 
-  // Reset everything when dialog closes
   useEffect(() => {
     if (!open) {
-      setName("");
-      setSusCard("");
-      setCpf("");
-      setAcs("");
-      setPhone("");
-      setDob("");
-      setPsf("");
-      setSelectedPatient(null);
-      setShowResults(false);
-      setGlucId("");
-      setExpected("");
-      setNotes("");
-      setSaving(false);
+      setName(""); setSusCard(""); setCpf(""); setAcs(""); setPhone("");
+      setDob(""); setPsf(""); setSelectedPatient(null); setShowResults(false);
+      setGlucId(""); setExpected(""); setNotes(""); setSaving(false);
     }
   }, [open]);
 
@@ -778,20 +805,11 @@ function NewLoanDialog({
   };
 
   const submit = async () => {
-    if (!name.trim()) {
-      toast.error("Informe o nome do paciente");
-      return;
-    }
-    if (!glucId || !expected) {
-      toast.error("Preencha o glicosímetro e a data de devolução");
-      return;
-    }
+    if (!name.trim()) { toast.error("Informe o nome do paciente"); return; }
+    if (!glucId || !expected) { toast.error("Preencha o glicosímetro e a data de devolução"); return; }
     setSaving(true);
-
     try {
       let patientId = selectedPatient?.id;
-
-      // If name changed or no patient selected → create new patient
       if (!patientId || name.trim().toUpperCase() !== selectedPatient?.name.toUpperCase()) {
         const { data, error } = await (supabase as any)
           .from("patients")
@@ -806,15 +824,9 @@ function NewLoanDialog({
           })
           .select("id")
           .single();
-
-        if (error) {
-          toast.error("Erro ao cadastrar paciente: " + error.message);
-          setSaving(false);
-          return;
-        }
+        if (error) { toast.error("Erro ao cadastrar paciente: " + error.message); setSaving(false); return; }
         patientId = data.id;
       } else {
-        // Patient exists — update changed fields
         const updates: Record<string, string | null> = {};
         if (susCard.trim() !== (selectedPatient.sus_card || "")) updates.sus_card = susCard.trim() || null;
         if (cpf.trim() !== ((selectedPatient as any).cpf || "")) updates.cpf = cpf.trim() || null;
@@ -826,7 +838,6 @@ function NewLoanDialog({
           await (supabase as any).from("patients").update(updates).eq("id", patientId);
         }
       }
-
       const loan = await create.mutateAsync({
         patient_id: patientId!,
         glucometer_id: glucId,
@@ -834,11 +845,8 @@ function NewLoanDialog({
         notes: notes.trim() || null,
       });
       onCreated(loan);
-    } catch {
-      /* errors already toasted by mutateAsync */
-    } finally {
-      setSaving(false);
-    }
+    } catch { /* errors already toasted by mutateAsync */ }
+    finally { setSaving(false); }
   };
 
   return (
@@ -847,13 +855,13 @@ function NewLoanDialog({
         <DialogHeader>
           <DialogTitle>Novo Empréstimo</DialogTitle>
           <DialogDescription>
-            Digite o nome da paciente. Se ela já existir no cadastro, selecione na lista. Se não
-            existir, preencha os dados e ela será cadastrada automaticamente.
+            Digite o nome da paciente. Se ela já existir, selecione na lista. Caso contrário, preencha
+            os dados abaixo e ela será cadastrada automaticamente ao salvar.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Patient name with live search */}
+          {/* ── Patient name with live search ── */}
           <div className="space-y-1.5 relative">
             <Label className="text-xs font-semibold uppercase tracking-wide">Nome da Paciente</Label>
             <div className="relative">
@@ -862,25 +870,18 @@ function NewLoanDialog({
                 className="pl-9"
                 placeholder="Digite o nome para buscar ou cadastrar..."
                 value={name}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setName(val);
-                  setShowResults(true);
-                  if (!val) setSelectedPatient(null);
-                }}
+                onChange={(e) => { setName(e.target.value); setShowResults(true); if (!e.target.value) setSelectedPatient(null); }}
                 onFocus={() => { if (name) setShowResults(true); }}
                 onBlur={() => setTimeout(() => setShowResults(false), 150)}
               />
             </div>
-
-            {/* Dropdown suggestions */}
             {showResults && effectiveSearch && (
               <ScrollArea className="absolute z-50 top-full left-0 right-0 bg-background border rounded-md shadow-lg mt-1 max-h-56">
                 {isSearching ? (
                   <div className="px-3 py-4 text-sm text-center text-muted-foreground">Buscando...</div>
                 ) : filtered.length === 0 ? (
                   <div className="px-3 py-4 text-sm text-center text-muted-foreground">
-                    Paciente não encontrada. Preencha os dados abaixo e ela será cadastrada ao salvar.
+                    Paciente não encontrada — preencha os dados abaixo para cadastrá-la.
                   </div>
                 ) : (
                   filtered.map((p) => {
@@ -899,13 +900,9 @@ function NewLoanDialog({
                             )}
                             {p.psf && <span className="text-xs text-muted-foreground">({p.psf})</span>}
                           </div>
-                          {p.dob && (
-                            <span className="text-xs text-muted-foreground mt-0.5">Nasc: {fmtBR(p.dob)}</span>
-                          )}
+                          {p.dob && <span className="text-xs text-muted-foreground mt-0.5">Nasc: {fmtBR(p.dob)}</span>}
                         </div>
-                        {p.sus_card && (
-                          <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>
-                        )}
+                        {p.sus_card && <span className="text-xs text-muted-foreground font-mono">{p.sus_card}</span>}
                       </div>
                     );
                   })
@@ -914,60 +911,43 @@ function NewLoanDialog({
             )}
           </div>
 
-          {/* Patient details */}
+          {/* ── Patient details ── */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide">Cartão SUS</Label>
-              <Input
-                placeholder="Nº do cartão SUS"
-                value={susCard}
-                onChange={(e) => setSusCard(e.target.value)}
-              />
+              <Input placeholder="Nº do cartão SUS" value={susCard} onChange={(e) => setSusCard(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide">CPF</Label>
-              <Input
-                placeholder="000.000.000-00"
-                value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
-              />
+              <Input placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(e.target.value)} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold uppercase tracking-wide">Contato / Telefone</Label>
-              <Input
-                placeholder="(00) 00000-0000"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
+              <Label className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1">
+                <svg className="w-3 h-3 text-emerald-600" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                WhatsApp / Telefone
+              </Label>
+              <Input placeholder="(00) 00000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide">ACS (Agente Comunitário)</Label>
-              <Input
-                placeholder="Nome do ACS"
-                value={acs}
-                onChange={(e) => setAcs(e.target.value)}
-              />
+              <Input placeholder="Nome do ACS" value={acs} onChange={(e) => setAcs(e.target.value)} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide">Data de Nascimento</Label>
-              <Input
-                type="date"
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-              />
+              <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide">PSF / UBS</Label>
               <Select value={psf} onValueChange={setPsf}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar unidade..." />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecionar unidade..." /></SelectTrigger>
                 <SelectContent>
                   {healthUnits.map((u) => (
                     <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
@@ -979,20 +959,16 @@ function NewLoanDialog({
 
           <hr className="border-border" />
 
-          {/* Loan details */}
+          {/* ── Loan details ── */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase tracking-wide">
               Glicosímetro disponível ({available.length})
             </Label>
             <Select value={glucId} onValueChange={setGlucId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecionar glicosímetro" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Selecionar glicosímetro" /></SelectTrigger>
               <SelectContent>
                 {available.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">
-                    Nenhum aparelho disponível
-                  </div>
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum aparelho disponível</div>
                 )}
                 {available.map((g) => (
                   <SelectItem key={g.id} value={g.id}>
@@ -1004,9 +980,7 @@ function NewLoanDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide">
-              Data prevista de devolução
-            </Label>
+            <Label className="text-xs font-semibold uppercase tracking-wide">Data prevista de devolução</Label>
             <Input type="date" value={expected} onChange={(e) => setExpected(e.target.value)} />
           </div>
 
@@ -1024,7 +998,7 @@ function NewLoanDialog({
   );
 }
 
-// Return confirmation dialog
+// ─── ReturnConfirm ────────────────────────────────────────────────────────────
 function ReturnConfirm({ loan, onDone }: { loan: Loan | null; onDone: () => void }) {
   const { returnLoan } = useLoans();
   return (
@@ -1041,7 +1015,7 @@ function ReturnConfirm({ loan, onDone }: { loan: Loan | null; onDone: () => void
   );
 }
 
-// Delete confirmation dialog
+// ─── DeleteConfirm ────────────────────────────────────────────────────────────
 function DeleteConfirm({ loan, onDone }: { loan: Loan | null; onDone: () => void }) {
   const { remove } = useLoans();
   return (
