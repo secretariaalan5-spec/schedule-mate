@@ -1,16 +1,35 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
+import Sidebar from "@/components/Sidebar";
+import HeaderMenu from "@/components/HeaderMenu";
 const PatientManager = lazy(() => import("@/components/PatientManager"));
 const HealthUnitsManager = lazy(() => import("@/components/HealthUnitsManager"));
 const LoanManager = lazy(() => import("@/components/LoanManager"));
-import HeaderMenu from "@/components/HeaderMenu";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
-import { CalendarDays, Users, ChevronLeft, Download, Filter, X, Building, HandCoins } from "lucide-react";
+import { 
+  CalendarDays, 
+  Users, 
+  ChevronLeft, 
+  Download, 
+  Filter, 
+  X, 
+  Building, 
+  HandCoins, 
+  Sun, 
+  Moon,
+  Search,
+  Bell,
+  Mail,
+  Plus,
+  Menu,
+  LogOut
+} from "lucide-react";
 import type { Patient } from "@/hooks/useScheduling";
 import {
   Select,
@@ -19,25 +38,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format, isSameDay } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { DEFAULT_SHIFTS, useShifts } from "@/hooks/useShifts";
-import logo from "@/assets/logo.png";
 import { exportDayExcel } from "@/lib/exportUtils";
+import { useAuth } from "@/hooks/useAuth";
 
-
-
-type Tab = "agenda" | "pacientes" | "unidades" | "emprestimos";
+type Tab = "dashboard" | "agenda" | "pacientes" | "unidades" | "emprestimos" | "menu";
 
 export default function Dashboard() {
   const sched = useScheduling();
+  const { signOut } = useAuth();
   const { data: shifts = DEFAULT_SHIFTS } = useShifts();
   const [tab, setTab] = useState<Tab>("agenda");
   const [mobileShowSlots, setMobileShowSlots] = useState(false);
   const isMobile = useIsMobile();
   const [preselectedPatient, setPreselectedPatient] = useState<Patient | null>(null);
+
+  // Active shift for mobile view
+  const [mobileShift, setMobileShift] = useState<"morning" | "afternoon">("morning");
 
   const queryClient = useQueryClient();
 
@@ -46,12 +67,56 @@ export default function Dashboard() {
   const [filterType, setFilterType] = useState<string>("all");
   const [filterPrinted, setFilterPrinted] = useState<string>("all");
 
-  // Reset filters when switching dates so stale filters don't hide appointments
+  // Reset filters when date changes
   useEffect(() => {
     setFilterPsf("all");
     setFilterType("all");
     setFilterPrinted("all");
   }, [sched.selectedDate]);
+
+  // Mobile horizontal scroll date picker memo
+  const mobileDays = useMemo(() => {
+    if (!sched.selectedDate) return [];
+    const baseDate = new Date(sched.selectedDate + "T12:00:00");
+    const dayOfWeek = baseDate.getDay();
+    const startOfWeek = new Date(baseDate);
+    startOfWeek.setDate(baseDate.getDate() - dayOfWeek);
+    
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + i);
+      const dateStr = format(d, "yyyy-MM-dd");
+      
+      const labels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+      
+      return {
+        dateStr,
+        dayNum: d.getDate(),
+        dayLabel: labels[i],
+        isOccupied: (sched.appointmentCounts[dateStr] ?? 0) > 0
+      };
+    });
+  }, [sched.selectedDate, sched.appointmentCounts]);
+
+  const currentMonthLabel = useMemo(() => {
+    if (!sched.selectedDate) return "";
+    const d = new Date(sched.selectedDate + "T12:00:00");
+    return format(d, "MMMM yyyy", { locale: ptBR });
+  }, [sched.selectedDate]);
+
+  const handlePrevWeek = () => {
+    if (!sched.selectedDate) return;
+    const d = new Date(sched.selectedDate + "T12:00:00");
+    d.setDate(d.getDate() - 7);
+    sched.setSelectedDate(format(d, "yyyy-MM-dd"));
+  };
+
+  const handleNextWeek = () => {
+    if (!sched.selectedDate) return;
+    const d = new Date(sched.selectedDate + "T12:00:00");
+    d.setDate(d.getDate() + 7);
+    sched.setSelectedDate(format(d, "yyyy-MM-dd"));
+  };
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["patients"] });
@@ -71,11 +136,9 @@ export default function Dashboard() {
     if (!date) return;
     const dateStr = format(date, "yyyy-MM-dd");
     sched.setSelectedDate(dateStr);
-    // REMOVED: if (isMobile) setMobileShowSlots(true); 
-    // Now the user must explicitly click "Abrir Agenda do Dia" as requested.
   };
 
-  // Build occupancy-tier date buckets for the calendar heatmap
+  // Occupancy metrics
   const occupancyModifiers = useMemo(() => {
     const total = shifts.reduce((acc, s) => acc + (s.end_slot - s.start_slot + 1), 0) || 32;
     const low: Date[] = [];
@@ -96,22 +159,31 @@ export default function Dashboard() {
 
   const totalOccupied = sched.appointments.length;
 
-  const { totalSlots, morningFree, afternoonFree } = useMemo(() => {
-    const total = shifts.reduce((acc, s) => acc + (s.end_slot - s.start_slot + 1), 0);
+  const { totalSlots, morningOccupied, afternoonOccupied, morningTotal, afternoonTotal } = useMemo(() => {
     const morningShift = shifts.find(s => s.label === "morning");
     const afternoonShift = shifts.find(s => s.label === "afternoon");
-    const morningFree = morningShift
-      ? (morningShift.end_slot - morningShift.start_slot + 1) -
-        sched.appointments.filter(a => a.slot >= morningShift.start_slot && a.slot <= morningShift.end_slot).length
+
+    const mTotal = morningShift ? (morningShift.end_slot - morningShift.start_slot + 1) : 16;
+    const aTotal = afternoonShift ? (afternoonShift.end_slot - afternoonShift.start_slot + 1) : 16;
+    const total = mTotal + aTotal;
+
+    const mOcc = morningShift
+      ? sched.appointments.filter(a => a.slot >= morningShift.start_slot && a.slot <= morningShift.end_slot).length
       : 0;
-    const afternoonFree = afternoonShift
-      ? (afternoonShift.end_slot - afternoonShift.start_slot + 1) -
-        sched.appointments.filter(a => a.slot >= afternoonShift.start_slot && a.slot <= afternoonShift.end_slot).length
+    const aOcc = afternoonShift
+      ? sched.appointments.filter(a => a.slot >= afternoonShift.start_slot && a.slot <= afternoonShift.end_slot).length
       : 0;
-    return { totalSlots: total, morningFree, afternoonFree };
+
+    return {
+      totalSlots: total,
+      morningOccupied: mOcc,
+      afternoonOccupied: aOcc,
+      morningTotal: mTotal,
+      afternoonTotal: aTotal
+    };
   }, [shifts, sched.appointments]);
 
-  // Distinct PSFs from current day's appointments
+  // Distinct PSFs options
   const psfOptions = useMemo(() => {
     const set = new Set<string>();
     sched.appointments.forEach(a => {
@@ -145,69 +217,305 @@ export default function Dashboard() {
     });
   };
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "agenda", label: "Agenda", icon: <CalendarDays className="w-5 h-5" /> },
-    { id: "pacientes", label: "Pacientes", icon: <Users className="w-5 h-5" /> },
-    { id: "unidades", label: "Unidades", icon: <Building className="w-5 h-5" /> },
-    { id: "emprestimos", label: "Empréstimos", icon: <HandCoins className="w-5 h-5" /> },
-  ];
+  const getHeaderTitle = () => {
+    switch (tab) {
+      case "dashboard":
+        return "Dashboard";
+      case "agenda":
+        return sched.selectedDate ? formatDateFull(sched.selectedDate) : "Selecione uma data";
+      case "pacientes":
+        return "Patients";
+      case "unidades":
+        return "Schedule";
+      case "emprestimos":
+        return "Settings";
+      default:
+        return "Dashboard";
+    }
+  };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
-
-      {/* Header */}
-      {/* Header */}
-      <header className="bg-primary text-primary-foreground px-4 py-3 md:py-4 flex items-center justify-between shadow-sm z-30 pt-[calc(12px+env(safe-area-inset-top))]">
-
-
-        <div className="flex items-center gap-3">
-          {isMobile && tab === "agenda" && mobileShowSlots && (
-            <Button variant="ghost" size="icon" onClick={() => setMobileShowSlots(false)} className="text-primary-foreground hover:bg-primary-foreground/10 -ml-2 h-9 w-9">
-              <ChevronLeft className="w-6 h-6" />
-            </Button>
-          )}
-          <img src={logo} alt="Logo" className="w-8 h-8 md:w-9 md:h-9 object-contain rounded-xl bg-white p-1 shadow-sm flex-shrink-0" />
-          <div className="hidden xs:block overflow-hidden">
-            <h1 className="font-bold text-xs md:text-sm lg:text-lg tracking-tight leading-none truncate">SAÚDE DA MULHER</h1>
-            <p className="text-[9px] md:text-xs opacity-80 mt-0.5 truncate">Agendamento • Camocim</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <HeaderMenu onImportComplete={handleRefresh} />
-        </div>
-
-      </header>
-
-
-      {/* Desktop/Tablet top nav */}
-      {!isMobile && (
-        <nav className="bg-card border-b px-4 flex items-center gap-1 z-20">
-          {tabs.map(t => (
+    <div className="flex h-[100dvh] overflow-hidden bg-background">
+      <Sidebar activeTab={tab} onTabChange={(t) => setTab(t as Tab)} onSignOut={signOut} />
+      
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col overflow-hidden relative">
+        
+        {/* Mobile Top App Bar */}
+        {isMobile && (
+          <header className="h-14 w-full bg-primary-container flex justify-between items-center px-4 border-b border-primary shrink-0 shadow-sm z-30">
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-black">S</span>
+              <h1 className="text-sm font-bold text-white uppercase tracking-wider">Saúde da Mulher</h1>
+            </div>
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold transition-all border-b-2 ${
-                tab === t.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:border-primary/20"
-              }`}
+              onClick={handleExport}
+              className="bg-primary hover:bg-primary-container text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-all shadow-sm"
             >
-              {t.icon}
-              {t.label}
+              <Download className="w-3.5 h-3.5" />
+              Exportar
             </button>
-          ))}
-        </nav>
-      )}
+          </header>
+        )}
 
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden relative">
+        {/* Desktop Header */}
+        {!isMobile && (
+          tab === "agenda" ? (
+            <header className="h-16 w-full flex justify-between items-center px-6 bg-white border-b border-outline-variant shadow-sm sticky top-0 z-10 shrink-0">
+              <div className="flex flex-col">
+                <span className="text-label-bold uppercase text-on-surface-variant opacity-60">Agenda Selecionada</span>
+                <h2 className="text-headline-md font-headline-md font-bold text-primary capitalize">
+                  {sched.selectedDate ? formatDateFull(sched.selectedDate) : "Selecione uma data"}
+                </h2>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                {!!sched.selectedDate && (
+                  <div className="flex bg-surface-container-low rounded-lg p-1 mr-4 border border-outline-variant/50">
+                    <select
+                      value={filterPsf}
+                      onChange={(e) => setFilterPsf(e.target.value)}
+                      className="bg-transparent border-none text-[12px] font-bold text-on-surface-variant focus:ring-0 cursor-pointer py-1 px-2"
+                    >
+                      <option value="all">Todos PSF</option>
+                      {psfOptions.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                      className="bg-transparent border-none text-[12px] font-bold text-on-surface-variant focus:ring-0 cursor-pointer py-1 px-2 border-l border-outline-variant/40"
+                    >
+                      <option value="all">Todos tipos</option>
+                      <option value="NORMAL">Normal</option>
+                      <option value="RETORNO">Retorno</option>
+                    </select>
+                    <select
+                      value={filterPrinted}
+                      onChange={(e) => setFilterPrinted(e.target.value)}
+                      className="bg-transparent border-none text-[12px] font-bold text-on-surface-variant focus:ring-0 cursor-pointer py-1 px-2 border-l border-outline-variant/40"
+                    >
+                      <option value="all">Todos status</option>
+                      <option value="printed">Impressos</option>
+                      <option value="not_printed">Pendentes</option>
+                    </select>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleExport}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-outline rounded-lg text-body-md font-bold text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-95 shrink-0"
+                >
+                  <Download className="w-4 h-4" />
+                  Exportar Dados
+                </button>
+              </div>
+            </header>
+          ) : (
+            <header className="flex justify-between items-center h-16 w-full px-6 border-b border-outline-variant bg-white sticky top-0 z-10 shrink-0 shadow-sm">
+              <h2 className="text-headline-md font-headline-md font-bold text-primary">
+                {getHeaderTitle()}
+              </h2>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center bg-[#e2e9ec] rounded-full px-4 py-1.5 gap-2 border border-outline-variant">
+                  <Search className="w-4 h-4 text-[#554246]" />
+                  <input
+                    className="bg-transparent border-none outline-none text-[13px] focus:ring-0 w-44"
+                    placeholder="Buscar pacientes..."
+                    type="text"
+                    style={{ color: "#161d1f" }}
+                  />
+                </div>
+              </div>
+            </header>
+          )
+        )}
+
+        {/* Dashboard tab */}
+        {tab === "dashboard" && (
+          <div className="flex-1 overflow-auto p-6 space-y-6 pb-24 md:pb-6">
+            <div>
+              <h3 className="text-xl font-bold" style={{ color: "#161d1f" }}>Painel Geral</h3>
+              <p className="text-sm text-on-surface-variant">Resumo operacional e estatísticas do Saúde da Mulher Portal Clínico.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[
+                { label: "Atendimentos Hoje", value: totalOccupied, Icon: CalendarDays, color: "#871e47" },
+                { label: "Total Pacientes", value: 128, Icon: Users, color: "#4a88de" },
+                { label: "Unidades de Saúde", value: 4, Icon: Building, color: "#34a47c" },
+                { label: "Equipamentos Emprestados", value: 8, Icon: HandCoins, color: "#e8a030" },
+              ].map(({ label, value, Icon, color }) => (
+                <div key={label} className="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: `${color}18`, color }}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#887176" }}>{label}</p>
+                    <p className="text-2xl font-black" style={{ color: "#161d1f" }}>{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white p-5 rounded-xl border border-outline-variant shadow-sm">
+                <h3 className="text-[12px] font-bold uppercase tracking-wide mb-4" style={{ color: "#554246" }}>Ações Rápidas</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setTab("agenda")} className="h-11 rounded-lg text-white font-bold text-sm transition-all active:scale-95" style={{ background: "#6c0029" }}>Visualizar Agenda</button>
+                  <button onClick={() => setTab("pacientes")} className="h-11 rounded-lg border font-bold text-sm transition-all active:scale-95 hover:bg-[#e8eff1]" style={{ borderColor: "#ddbfc3", color: "#554246" }}>Gerenciar Pacientes</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Agenda tab */}
         {tab === "agenda" && (
-          <div className="contents">
-            {/* Calendar sidebar */}
-            {(!isMobile || !mobileShowSlots) && (
-              <div className={`${isMobile ? "flex-1" : "w-[320px] border-r"} bg-card flex-shrink-0 flex flex-col overflow-auto p-4 md:p-6 animate-in fade-in slide-in-from-left-4 duration-300`}>
-                <div className="bg-muted/30 rounded-2xl p-2 mb-4 border border-border/50 shadow-inner">
+          isMobile ? (
+            /* MOBILE AGENDA VIEW — Scrollable single page */
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 bg-[#F7FAFC]">
+              {/* Header Section */}
+              <div>
+                <p className="text-label-bold text-on-surface-variant uppercase tracking-widest mb-1 text-[10px]">Agenda Selecionada</p>
+                <h2 className="text-headline-md font-headline-md text-on-surface uppercase font-bold text-lg leading-tight">
+                  {sched.selectedDate ? formatDateFull(sched.selectedDate) : "Selecione uma data"}
+                </h2>
+              </div>
+
+              {/* Horizontal Scrollable Date Picker */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-title-sm text-on-surface text-sm capitalize font-bold">{currentMonthLabel}</span>
+                  <div className="flex gap-2">
+                    <button onClick={handlePrevWeek} className="p-1 hover:bg-surface-container rounded-full border border-outline-variant bg-white active:scale-95 transition-all">
+                      <ChevronLeft className="w-4 h-4 text-on-surface" />
+                    </button>
+                    <button onClick={handleNextWeek} className="p-1 hover:bg-surface-container rounded-full border border-outline-variant bg-white active:scale-95 transition-all">
+                      <ChevronLeft className="w-4 h-4 text-on-surface rotate-180" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                  {mobileDays.map((day) => {
+                    const isSelected = day.dateStr === sched.selectedDate;
+                    return (
+                      <div
+                        key={day.dateStr}
+                        onClick={() => sched.setSelectedDate(day.dateStr)}
+                        className={cn(
+                          "flex-shrink-0 flex flex-col items-center justify-center w-12 h-16 rounded-xl border transition-all cursor-pointer",
+                          isSelected
+                            ? "bg-primary text-white shadow-md scale-105 ring-2 ring-primary-fixed-dim border-primary"
+                            : day.isOccupied
+                              ? "bg-primary/5 border-primary/45 text-primary font-bold"
+                              : "bg-white border-outline-variant text-on-surface-variant"
+                        )}
+                      >
+                        <span className={cn("text-[9px] font-bold tracking-wider", isSelected ? "text-white" : "text-on-surface-variant/70")}>
+                          {day.dayLabel}
+                        </span>
+                        <span className="text-sm font-black mt-1">{day.dayNum}</span>
+                        {day.isOccupied && !isSelected && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Occupancy Summary Card */}
+              <article className="bg-white rounded-xl border border-outline-variant shadow-sm p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-title-sm text-primary text-sm font-bold">Status de Ocupação</h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-primary-fixed text-on-primary-fixed rounded">
+                    {Math.round((totalOccupied / (totalSlots || 32)) * 100)}%
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-2xl font-black text-primary">{totalOccupied}</span>
+                  <span className="text-sm font-bold text-on-surface-variant">/ {totalSlots || 32}</span>
+                </div>
+                <div className="w-full bg-surface-container rounded-full h-2 mb-4 relative overflow-hidden">
+                  <div
+                    className="bg-primary h-full rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, Math.round((totalOccupied / (totalSlots || 32)) * 100))}%` }}
+                  ></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-surface-container-low rounded-lg p-2.5 text-center">
+                    <p className="text-[10px] font-bold text-on-surface-variant uppercase mb-0.5">Manhã</p>
+                    <p className="text-sm font-bold text-primary">{morningTotal - morningOccupied}</p>
+                    <p className="text-[9px] text-on-surface-variant font-medium">vagas livres</p>
+                  </div>
+                  <div className="bg-surface-container-low rounded-lg p-2.5 text-center">
+                    <p className="text-[10px] font-bold text-on-surface-variant uppercase mb-0.5">Tarde</p>
+                    <p className="text-sm font-bold text-secondary">{afternoonTotal - afternoonOccupied}</p>
+                    <p className="text-[9px] text-on-surface-variant font-medium">vagas livres</p>
+                  </div>
+                </div>
+              </article>
+
+              {/* Segmented Control for Turnos */}
+              <div className="flex bg-surface-container-high p-1 rounded-xl">
+                <button
+                  onClick={() => setMobileShift("morning")}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                    mobileShift === "morning"
+                      ? "bg-white text-primary shadow-sm"
+                      : "text-on-surface-variant hover:bg-white/40"
+                  )}
+                >
+                  <Sun className="w-3.5 h-3.5" />
+                  MANHÃ
+                </button>
+                <button
+                  onClick={() => setMobileShift("afternoon")}
+                  className={cn(
+                    "flex-1 py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                    mobileShift === "afternoon"
+                      ? "bg-white text-primary shadow-sm"
+                      : "text-on-surface-variant hover:bg-white/40"
+                )}
+                >
+                  <Moon className="w-3.5 h-3.5" />
+                  TARDE
+                </button>
+              </div>
+
+              {/* Turn Content List */}
+              {shifts.filter(s => s.label === mobileShift).map(shift => (
+                <div key={shift.id} className="bg-transparent">
+                  <SlotPanel
+                    title={shift.display_title}
+                    slots={Array.from({ length: shift.end_slot - shift.start_slot + 1 }, (_, i) => i + shift.start_slot)}
+                    appointments={filteredAppointments}
+                    date={sched.selectedDate}
+                    variant={shift.label as any}
+                    defaultTime={shift.default_time}
+                    vacancies={shift.end_slot - shift.start_slot + 1}
+                    onAdd={sched.addAppointment}
+                    onRemove={sched.removeAppointment}
+                    onPatientsChanged={handleRefresh}
+                    onRefresh={() => sched.fetchAppointments()}
+                    onUpdateTime={sched.updateAppointmentTime}
+                    onUpdateAppointment={sched.updateAppointment}
+                    preselectedPatient={preselectedPatient}
+                    onClearPreselectedPatient={() => setPreselectedPatient(null)}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* DESKTOP AGENDA VIEW — Side by Side */
+            <div className="flex flex-1 overflow-hidden p-margin-md gap-margin-md bg-[#F7FAFC]">
+              {/* LEFT: Calendar + Resumo */}
+              <section className="flex-shrink-0 flex flex-col gap-6 overflow-y-auto no-scrollbar" style={{ width: "288px" }}>
+                
+                {/* CALENDAR CARD */}
+                <article className="bg-white rounded-xl border border-outline-variant shadow-sm p-6">
                   <ErrorBoundary>
                     <CalendarUI
                       mode="single"
@@ -226,229 +534,224 @@ export default function Dashboard() {
                         occHigh: "occHigh",
                         occFull: "occFull",
                       }}
-                      className="w-full"
+                      className="w-full p-0"
                     />
                   </ErrorBoundary>
+
                   {/* Legend */}
-                  <div className="mt-2 px-2 pb-1 flex items-center justify-between gap-1 text-[9px] font-medium text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400/70"></span>Baixa</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400/80"></span>Média</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-orange-500/80"></span>Alta</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-rose-500/80"></span>Lotado</span>
+                  <div className="mt-6 pt-5 border-t border-outline-variant flex flex-wrap gap-2 justify-between">
+                    {[
+                      { color: "bg-secondary-fixed", label: "Baixa" },
+                      { color: "bg-yellow-400", label: "Média" },
+                      { color: "bg-orange-400", label: "Alta" },
+                      { color: "bg-primary", label: "Lotado" },
+                    ].map(({ color, label }) => (
+                      <div key={label} className="flex items-center gap-1">
+                        <div className={cn("w-2 h-2 rounded-full", color)}></div>
+                        <span className="text-[9px] font-bold text-on-surface-variant">{label}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                
-                {isMobile && !!sched.selectedDate && (
-                  <Button className="mt-2 w-full h-12 text-base font-semibold rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-all" onClick={() => setMobileShowSlots(true)}>
-                    <CalendarDays className="w-5 h-5 mr-2" />
-                    Abrir Agenda do Dia
-                  </Button>
-                )}
-                
-                {/* Summary Section */}
-                <div className="mt-6 space-y-4">
-                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">Resumo do Dia</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl transition-all hover:bg-primary/10">
-                      <p className="text-xs text-primary/70 font-medium mb-1">Status de Ocupação</p>
-                      <div className="flex items-end justify-between">
-                        <span className="text-2xl font-bold text-primary">{totalOccupied}<span className="text-sm font-normal text-muted-foreground ml-1">/ {totalSlots || 0}</span></span>
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                          {totalSlots > 0 ? Math.round((totalOccupied / totalSlots) * 100) : 0}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-primary/10 h-1.5 rounded-full mt-2 overflow-hidden">
-                        <div className="bg-primary h-full transition-all duration-500" style={{ width: `${totalSlots > 0 ? (totalOccupied / totalSlots) * 100 : 0}%` }}></div>
-                      </div>
+                </article>
 
+                {/* OCCUPATION SUMMARY CARD */}
+                <article className="bg-white rounded-xl border border-outline-variant shadow-sm p-6">
+                  <h3 className="text-label-bold uppercase text-on-surface-variant opacity-60 mb-4">Resumo do Dia</h3>
+                  <div className="p-4 rounded-lg bg-primary/5 mb-6">
+                    <p className="text-body-sm font-bold text-primary mb-1">Status de Ocupação</p>
+                    <div className="flex items-baseline gap-1 mb-2">
+                      <span className="text-2xl font-extrabold text-primary">{totalOccupied}</span>
+                      <span className="text-body-sm font-bold text-on-surface-variant">/ {totalSlots || 32}</span>
                     </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="p-3 bg-morning/5 border border-morning/10 rounded-xl">
-                        <p className="text-[10px] text-morning font-bold uppercase mb-1">Manhã</p>
-                        <p className="text-xl font-bold text-morning-foreground bg-morning rounded-lg px-2 py-0.5 inline-block">{morningFree}</p>
-                        <p className="text-[9px] text-muted-foreground mt-1 font-medium">vagas livres</p>
-                      </div>
-                      <div className="p-3 bg-afternoon/5 border border-afternoon/10 rounded-xl">
-                        <p className="text-[10px] text-afternoon font-bold uppercase mb-1">Tarde</p>
-                        <p className="text-xl font-bold text-afternoon-foreground bg-afternoon rounded-lg px-2 py-0.5 inline-block">{afternoonFree}</p>
-                        <p className="text-[9px] text-muted-foreground mt-1 font-medium">vagas livres</p>
-                      </div>
+                    <div className="w-full h-2 bg-primary/10 rounded-full overflow-hidden mb-1">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.round((totalOccupied / (totalSlots || 32)) * 100))}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-right text-[10px] font-bold text-primary">
+                      {Math.round((totalOccupied / (totalSlots || 32)) * 100)}%
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-secondary/5 border border-secondary/10 rounded-lg text-center">
+                      <span className="text-[10px] font-bold uppercase text-secondary">Manhã</span>
+                      <p className="text-2xl font-extrabold text-secondary">{morningOccupied}</p>
+                      <span className="text-[9px] text-on-surface-variant">{morningTotal - morningOccupied} livres</span>
+                    </div>
+                    <div className="p-3 bg-tertiary/5 border border-tertiary/10 rounded-lg text-center">
+                      <span className="text-[10px] font-bold uppercase text-tertiary">Tarde</span>
+                      <p className="text-2xl font-extrabold text-tertiary">{afternoonOccupied}</p>
+                      <span className="text-[9px] text-on-surface-variant">{afternoonTotal - afternoonOccupied} livres</span>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                </article>
+              </section>
 
-            {/* Slots panel */}
-            {(!isMobile || mobileShowSlots) && (
-              <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="shrink-0 flex flex-col">
-                  {!!sched.selectedDate && (
-                    <div className="px-4 md:px-6 py-3 bg-card border-b flex items-center justify-between sticky top-0 z-10 shadow-sm">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Agenda Selecionada</span>
-                        <h2 className="font-bold text-sm md:text-base capitalize text-foreground">
-                          {formatDateFull(sched.selectedDate)}
-                        </h2>
-                      </div>
-                      <Button variant="outline" size="sm" className="h-9 px-3 text-xs gap-2 rounded-xl border-2 hover:bg-muted" onClick={handleExport}>
-                        <Download className="w-4 h-4" />
-                        Exportar Excel
-                      </Button>
-                    </div>
-                  )}
-                  {!!sched.selectedDate && sched.appointments.length > 0 && (
-                    <div className="px-4 md:px-6 py-2 bg-muted/30 border-b flex items-center gap-2 flex-wrap">
-                      <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Filtros:</span>
-                      <Select value={filterPsf} onValueChange={setFilterPsf}>
-                        <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
-                          <SelectValue placeholder="PSF" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos PSF</SelectItem>
-                          {psfOptions.map(p => (
-                            <SelectItem key={p} value={p}>{p}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Select value={filterType} onValueChange={setFilterType}>
-                        <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
-                          <SelectValue placeholder="Tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos tipos</SelectItem>
-                          <SelectItem value="NORMAL">Normal</SelectItem>
-                          <SelectItem value="RETORNO">Retorno</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={filterPrinted} onValueChange={setFilterPrinted}>
-                        <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos status</SelectItem>
-                          <SelectItem value="printed">Impressos</SelectItem>
-                          <SelectItem value="not_printed">Não impressos</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {hasActiveFilters && (
-                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs gap-1" onClick={clearFilters}>
-                          <X className="w-3 h-3" />
-                          Limpar
-                        </Button>
-                      )}
-                      {hasActiveFilters && (
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {`${filteredAppointments.length} de ${sched.appointments.length}`}
-                        </span>
-                      )}
-                    </div>
-                  )}
+              {/* RIGHT: Slot panels side-by-side */}
+              <section className="flex-1 flex flex-col overflow-hidden gap-4">
+                <div className="flex-1 flex overflow-hidden gap-6">
+                  {shifts.map(shift => (
+                    <article key={shift.id} className="flex-1 flex flex-col bg-transparent overflow-hidden">
+                      <SlotPanel
+                        title={shift.display_title}
+                        slots={Array.from({ length: shift.end_slot - shift.start_slot + 1 }, (_, i) => i + shift.start_slot)}
+                        appointments={filteredAppointments}
+                        date={sched.selectedDate}
+                        variant={shift.label as any}
+                        defaultTime={shift.default_time}
+                        vacancies={shift.end_slot - shift.start_slot + 1}
+                        onAdd={sched.addAppointment}
+                        onRemove={sched.removeAppointment}
+                        onPatientsChanged={handleRefresh}
+                        onRefresh={() => sched.fetchAppointments()}
+                        onUpdateTime={sched.updateAppointmentTime}
+                        onUpdateAppointment={sched.updateAppointment}
+                        preselectedPatient={preselectedPatient}
+                        onClearPreselectedPatient={() => setPreselectedPatient(null)}
+                      />
+                    </article>
+                  ))}
                 </div>
-                <div className={`flex-1 flex ${isMobile ? "flex-col" : ""} overflow-hidden`}>
-                  {sched.selectedDate ? (
-                    <div className="contents">
-                      {shifts.map((shift, idx) => (
-                        <div key={shift.id} className={`flex-1 overflow-auto ${isMobile && idx > 0 ? "border-t" : !isMobile && idx > 0 ? "border-l" : ""}`}>
-                          <SlotPanel
-                            title={shift.display_title}
-                            slots={Array.from({ length: shift.end_slot - shift.start_slot + 1 }, (_, i) => i + shift.start_slot)}
-                            appointments={filteredAppointments}
-                            date={sched.selectedDate}
-                            variant={shift.label as any}
-                            defaultTime={shift.default_time}
-                            vacancies={shift.end_slot - shift.start_slot + 1}
-                            onAdd={sched.addAppointment}
-                            onRemove={sched.removeAppointment}
-                            onPatientsChanged={handleRefresh}
-                            onRefresh={() => sched.fetchAppointments()}
-                            onUpdateTime={sched.updateAppointmentTime}
-                            onUpdateAppointment={sched.updateAppointment}
-                            preselectedPatient={preselectedPatient}
-                            onClearPreselectedPatient={() => setPreselectedPatient(null)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 text-center">
-                      <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                        <CalendarDays className="w-8 h-8 opacity-20" />
-                      </div>
-                      <p className="font-medium">Nenhum dia selecionado</p>
-                      <p className="text-xs max-w-[200px] mt-1">Toque em uma data no calendário para visualizar os horários.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+              </section>
+            </div>
+          )
         )}
 
+        {/* Patients tab */}
         {tab === "pacientes" && (
-          <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
-            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
-              <PatientManager
-                onGetHistory={sched.getPatientHistory}
-              />
-            </Suspense>
+          <div className="flex-1 overflow-hidden p-6 pb-24 md:pb-6">
+            <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
+                <PatientManager onGetHistory={sched.getPatientHistory} />
+              </Suspense>
+            </div>
           </div>
         )}
 
+        {/* Health Units tab */}
         {tab === "unidades" && (
-          <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
-            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
-              <HealthUnitsManager />
-            </Suspense>
+          <div className="flex-1 overflow-hidden p-6 pb-24 md:pb-6">
+            <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
+                <HealthUnitsManager />
+              </Suspense>
+            </div>
           </div>
         )}
 
+        {/* Loans tab */}
         {tab === "emprestimos" && (
-          <div className="flex-1 overflow-hidden animate-in fade-in duration-300">
-            <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>}>
-              <LoanManager />
-            </Suspense>
+          <div className="flex-1 overflow-hidden p-6 pb-24 md:pb-6">
+            <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
+                <LoanManager />
+              </Suspense>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Mobile bottom navigation */}
-      {isMobile && (
-        <nav className="bg-primary border-t border-white/10 flex items-center justify-around h-[calc(56px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-50 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => { 
-                setTab(t.id); 
-                if (t.id === "agenda") setMobileShowSlots(false); 
-              }}
-              className={`flex-1 flex flex-col items-center justify-center h-full transition-all active:scale-95 relative ${
-                tab === t.id && !mobileShowSlots ? "text-white" : "text-white/40"
-              }`}
-            >
-              <div className={`transition-all duration-300 ${tab === t.id && !mobileShowSlots ? "scale-110" : "scale-100 opacity-80"}`}>
-                {t.icon}
+        {/* MOBILE MENU TAB */}
+        {tab === "menu" && isMobile && (
+          <div className="flex-1 overflow-auto p-4 space-y-6 bg-[#F7FAFC] pb-24">
+            <div>
+              <h3 className="text-xl font-bold text-primary">Menu Geral</h3>
+              <p className="text-sm text-on-surface-variant">Saúde da Mulher — Portal Clínico</p>
+            </div>
+            
+            <div className="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden divide-y divide-outline-variant/40">
+              <button
+                onClick={() => setTab("dashboard")}
+                className="w-full text-left p-4 hover:bg-slate-50 transition-colors flex items-center justify-between font-semibold text-sm"
+              >
+                <span>Painel de Estatísticas</span>
+                <ChevronLeft className="w-4 h-4 rotate-180 text-on-surface-variant/40" />
+              </button>
+              
+              <button
+                onClick={() => setTab("emprestimos")}
+                className="w-full text-left p-4 hover:bg-slate-50 transition-colors flex items-center justify-between font-semibold text-sm"
+              >
+                <span>Gerenciar Empréstimos</span>
+                <ChevronLeft className="w-4 h-4 rotate-180 text-on-surface-variant/40" />
+              </button>
+
+              <div className="p-4 bg-slate-50/50">
+                <p className="text-[11px] font-black uppercase text-on-surface-variant opacity-60 mb-2">Equipe e Unidades de Saúde</p>
+                <div className="flex flex-wrap gap-2">
+                  <HeaderMenu onImportComplete={handleRefresh} />
+                </div>
               </div>
-              <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5">
-                {t.label}
-              </span>
-              {tab === t.id && !mobileShowSlots && (
-                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full shadow-sm" />
-              )}
-            </button>
-          ))}
+
+              <button
+                onClick={signOut}
+                className="w-full text-left p-4 hover:bg-red-50 transition-colors flex items-center justify-between font-semibold text-sm text-error"
+              >
+                <span>Sair da Conta</span>
+                <LogOut className="w-4 h-4 text-error/60" />
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-primary-container/95 backdrop-blur-md border-t border-primary/50 shadow-lg pb-safe">
+          <button
+            onClick={() => setTab("agenda")}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 transition-all duration-200 active:scale-90",
+              tab === "agenda"
+                ? "bg-white text-primary rounded-full px-4 py-1 scale-105 font-bold shadow-sm"
+                : "text-on-primary/80 hover:text-white"
+            )}
+          >
+            <CalendarDays className="w-5 h-5" />
+            <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Agenda</span>
+          </button>
+          
+          <button
+            onClick={() => setTab("pacientes")}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 transition-all duration-200 active:scale-90",
+              tab === "pacientes"
+                ? "bg-white text-primary rounded-full px-4 py-1 scale-105 font-bold shadow-sm"
+                : "text-on-primary/80 hover:text-white"
+            )}
+          >
+            <Users className="w-5 h-5" />
+            <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Pacientes</span>
+          </button>
+
+          <button
+            onClick={() => setTab("unidades")}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 transition-all duration-200 active:scale-90",
+              tab === "unidades"
+                ? "bg-white text-primary rounded-full px-4 py-1 scale-105 font-bold shadow-sm"
+                : "text-on-primary/80 hover:text-white"
+            )}
+          >
+            <Building className="w-5 h-5" />
+            <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Unidades</span>
+          </button>
+
+          <button
+            onClick={() => setTab("menu")}
+            className={cn(
+              "flex flex-col items-center justify-center py-1 transition-all duration-200 active:scale-90",
+              tab === "menu"
+                ? "bg-white text-primary rounded-full px-4 py-1 scale-105 font-bold shadow-sm"
+                : "text-on-primary/80 hover:text-white"
+            )}
+          >
+            <Menu className="w-5 h-5" />
+            <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Menu</span>
+          </button>
         </nav>
       )}
-
-
-
-
-
-
-      {/* Desktop footer replaced by in-sidebar summary */}
     </div>
-
   );
 }
+

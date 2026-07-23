@@ -4,82 +4,85 @@
 
 @layer base {
   :root {
-    --background: 200 20% 97%;
-    --foreground: 210 40% 12%;
+    --background: 240 100% 99%;
+    --foreground: 216 43% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 40% 12%;
+    --card-foreground: 216 43% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 40% 12%;
+    --popover-foreground: 216 43% 12%;
 
-    --primary: 207 70% 38%;
+    --primary: 337 100% 21%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 185 35% 90%;
-    --secondary-foreground: 207 60% 30%;
+    --header-background: 227 100% 97%;
+    --header-foreground: 337 100% 21%;
 
-    --muted: 200 15% 94%;
-    --muted-foreground: 210 10% 45%;
+    --secondary: 155 100% 21%;
+    --secondary-foreground: 0 0% 100%;
 
-    --accent: 175 40% 55%;
+    --muted: 349 14% 94%;
+    --muted-foreground: 349 14% 45%;
+
+    --accent: 155 100% 21%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 75% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 200 15% 87%;
-    --input: 200 15% 87%;
-    --ring: 207 70% 38%;
+    --border: 351 31% 81%;
+    --input: 351 31% 81%;
+    --ring: 337 100% 21%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 207 70% 38%;
+    --sidebar-background: 342 66% 33%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 207 70% 38%;
-    --sidebar-accent: 207 60% 48%;
+    --sidebar-primary-foreground: 342 66% 33%;
+    --sidebar-accent: 342 50% 40%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 207 50% 48%;
+    --sidebar-border: 351 31% 81%;
     --sidebar-ring: 0 0% 100%;
 
-    --morning: 207 60% 45%;
+    --morning: 337 100% 21%;
     --morning-foreground: 0 0% 100%;
-    --afternoon: 207 70% 32%;
+    --afternoon: 342 66% 33%;
     --afternoon-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 210 30% 8%;
-    --foreground: 200 15% 95%;
-    --card: 210 30% 12%;
-    --card-foreground: 200 15% 95%;
-    --popover: 210 30% 12%;
-    --popover-foreground: 200 15% 95%;
-    --primary: 207 70% 50%;
+    --background: 216 43% 12%;
+    --foreground: 240 100% 99%;
+    --card: 216 43% 10%;
+    --card-foreground: 240 100% 99%;
+    --popover: 216 43% 10%;
+    --popover-foreground: 240 100% 99%;
+    --primary: 337 100% 21%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 207 25% 18%;
-    --secondary-foreground: 207 50% 75%;
-    --muted: 210 20% 18%;
-    --muted-foreground: 210 10% 60%;
-    --accent: 175 40% 45%;
+    --secondary: 155 100% 21%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 349 14% 20%;
+    --muted-foreground: 349 14% 65%;
+    --accent: 155 100% 21%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 30%;
+    --destructive: 0 75% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 210 20% 22%;
-    --input: 210 20% 22%;
-    --ring: 207 70% 50%;
-    --sidebar-background: 210 30% 10%;
-    --sidebar-foreground: 200 15% 95%;
-    --sidebar-primary: 207 70% 50%;
+    --border: 351 31% 30%;
+    --input: 351 31% 30%;
+    --ring: 337 100% 21%;
+    --sidebar-background: 342 66% 25%;
+    --sidebar-foreground: 240 100% 99%;
+    --sidebar-primary: 337 100% 21%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 25% 16%;
-    --sidebar-accent-foreground: 200 15% 95%;
-    --sidebar-border: 210 20% 22%;
-    --sidebar-ring: 207 70% 50%;
-    --morning: 207 60% 50%;
+    --sidebar-accent: 342 50% 20%;
+    --sidebar-accent-foreground: 240 100% 99%;
+    --sidebar-border: 351 31% 30%;
+    --sidebar-ring: 337 100% 21%;
+    --morning: 337 100% 21%;
     --morning-foreground: 0 0% 100%;
-    --afternoon: 207 70% 40%;
+    --afternoon: 342 66% 33%;
     --afternoon-foreground: 0 0% 100%;
   }
 }
@@ -111,29 +114,25 @@
 }
 
 /* Calendar: heatmap of day occupancy */
-.rdp-day.occLow,
-.rdp-day.occMedium,
-.rdp-day.occHigh,
-.rdp-day.occFull {
+.occLow,
+.occMedium,
+.occHigh,
+.occFull {
   font-weight: 700 !important;
-  border-radius: 0.5rem !important;
-  color: hsl(210 40% 12%) !important;
+  border-radius: 9999px !important;
 }
-.rdp-day.occLow    { background-color: hsl(152 70% 50% / 0.35) !important; box-shadow: inset 0 -3px 0 hsl(152 70% 40%); }
-.rdp-day.occMedium { background-color: hsl(40 95% 55% / 0.5) !important;   box-shadow: inset 0 -3px 0 hsl(35 90% 50%); }
-.rdp-day.occHigh   { background-color: hsl(20 90% 55% / 0.6) !important;  color: white !important; box-shadow: inset 0 -3px 0 hsl(15 80% 45%); }
-.rdp-day.occFull   { background-color: hsl(0 75% 55% / 0.85) !important;  color: white !important; box-shadow: inset 0 -3px 0 hsl(0 65% 40%); }
+.occLow    { background-color: rgba(0, 109, 64, 0.1) !important; color: #006d40 !important; }
+.occMedium { background-color: rgba(217, 119, 6, 0.1) !important; color: #d97706 !important; }
+.occHigh   { background-color: rgba(239, 68, 68, 0.1) !important; color: #ef4444 !important; }
+.occFull   { background-color: rgba(108, 0, 41, 0.1) !important;  color: #6c0029 !important; }
 
-.rdp-day.occLow[aria-selected="true"],
-.rdp-day.occMedium[aria-selected="true"],
-.rdp-day.occHigh[aria-selected="true"],
-.rdp-day.occFull[aria-selected="true"] {
-  outline: 2px solid hsl(var(--primary));
-  outline-offset: -2px;
+.occLow[aria-selected="true"],
+.occMedium[aria-selected="true"],
+.occHigh[aria-selected="true"],
+.occFull[aria-selected="true"] {
+  background-color: hsl(var(--primary)) !important;
+  color: white !important;
 }
-
-.dark .rdp-day.occLow,
-.dark .rdp-day.occMedium { color: hsl(210 30% 8%) !important; }
 
 /* Animations for native feel */
 .page-transition-enter {
@@ -160,4 +159,37 @@
     font-size: 16px !important;
   }
 }
+
+/* Custom Portal Clínico Utilities */
+@layer utilities {
+  .bg-primary-container { background-color: #8c1d3f; }
+  .text-on-primary { color: #ffffff; }
+  .border-outline-variant { border-color: #ddbfc3; }
+  .bg-surface-container-low { background-color: #f0f3ff; }
+  .bg-surface-container-lowest { background-color: #ffffff; }
+  .text-on-surface-variant { color: #564145; }
+  
+  .text-display-lg { font-size: 30px; line-height: 36px; letter-spacing: -0.02em; font-weight: 700; }
+  .text-label-bold { font-size: 11px; line-height: 16px; letter-spacing: 0.05em; font-weight: 700; }
+  .text-headline-md { font-size: 20px; line-height: 28px; font-weight: 600; }
+  .text-body-sm { font-size: 12px; line-height: 18px; font-weight: 400; }
+  .text-body-md { font-size: 14px; line-height: 20px; font-weight: 400; }
+  .text-title-sm { font-size: 16px; line-height: 24px; font-weight: 700; }
+
+  .font-headline-md { font-weight: 600; }
+  .font-title-sm { font-weight: 700; }
+
+  .p-margin-md { padding: 20px; }
+  .gap-margin-md { gap: 20px; }
+  .mb-margin-md { margin-bottom: 20px; }
+
+  .bg-secondary-fixed { background-color: #91f8b8; }
+  .text-primary-fixed-dim { color: #ffb2bf; }
+  .bg-on-secondary-container\/10 { background-color: rgba(0, 114, 67, 0.1); }
+  .text-on-secondary-container { color: #007243; }
+  .border-primary-fixed-dim { border-color: #ffb2bf; }
+  .text-error { color: #ba1a1a; }
+  .bg-primary\/5 { background-color: rgba(108, 0, 41, 0.05); }
+}
+
 

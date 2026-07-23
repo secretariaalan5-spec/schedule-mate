@@ -6,6 +6,7 @@ import type { Appointment, Patient } from "@/hooks/useScheduling";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AppointmentDialog from "./AppointmentDialog";
 import { printAppointments } from "./PrintSlip";
+import { cn } from "@/lib/utils";
 
 interface Props {
   title: string;
@@ -112,38 +113,55 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
   }, [date, closeDialog]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-4 py-3 flex items-center justify-between border-b bg-card">
+    <div className="flex flex-col h-full overflow-hidden bg-transparent">
+      {/* Header — matches the template style */}
+      <header className="p-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 bg-transparent">
         <div className="flex items-center gap-2">
-          <span className={`w-3 h-3 rounded-full ${dotColor}`}></span>
-          <div className="flex flex-col leading-tight">
-            <h3 className="font-bold text-sm tracking-wide">{title}</h3>
-            <div className="flex items-center gap-2 text-[10px] font-medium mt-0.5">
-              <span className="text-emerald-600 dark:text-emerald-400">✓ {printedCount}</span>
-              <span className="text-amber-600 dark:text-amber-400">⏳ {pendingCount}</span>
-              <span className="text-muted-foreground">{freeCount} livre{freeCount !== 1 ? "s" : ""}</span>
-            </div>
-          </div>
+          <div className={cn(
+            "w-2.5 h-2.5 rounded-full shrink-0 animate-pulse",
+            variant === "morning" ? "bg-orange-500" : "bg-primary"
+          )} />
+          <h3 className="text-title-sm font-bold uppercase text-on-surface">{title}</h3>
         </div>
-        <div className="flex items-center gap-2">
-          {occupied > 0 && (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={selectAll}>
-                {selectedIds.size > 0 ? "Limpar" : "Selecionar"}
-              </Button>
-              {selectedIds.size > 0 && (
-                <Button size="sm" className="h-7 text-xs gap-1" onClick={handlePrint}>
-                  <Printer className="w-3 h-3" />
-                  Imprimir ({selectedIds.size})
-                </Button>
-              )}
-            </div>
-          )}
-          <span className="text-sm text-muted-foreground">{occupied}/{vacancies}</span>
-        </div>
-      </div>
 
-      <div className="flex-1 overflow-auto">
+        <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
+          <div className="text-[11px] font-bold text-on-surface-variant flex gap-3">
+            <span className="text-secondary" title="Impressos">✓ {printedCount}</span>
+            <span className="text-orange-500" title="Pendentes">-{pendingCount}</span>
+            <span className="opacity-60">{freeCount} livres</span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2.5 text-[10px] font-bold uppercase hover:bg-white/60 border border-outline-variant/60 rounded-lg text-on-surface-variant"
+              onClick={selectAll}
+            >
+              {selectedIds.size > 0 ? "Limpar" : "Selecionar"}
+            </Button>
+            
+            {selectedIds.size > 0 && (
+              <Button
+                size="sm"
+                className="h-7 px-2.5 text-[10px] font-bold uppercase text-white gap-1 rounded-lg shadow-sm"
+                style={{ background: "#6c0029" }}
+                onClick={handlePrint}
+              >
+                <Printer className="w-3 h-3" />
+                Imprimir ({selectedIds.size})
+              </Button>
+            )}
+          </div>
+
+          <span className="text-body-sm font-bold text-on-surface-variant bg-white px-2.5 py-0.5 border border-outline-variant/60 rounded-md shrink-0">
+            {occupied}/{vacancies}
+          </span>
+        </div>
+      </header>
+
+      {/* Cards container — spaced lists */}
+      <div className="flex-1 overflow-y-auto no-scrollbar p-1 pb-10 space-y-3">
         {slots.map(slot => {
           const appt = getAppointment(slot);
           const slotNum = String(slot).padStart(2, "0");
@@ -151,124 +169,147 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
           const isPrinted = appt?.printed || false;
 
           return (
-            <div
-              key={slot}
-              className={`flex items-center border-b px-4 py-3 hover:bg-muted/30 transition-colors group border-l-4 ${
-                appt
-                  ? isPrinted
-                    ? "border-l-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20"
-                    : "border-l-amber-400 bg-amber-50/30 dark:bg-amber-950/10"
-                  : "border-l-transparent"
-              } ${isSelected ? "bg-primary/10" : ""}`}
-            >
-              {appt && (
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => toggleSelect(appt.id)}
-                  className="mr-2 accent-primary w-4 h-4 cursor-pointer"
-                />
-              )}
-              <span className="font-bold text-sm text-muted-foreground w-8">{slotNum}</span>
+            <div key={slot}>
               {appt ? (
-                <div className="flex-1 flex items-center justify-between">
-                  <div
-                    className="flex items-center gap-2 flex-wrap cursor-pointer flex-1"
-                    onClick={(e) => handlePatientClick(e, appt)}
-                    title="Clique para editar"
-                  >
-                    <span className="font-semibold text-[15px] leading-tight select-text">{appt.patients?.name || "—"}</span>
+                /* Patient Card */
+                <div
+                  className={cn(
+                    "bg-white border rounded-lg shadow-sm flex gap-4 p-4 hover:border-primary transition-all cursor-pointer group border-l-4",
+                    variant === "morning" ? "border-l-secondary" : "border-l-primary-fixed-dim border-l-[#ffb2bf]",
+                    isSelected ? "ring-2 ring-primary/20 border-primary bg-primary/5" : "border-outline-variant"
+                  )}
+                  onClick={(e) => handlePatientClick(e, appt)}
+                >
+                  <div className="flex flex-col items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(appt.id)}
+                      className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-title-sm font-bold text-on-surface-variant opacity-40">{slotNum}</span>
+                  </div>
 
-                    {appt.patients?.sus_card && (
-                      <span className="font-mono text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded shrink-0 select-text">
-                        {appt.patients.sus_card}
-                      </span>
-                    )}
-
-                    {!!appt.patients?.psf && (
-                      <span className="text-xs text-muted-foreground">({appt.patients.psf})</span>
-                    )}
-                    {!!appt.reason && (
-                      <span className="text-xs text-primary font-medium">{appt.reason}</span>
-                    )}
-                    {appt.type === "RETORNO" && (
-                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">Retorno</span>
-                    )}
-                    {/* Time display/edit */}
-                    {editingTimeId === appt.id ? (
-                      <Input
-                        type="time"
-                        value={editTimeValue}
-                        onChange={e => setEditTimeValue(e.target.value)}
-                        onBlur={saveTime}
-                        onKeyDown={e => e.key === "Enter" && saveTime()}
-                        className="w-24 h-6 text-xs ml-1"
-                        autoFocus
-                        onClick={e => e.stopPropagation()}
-                      />
-                    ) : (
-                      <span
-                        className="text-xs text-muted-foreground ml-1 cursor-pointer hover:text-primary flex items-center gap-0.5"
-                        onClick={e => { e.stopPropagation(); startEditTime(appt); }}
-                        title="Clique para alterar horário"
-                      >
-                        <Clock className="w-3 h-3" />
-                        {appt.schedule_time || defaultTime}
-                      </span>
-                    )}
-                    <span
-                      className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ml-1 ${
-                        isPrinted
-                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                          : "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                      }`}
-                      title={isPrinted ? "Impresso" : "Pendente"}
-                    >
-                      {isPrinted ? (
-                        <span className="flex items-center gap-0.5"><CheckCircle className="w-2.5 h-2.5" /> Impresso</span>
-                      ) : (
-                        "Pendente"
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-body-md font-bold text-on-surface group-hover:text-primary transition-colors truncate">
+                      {appt.patients?.name || "—"}
+                    </h4>
+                    
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] font-bold text-on-surface-variant/80">
+                      {appt.patients?.sus_card && (
+                        <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600">
+                          {appt.patients.sus_card}
+                        </span>
                       )}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className={`h-7 w-7 text-primary transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                      onClick={() => openEditDialog(appt)}
-                      title="Editar"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className={`h-7 w-7 text-primary transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                      onClick={() => printAppointments([appt], onRefresh || onPatientsChanged)}
-                      title="Imprimir"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className={`h-7 w-7 text-destructive transition-opacity ${isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                      onClick={() => { if (window.confirm("Excluir agendamento?")) onRemove(appt.id); }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                      
+                      {appt.patients?.psf && (
+                        <span className="text-primary-fixed-dim bg-primary/5 px-1.5 py-0.5 rounded text-[10px] uppercase font-black">
+                          ({appt.patients.psf})
+                        </span>
+                      )}
+
+                      {/* Health Conditions / Risk badges */}
+                      {appt.patients?.risk_classification === "ALTO" && (
+                        <span className="text-error font-extrabold uppercase text-[10px]">Alto Risco</span>
+                      )}
+                      {appt.patients?.is_pregnant && (
+                        <span className="text-error font-extrabold uppercase text-[10px]">Gestante</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 mt-3">
+                      {/* Time display/edit */}
+                      <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                        {editingTimeId === appt.id ? (
+                          <Input
+                            type="time"
+                            value={editTimeValue}
+                            onChange={e => setEditTimeValue(e.target.value)}
+                            onBlur={saveTime}
+                            onKeyDown={e => e.key === "Enter" && saveTime()}
+                            className="w-20 h-6 text-[11px] p-1 border-[#E7E9EF] focus:border-primary"
+                            autoFocus
+                          />
+                        ) : (
+                          <span
+                            className="text-[11px] text-on-surface-variant/70 cursor-pointer hover:text-primary flex items-center gap-1 font-bold"
+                            onClick={() => startEditTime(appt)}
+                            title="Clique para alterar"
+                          >
+                            <Clock className="w-3.5 h-3.5 opacity-60" />
+                            {appt.schedule_time || defaultTime}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Reason */}
+                      {appt.reason && (
+                        <span className="text-primary font-extrabold text-[10px] uppercase tracking-wider">
+                          {appt.reason}
+                        </span>
+                      )}
+
+                      {/* Status Badge */}
+                      <span
+                        className={cn(
+                          "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-tighter shrink-0",
+                          isPrinted
+                            ? "bg-on-secondary-container/10 text-on-secondary-container"
+                            : "bg-amber-500/10 text-amber-700"
+                        )}
+                      >
+                        {isPrinted ? "Impresso" : "Pendente"}
+                      </span>
+                    </div>
                   </div>
 
+                  {/* Actions */}
+                  <div className="flex flex-col justify-between items-end shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+                    <div className={cn(
+                      "flex gap-1 transition-opacity duration-150",
+                      isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )}>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-on-surface-variant hover:text-primary hover:bg-slate-100 rounded-full"
+                        onClick={() => openEditDialog(appt)}
+                        title="Editar"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-on-surface-variant hover:text-on-secondary-container hover:bg-slate-100 rounded-full"
+                        onClick={() => printAppointments([appt], onRefresh || onPatientsChanged)}
+                        title="Imprimir"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive hover:bg-red-50 rounded-full"
+                        onClick={() => { if (window.confirm("Excluir agendamento?")) onRemove(appt.id); }}
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                /* ── Empty slot: entire row is tappable on mobile ── */
+                /* Free Slot Row Card */
                 <div
-                  className="flex-1 flex items-center justify-between cursor-pointer"
                   onClick={() => openNewDialog(slot)}
+                  className="bg-white/50 border border-dashed border-outline-variant rounded-lg p-3.5 flex items-center justify-between text-on-surface-variant/60 hover:border-primary hover:text-primary hover:bg-white transition-all cursor-pointer group"
                 >
-                  <span className="text-sm text-muted-foreground italic">Livre</span>
-                  <UserPlus className={`w-4 h-4 text-primary transition-opacity ${isMobile ? "opacity-60" : "opacity-0 group-hover:opacity-100"}`} />
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold opacity-45">{slotNum}</span>
+                    <span className="text-xs font-semibold italic">Livre</span>
+                  </div>
+                  <UserPlus className="w-4 h-4 text-primary/65 group-hover:text-primary group-hover:scale-110 transition-all shrink-0" />
                 </div>
               )}
             </div>
@@ -290,6 +331,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
         editAppointment={editAppointment}
         onUpdate={onUpdateAppointment}
         preselectedPatient={preselectedPatient}
+        onClearPreselectedPatient={onClearPreselectedPatient}
       />
     </div>
   );

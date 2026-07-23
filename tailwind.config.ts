@@ -53,6 +53,10 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        header: {
+          DEFAULT: "hsl(var(--header-background))",
+          foreground: "hsl(var(--header-foreground))",
+        },
         morning: {
           DEFAULT: "hsl(var(--morning))",
           foreground: "hsl(var(--morning-foreground))",
