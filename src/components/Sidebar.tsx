@@ -11,7 +11,6 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "agenda", label: "Agenda", icon: Calendar },
   { id: "pacientes", label: "Pacientes", icon: Users },
   { id: "unidades", label: "Unidades", icon: Building },
@@ -47,11 +46,11 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
     >
       {/* Header / Logo */}
       <div className="px-6 py-6 overflow-hidden flex items-center gap-3 border-b border-white/10 shrink-0">
-        <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-white p-0.5 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
           <img
-            className="w-full h-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUwTknX-KImZ7w-VCf8hxANPY99Lie8pbRxPzRutQPzYZ-D3k3WxgUuZr7Pz0DAqZfvSCF8cov7KVTJvrIpqDJdjHsEYWnS8voUln8btY8A7ZdIHtiVYZ8i3NLyeMLrFkDUMP9i6p2pvfYsRbJ1kJneZWExtnC5PxSxZ75r57GG_oJg3HsQLE4pdXhu0pG1AKIWPOR2kuza64hDb-wuaxpsYUs9onqLZeHj-lwuZzaeHWS3pAYmwtqJQ"
-            alt="Logo"
+            className="w-full h-full object-contain"
+            src="/logo.png"
+            alt="Logo Saúde da Mulher"
           />
         </div>
         {!collapsed && (

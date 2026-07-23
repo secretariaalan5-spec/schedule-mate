@@ -245,7 +245,7 @@ export default function Dashboard() {
         {isMobile && (
           <header className="h-14 w-full bg-primary-container flex justify-between items-center px-4 border-b border-primary shrink-0 shadow-sm z-30">
             <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-black">S</span>
+              <img src="/logo.png" className="w-7 h-7 object-contain bg-white rounded-full p-0.5 shadow-xs" alt="Logo Saúde da Mulher" />
               <h1 className="text-sm font-bold text-white uppercase tracking-wider">Saúde da Mulher</h1>
             </div>
             <button

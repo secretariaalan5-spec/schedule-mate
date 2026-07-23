@@ -4,85 +4,85 @@
 
 @layer base {
   :root {
-    --background: 240 100% 99%;
-    --foreground: 216 43% 12%;
+    --background: 204 100% 98%;
+    --foreground: 215 28% 17%;
 
     --card: 0 0% 100%;
-    --card-foreground: 216 43% 12%;
+    --card-foreground: 215 28% 17%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 216 43% 12%;
+    --popover-foreground: 215 28% 17%;
 
-    --primary: 337 100% 21%;
+    --primary: 199 89% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --header-background: 227 100% 97%;
-    --header-foreground: 337 100% 21%;
+    --header-background: 204 100% 96%;
+    --header-foreground: 199 89% 32%;
 
-    --secondary: 155 100% 21%;
+    --secondary: 199 89% 48%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 349 14% 94%;
-    --muted-foreground: 349 14% 45%;
+    --muted: 204 94% 94%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 155 100% 21%;
+    --accent: 199 89% 48%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 75% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 351 31% 81%;
-    --input: 351 31% 81%;
-    --ring: 337 100% 21%;
+    --border: 199 89% 80%;
+    --input: 199 89% 80%;
+    --ring: 199 89% 32%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 342 66% 33%;
+    --sidebar-background: 199 89% 32%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 342 66% 33%;
-    --sidebar-accent: 342 50% 40%;
+    --sidebar-primary-foreground: 199 89% 32%;
+    --sidebar-accent: 199 89% 25%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 351 31% 81%;
+    --sidebar-border: 199 89% 80%;
     --sidebar-ring: 0 0% 100%;
 
-    --morning: 337 100% 21%;
+    --morning: 199 89% 32%;
     --morning-foreground: 0 0% 100%;
-    --afternoon: 342 66% 33%;
+    --afternoon: 199 89% 48%;
     --afternoon-foreground: 0 0% 100%;
   }
 
   .dark {
-    --background: 216 43% 12%;
-    --foreground: 240 100% 99%;
-    --card: 216 43% 10%;
-    --card-foreground: 240 100% 99%;
-    --popover: 216 43% 10%;
-    --popover-foreground: 240 100% 99%;
-    --primary: 337 100% 21%;
+    --background: 215 28% 12%;
+    --foreground: 204 100% 98%;
+    --card: 215 28% 10%;
+    --card-foreground: 204 100% 98%;
+    --popover: 215 28% 10%;
+    --popover-foreground: 204 100% 98%;
+    --primary: 199 89% 32%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 155 100% 21%;
+    --secondary: 199 89% 48%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 349 14% 20%;
-    --muted-foreground: 349 14% 65%;
-    --accent: 155 100% 21%;
+    --muted: 215 28% 20%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 199 89% 48%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 75% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 351 31% 30%;
-    --input: 351 31% 30%;
-    --ring: 337 100% 21%;
-    --sidebar-background: 342 66% 25%;
-    --sidebar-foreground: 240 100% 99%;
-    --sidebar-primary: 337 100% 21%;
+    --border: 199 89% 30%;
+    --input: 199 89% 30%;
+    --ring: 199 89% 32%;
+    --sidebar-background: 199 89% 25%;
+    --sidebar-foreground: 204 100% 98%;
+    --sidebar-primary: 199 89% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 342 50% 20%;
-    --sidebar-accent-foreground: 240 100% 99%;
-    --sidebar-border: 351 31% 30%;
-    --sidebar-ring: 337 100% 21%;
-    --morning: 337 100% 21%;
+    --sidebar-accent: 199 89% 20%;
+    --sidebar-accent-foreground: 204 100% 98%;
+    --sidebar-border: 199 89% 30%;
+    --sidebar-ring: 199 89% 32%;
+    --morning: 199 89% 32%;
     --morning-foreground: 0 0% 100%;
-    --afternoon: 342 66% 33%;
+    --afternoon: 199 89% 48%;
     --afternoon-foreground: 0 0% 100%;
   }
 }
@@ -162,12 +162,12 @@
 
 /* Custom Portal Clínico Utilities */
 @layer utilities {
-  .bg-primary-container { background-color: #8c1d3f; }
+  .bg-primary-container { background-color: #0369a1; }
   .text-on-primary { color: #ffffff; }
-  .border-outline-variant { border-color: #ddbfc3; }
-  .bg-surface-container-low { background-color: #f0f3ff; }
+  .border-outline-variant { border-color: #bae6fd; }
+  .bg-surface-container-low { background-color: #e0f2fe; }
   .bg-surface-container-lowest { background-color: #ffffff; }
-  .text-on-surface-variant { color: #564145; }
+  .text-on-surface-variant { color: #334155; }
   
   .text-display-lg { font-size: 30px; line-height: 36px; letter-spacing: -0.02em; font-weight: 700; }
   .text-label-bold { font-size: 11px; line-height: 16px; letter-spacing: 0.05em; font-weight: 700; }
@@ -183,13 +183,13 @@
   .gap-margin-md { gap: 20px; }
   .mb-margin-md { margin-bottom: 20px; }
 
-  .bg-secondary-fixed { background-color: #91f8b8; }
-  .text-primary-fixed-dim { color: #ffb2bf; }
-  .bg-on-secondary-container\/10 { background-color: rgba(0, 114, 67, 0.1); }
-  .text-on-secondary-container { color: #007243; }
-  .border-primary-fixed-dim { border-color: #ffb2bf; }
-  .text-error { color: #ba1a1a; }
-  .bg-primary\/5 { background-color: rgba(108, 0, 41, 0.05); }
+  .bg-secondary-fixed { background-color: #7dd3fc; }
+  .text-primary-fixed-dim { color: #0284c7; }
+  .bg-on-secondary-container\/10 { background-color: rgba(3, 105, 161, 0.1); }
+  .text-on-secondary-container { color: #0369a1; }
+  .border-primary-fixed-dim { border-color: #bae6fd; }
+  .text-error { color: #dc2626; }
+  .bg-primary\/5 { background-color: rgba(3, 105, 161, 0.05); }
 }
 
 

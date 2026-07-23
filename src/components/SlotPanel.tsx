@@ -174,9 +174,11 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                 /* Patient Card */
                 <div
                   className={cn(
-                    "bg-white border rounded-lg shadow-sm flex gap-4 p-4 hover:border-primary transition-all cursor-pointer group border-l-4",
-                    variant === "morning" ? "border-l-secondary" : "border-l-primary-fixed-dim border-l-[#ffb2bf]",
-                    isSelected ? "ring-2 ring-primary/20 border-primary bg-primary/5" : "border-outline-variant"
+                    "border rounded-lg shadow-sm flex gap-4 p-4 hover:shadow-md transition-all cursor-pointer group border-l-4",
+                    isPrinted
+                      ? "bg-emerald-50/30 border-emerald-200 border-l-emerald-600"
+                      : "bg-amber-50/40 border-amber-200 border-l-amber-500",
+                    isSelected ? "ring-2 ring-primary/40 border-primary" : ""
                   )}
                   onClick={(e) => handlePatientClick(e, appt)}
                 >
@@ -197,13 +199,13 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                     
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] font-bold text-on-surface-variant/80">
                       {appt.patients?.sus_card && (
-                        <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600">
+                        <span className="font-mono text-[10px] bg-white/80 border border-slate-200 px-1.5 py-0.5 rounded text-slate-700">
                           {appt.patients.sus_card}
                         </span>
                       )}
                       
                       {appt.patients?.psf && (
-                        <span className="text-primary-fixed-dim bg-primary/5 px-1.5 py-0.5 rounded text-[10px] uppercase font-black">
+                        <span className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-[10px] uppercase font-black">
                           ({appt.patients.psf})
                         </span>
                       )}
@@ -249,15 +251,16 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                         </span>
                       )}
 
-                      {/* Status Badge */}
+                      {/* Status Badge — GREEN for Printed, YELLOW for Pending */}
                       <span
                         className={cn(
-                          "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-tighter shrink-0",
+                          "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-tighter shrink-0 flex items-center gap-1.5",
                           isPrinted
-                            ? "bg-on-secondary-container/10 text-on-secondary-container"
-                            : "bg-amber-500/10 text-amber-700"
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                            : "bg-amber-100 text-amber-900 border border-amber-300"
                         )}
                       >
+                        <span className={cn("w-1.5 h-1.5 rounded-full", isPrinted ? "bg-emerald-600" : "bg-amber-500 animate-pulse")} />
                         {isPrinted ? "Impresso" : "Pendente"}
                       </span>
                     </div>
