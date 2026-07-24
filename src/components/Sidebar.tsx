@@ -122,7 +122,7 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
       {/* Collapse Toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-24 bg-white border border-outline-variant rounded-full p-1 shadow-sm text-primary hover:bg-[#f9f9ff] z-40"
+        className="absolute -right-2 top-24 bg-white border border-outline-variant rounded-full p-1 shadow-sm text-primary hover:bg-[#f9f9ff] z-40"
       >
         <ChevronLeft className={cn("w-4 h-4 transition-transform", collapsed && "rotate-180")} />
       </button>

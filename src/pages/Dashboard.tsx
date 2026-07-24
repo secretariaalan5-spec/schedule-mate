@@ -319,15 +319,6 @@ export default function Dashboard() {
               </h2>
               
               <div className="flex items-center gap-3">
-                <div className="flex items-center bg-[#e2e9ec] rounded-full px-4 py-1.5 gap-2 border border-outline-variant">
-                  <Search className="w-4 h-4 text-[#554246]" />
-                  <input
-                    className="bg-transparent border-none outline-none text-[13px] focus:ring-0 w-44"
-                    placeholder="Buscar pacientes..."
-                    type="text"
-                    style={{ color: "#161d1f" }}
-                  />
-                </div>
               </div>
             </header>
           )
@@ -374,29 +365,29 @@ export default function Dashboard() {
         {tab === "agenda" && (
           isMobile ? (
             /* MOBILE AGENDA VIEW — Scrollable single page */
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-24 bg-[#F7FAFC]">
+            <div className="flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden box-border p-4 space-y-6 pb-24 bg-slate-50/50">
               {/* Header Section */}
-              <div>
+              <div className="w-full max-w-full overflow-hidden">
                 <p className="text-label-bold text-on-surface-variant uppercase tracking-widest mb-1 text-[10px]">Agenda Selecionada</p>
-                <h2 className="text-headline-md font-headline-md text-on-surface uppercase font-bold text-lg leading-tight">
+                <h2 className="text-headline-md font-headline-md text-on-surface uppercase font-bold text-lg leading-tight truncate">
                   {sched.selectedDate ? formatDateFull(sched.selectedDate) : "Selecione uma data"}
                 </h2>
               </div>
 
               {/* Horizontal Scrollable Date Picker */}
-              <div className="mb-4">
+              <div className="mb-4 w-full max-w-full overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-title-sm text-on-surface text-sm capitalize font-bold">{currentMonthLabel}</span>
                   <div className="flex gap-2">
-                    <button onClick={handlePrevWeek} className="p-1 hover:bg-surface-container rounded-full border border-outline-variant bg-white active:scale-95 transition-all">
+                    <button onClick={handlePrevWeek} className="p-1 hover:bg-surface-container rounded-full border border-outline-variant bg-white active:scale-95 transition-all shadow-xs">
                       <ChevronLeft className="w-4 h-4 text-on-surface" />
                     </button>
-                    <button onClick={handleNextWeek} className="p-1 hover:bg-surface-container rounded-full border border-outline-variant bg-white active:scale-95 transition-all">
+                    <button onClick={handleNextWeek} className="p-1 hover:bg-surface-container rounded-full border border-outline-variant bg-white active:scale-95 transition-all shadow-xs">
                       <ChevronLeft className="w-4 h-4 text-on-surface rotate-180" />
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-2 w-full max-w-full">
                   {mobileDays.map((day) => {
                     const isSelected = day.dateStr === sched.selectedDate;
                     return (
@@ -404,20 +395,20 @@ export default function Dashboard() {
                         key={day.dateStr}
                         onClick={() => sched.setSelectedDate(day.dateStr)}
                         className={cn(
-                          "flex-shrink-0 flex flex-col items-center justify-center w-12 h-16 rounded-xl border transition-all cursor-pointer",
+                          "flex-shrink-0 flex flex-col items-center justify-center w-12 h-16 rounded-xl border transition-all cursor-pointer shadow-xs",
                           isSelected
-                            ? "bg-primary text-white shadow-md scale-105 ring-2 ring-primary-fixed-dim border-primary"
+                            ? "bg-primary text-white shadow-md scale-105 ring-2 ring-primary/30 border-primary font-bold"
                             : day.isOccupied
-                              ? "bg-primary/5 border-primary/45 text-primary font-bold"
-                              : "bg-white border-outline-variant text-on-surface-variant"
+                              ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 font-bold"
+                              : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                         )}
                       >
-                        <span className={cn("text-[9px] font-bold tracking-wider", isSelected ? "text-white" : "text-on-surface-variant/70")}>
+                        <span className={cn("text-[9px] font-bold tracking-wider", isSelected ? "text-white" : "text-slate-500")}>
                           {day.dayLabel}
                         </span>
-                        <span className="text-sm font-black mt-1">{day.dayNum}</span>
+                        <span className="text-sm font-black mt-0.5">{day.dayNum}</span>
                         {day.isOccupied && !isSelected && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
                         )}
                       </div>
                     );
@@ -425,8 +416,8 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Occupancy Summary Card */}
-              <article className="bg-white rounded-xl border border-outline-variant shadow-sm p-4">
+              {/* Occupancy Summary Card with 3D Depth */}
+              <article className="bg-white rounded-xl border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] p-4.5 w-full max-w-full box-border">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-title-sm text-primary text-sm font-bold">Status de Ocupação</h3>
                   <span className="text-[10px] font-bold px-2 py-0.5 bg-primary-fixed text-on-primary-fixed rounded">
