@@ -124,9 +124,6 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56" side="right" sideOffset={10}>
-            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-            <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuLabel>Configurações</DropdownMenuLabel>
             <DropdownMenuItem onSelect={() => setTeamOpen(true)}>Configurar Equipe</DropdownMenuItem>
           </DropdownMenuContent>
