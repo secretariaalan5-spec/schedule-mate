@@ -310,7 +310,6 @@ export default function Dashboard() {
                   <Download className="w-4 h-4" />
                   Exportar Dados
                 </button>
-                <HeaderMenu onImportComplete={handleRefresh} />
               </div>
             </header>
           ) : (
@@ -320,7 +319,6 @@ export default function Dashboard() {
               </h2>
               
               <div className="flex items-center gap-3">
-                <HeaderMenu onImportComplete={handleRefresh} />
               </div>
             </header>
           )

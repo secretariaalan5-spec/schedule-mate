@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Calendar, Users, Building, Settings, LogOut, ChevronLeft, LayoutDashboard, User } from "lucide-react";
+import { Calendar, Users, Building, Settings, LogOut, ChevronLeft, LayoutDashboard, User, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import InviteLink from "@/components/InviteLink";
 
 interface SidebarProps {
   activeTab: string;
@@ -19,6 +20,7 @@ const navItems = [
 
 export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [teamOpen, setTeamOpen] = useState(false);
   const { user } = useAuth();
   const [profileName, setProfileName] = useState("");
 
@@ -106,6 +108,18 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
           )}
         </div>
 
+        {/* Invite Team Button */}
+        <button
+          onClick={() => setTeamOpen(true)}
+          className={cn(
+            "flex items-center w-full px-4 py-2.5 rounded-lg transition-all duration-150 text-white/80 hover:bg-white/10 hover:text-white"
+          )}
+          title={collapsed ? "Equipe" : undefined}
+        >
+          <UserPlus className="w-4 h-4 flex-shrink-0 text-white/80" />
+          {!collapsed && <span className="ml-3 text-[13px] font-semibold">Equipe</span>}
+        </button>
+
         {/* Logout Button */}
         <button
           onClick={onSignOut}
@@ -126,6 +140,13 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
       >
         <ChevronLeft className={cn("w-4 h-4 transition-transform", collapsed && "rotate-180")} />
       </button>
+
+      {/* Team dialog */}
+      <InviteLink
+        open={teamOpen}
+        onOpenChange={setTeamOpen}
+      />
     </div>
   );
 }
+
