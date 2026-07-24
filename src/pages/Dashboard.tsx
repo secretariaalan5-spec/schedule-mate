@@ -319,6 +319,7 @@ export default function Dashboard() {
               </h2>
               
               <div className="flex items-center gap-3">
+                <HeaderMenu onImportComplete={handleRefresh} />
               </div>
             </header>
           )
