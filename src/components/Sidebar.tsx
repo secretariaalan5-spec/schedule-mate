@@ -4,6 +4,14 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import InviteLink from "@/components/InviteLink";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SidebarProps {
   activeTab: string;
@@ -89,31 +97,40 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
 
       {/* Footer Profile & Actions */}
       <div className="p-4 border-t border-white/10 mt-auto space-y-2 shrink-0 bg-black/5">
-        {/* User Profile */}
-        <button
-          onClick={() => setTeamOpen(true)}
-          className={cn(
-            "flex items-center gap-3 py-1 w-full text-left transition-all duration-150 rounded-lg hover:bg-white/10",
-            collapsed && "justify-center"
-          )}
-          title={collapsed ? "Equipe" : undefined}
-        >
-          <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
-            {profileName ? (
-              profileName.substring(0, 2).toUpperCase()
-            ) : (
-              <User className="w-4 h-4" />
-            )}
-          </div>
-          {!collapsed && (
-            <div className="leading-tight min-w-0 flex-1">
-              <h4 className="font-bold text-[13px] text-white truncate" title={profileName || "Administradora"}>
-                {profileName || "Administradora"}
-              </h4>
-              <p className="text-[11px] text-white/70">Equipe Clínico</p>
-            </div>
-          )}
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className={cn(
+                "flex items-center gap-3 py-1 w-full text-left transition-all duration-150 rounded-lg hover:bg-white/10",
+                collapsed && "justify-center"
+              )}
+              title={collapsed ? "Perfil e Equipe" : undefined}
+            >
+              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+                {profileName ? (
+                  profileName.substring(0, 2).toUpperCase()
+                ) : (
+                  <User className="w-4 h-4" />
+                )}
+              </div>
+              {!collapsed && (
+                <div className="leading-tight min-w-0 flex-1">
+                  <h4 className="font-bold text-[13px] text-white truncate" title={profileName || "Administradora"}>
+                    {profileName || "Administradora"}
+                  </h4>
+                  <p className="text-[11px] text-white/70">Equipe Clínico</p>
+                </div>
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56" side="right" sideOffset={10}>
+            <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+            <DropdownMenuItem>Meu Perfil</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Configurações</DropdownMenuLabel>
+            <DropdownMenuItem onSelect={() => setTeamOpen(true)}>Configurar Equipe</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Logout Button */}
         <button
