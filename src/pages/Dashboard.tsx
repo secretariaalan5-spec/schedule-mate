@@ -261,7 +261,7 @@ export default function Dashboard() {
         {/* Desktop Header */}
         {!isMobile && (
           tab === "agenda" ? (
-            <header className="h-16 w-full flex justify-between items-center px-6 bg-white border-b border-outline-variant shadow-sm sticky top-0 z-10 shrink-0">
+            <header className="h-16 w-full flex justify-between items-center px-6 bg-white border-b border-outline-variant shadow-sm sticky top-0 z-40 shrink-0">
               <div className="flex flex-col">
                 <span className="text-label-bold uppercase text-on-surface-variant opacity-60">Agenda Selecionada</span>
                 <h2 className="text-headline-md font-headline-md font-bold text-primary capitalize">
@@ -314,7 +314,7 @@ export default function Dashboard() {
               </div>
             </header>
           ) : (
-            <header className="flex justify-between items-center h-16 w-full px-6 border-b border-outline-variant bg-white sticky top-0 z-10 shrink-0 shadow-sm">
+            <header className="flex justify-between items-center h-16 w-full px-6 border-b border-outline-variant bg-white sticky top-0 z-40 shrink-0 shadow-sm">
               <h2 className="text-headline-md font-headline-md font-bold text-primary">
                 {getHeaderTitle()}
               </h2>
