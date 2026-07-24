@@ -90,7 +90,14 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
       {/* Footer Profile & Actions */}
       <div className="p-4 border-t border-white/10 mt-auto space-y-2 shrink-0 bg-black/5">
         {/* User Profile */}
-        <div className={cn("flex items-center gap-3 py-1", collapsed && "justify-center")}>
+        <button
+          onClick={() => setTeamOpen(true)}
+          className={cn(
+            "flex items-center gap-3 py-1 w-full text-left transition-all duration-150 rounded-lg hover:bg-white/10",
+            collapsed && "justify-center"
+          )}
+          title={collapsed ? "Equipe" : undefined}
+        >
           <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
             {profileName ? (
               profileName.substring(0, 2).toUpperCase()
@@ -106,18 +113,6 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
               <p className="text-[11px] text-white/70">Equipe Clínico</p>
             </div>
           )}
-        </div>
-
-        {/* Invite Team Button */}
-        <button
-          onClick={() => setTeamOpen(true)}
-          className={cn(
-            "flex items-center w-full px-4 py-2.5 rounded-lg transition-all duration-150 text-white/80 hover:bg-white/10 hover:text-white"
-          )}
-          title={collapsed ? "Equipe" : undefined}
-        >
-          <UserPlus className="w-4 h-4 flex-shrink-0 text-white/80" />
-          {!collapsed && <span className="ml-3 text-[13px] font-semibold">Equipe</span>}
         </button>
 
         {/* Logout Button */}
