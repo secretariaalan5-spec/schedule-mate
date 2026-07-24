@@ -670,7 +670,6 @@ export default function Dashboard() {
               <div className="p-4 bg-slate-50/50">
                 <p className="text-[11px] font-black uppercase text-on-surface-variant opacity-60 mb-2">Equipe e Unidades de Saúde</p>
                 <div className="flex flex-wrap gap-2">
-                  <HeaderMenu onImportComplete={handleRefresh} />
                 </div>
               </div>
 
