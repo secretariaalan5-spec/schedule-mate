@@ -310,6 +310,7 @@ export default function Dashboard() {
                   <Download className="w-4 h-4" />
                   Exportar Dados
                 </button>
+                <HeaderMenu onImportComplete={handleRefresh} />
               </div>
             </header>
           ) : (
