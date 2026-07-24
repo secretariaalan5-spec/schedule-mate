@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Users, Building, Settings, LogOut, ChevronLeft, LayoutDashboard, User, UserPlus } from "lucide-react";
+import { Calendar, Users, Building, Settings, LogOut, ChevronLeft, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -144,4 +144,5 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
     </div>
   );
 }
+
 
