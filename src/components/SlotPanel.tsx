@@ -1,13 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, UserPlus, Printer, CheckCircle, Clock, Edit2 } from "lucide-react";
+import { Trash2, UserPlus, Printer, Clock, Edit2 } from "lucide-react";
 import type { Appointment, Patient } from "@/hooks/useScheduling";
 import { useIsMobile } from "@/hooks/use-mobile";
-import AppointmentDialog from "./AppointmentDialog";
 import { printAppointments } from "./PrintSlip";
 import { cn } from "@/lib/utils";
-import { useAppointmentDraft } from "@/hooks/useAppointmentDraft";
 
 interface Props {
   title: string;
@@ -25,35 +23,17 @@ interface Props {
   onUpdateAppointment?: (id: string, updates: { reason?: string; type?: string; schedule_time?: string; patient_id?: string }) => void;
   preselectedPatient?: Patient | null;
   onClearPreselectedPatient?: () => void;
+  // Dialog is now managed externally (Dashboard) so it survives tab changes
+  onOpenNewDialog: (slot: number, variant: string) => void;
+  onOpenEditDialog: (appt: Appointment, variant: string) => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment, preselectedPatient, onClearPreselectedPatient }: Props) {
+export default function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment, preselectedPatient, onClearPreselectedPatient, onOpenNewDialog, onOpenEditDialog }: Props) {
   const isMobile = useIsMobile();
-  const [dialogSlot, setDialogSlot] = useState<number | null>(null);
-  const { hasDraft } = useAppointmentDraft();
-  const DIALOG_SLOT_KEY = `dialog_slot_${variant}_${date}`;
 
-  // Restore open dialog slot from sessionStorage (if there was a draft in progress)
-  useEffect(() => {
-    const stored = sessionStorage.getItem(DIALOG_SLOT_KEY);
-    if (stored !== null) {
-      const slot = parseInt(stored, 10);
-      if (!isNaN(slot) && hasDraft(slot, date, variant as any)) {
-        setDialogSlot(slot);
-      } else {
-        sessionStorage.removeItem(DIALOG_SLOT_KEY);
-      }
-    }
-  // Only run on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editTimeValue, setEditTimeValue] = useState("");
-  // Counter to force AppointmentDialog to remount when we need a fresh state
-  const [dialogResetKey, setDialogResetKey] = useState(0);
 
   const getAppointment = (slot: number) => appointments.find(a => a.slot === slot);
 
@@ -61,7 +41,6 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
   const printedCount = appointments.filter(a => a.printed).length;
   const pendingCount = occupied - printedCount;
   const freeCount = vacancies - occupied;
-  const dotColor = variant === "morning" ? "bg-morning" : "bg-afternoon";
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -97,44 +76,15 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
     setEditingTimeId(null);
   };
 
-  const openEditDialog = (appt: Appointment) => {
-    setEditAppointment(appt);
-    setDialogSlot(appt.slot);
-  };
-
   const handlePatientClick = (e: React.MouseEvent, appt: Appointment) => {
     const selection = window.getSelection()?.toString();
-    if (selection && selection.trim().length > 0) {
-      return;
-    }
-    openEditDialog(appt);
+    if (selection && selection.trim().length > 0) return;
+    onOpenEditDialog(appt, variant);
   };
-
-  const openNewDialog = useCallback((slot: number) => {
-    setEditAppointment(null);
-    setDialogResetKey(k => k + 1);
-    setDialogSlot(slot);
-    sessionStorage.setItem(DIALOG_SLOT_KEY, String(slot));
-  }, [DIALOG_SLOT_KEY]);
-
-  const closeDialog = useCallback(() => {
-    setDialogSlot(null);
-    setEditAppointment(null);
-    sessionStorage.removeItem(DIALOG_SLOT_KEY);
-    onClearPreselectedPatient?.();
-  }, [onClearPreselectedPatient, DIALOG_SLOT_KEY]);
-
-  useEffect(() => {
-    // Close dialog PROPERLY (set open=false) before any key change, so Radix
-    // cleans up its portal overlay correctly.
-    closeDialog();
-    setEditingTimeId(null);
-    setEditTimeValue("");
-  }, [date, closeDialog]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-transparent">
-      {/* Header — matches the template style */}
+      {/* Header */}
       <header className="p-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 bg-transparent">
         <div className="flex items-center gap-2">
           <div className={cn(
@@ -180,7 +130,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
         </div>
       </header>
 
-      {/* Cards container — spaced lists */}
+      {/* Cards */}
       <div className="flex-1 overflow-y-auto no-scrollbar p-1 pb-10 space-y-3">
         {slots.map(slot => {
           const appt = getAppointment(slot);
@@ -191,7 +141,6 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
           return (
             <div key={slot}>
               {appt ? (
-                /* Patient Card */
                 <div
                   className={cn(
                     "border rounded-lg shadow-sm flex gap-4 p-4 hover:shadow-md transition-all cursor-pointer group border-l-4",
@@ -223,14 +172,11 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                           {appt.patients.sus_card}
                         </span>
                       )}
-                      
                       {appt.patients?.psf && (
                         <span className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-[10px] uppercase font-black">
                           ({appt.patients.psf})
                         </span>
                       )}
-
-                      {/* Health Conditions / Risk badges */}
                       {appt.patients?.risk_classification === "ALTO" && (
                         <span className="text-error font-extrabold uppercase text-[10px]">Alto Risco</span>
                       )}
@@ -240,7 +186,6 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                     </div>
 
                     <div className="flex items-center gap-3 mt-3">
-                      {/* Time display/edit */}
                       <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                         {editingTimeId === appt.id ? (
                           <Input
@@ -264,14 +209,12 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                         )}
                       </div>
 
-                      {/* Reason */}
                       {appt.reason && (
                         <span className="text-primary font-extrabold text-[10px] uppercase tracking-wider">
                           {appt.reason}
                         </span>
                       )}
 
-                      {/* Status Badge — GREEN for Printed, YELLOW for Pending */}
                       <span
                         className={cn(
                           "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-tighter shrink-0 flex items-center gap-1.5",
@@ -286,7 +229,6 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex flex-col justify-between items-end shrink-0 ml-2" onClick={e => e.stopPropagation()}>
                     <div className={cn(
                       "flex gap-1 transition-opacity duration-150",
@@ -296,7 +238,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 text-on-surface-variant hover:text-primary hover:bg-slate-100 rounded-full"
-                        onClick={() => openEditDialog(appt)}
+                        onClick={() => onOpenEditDialog(appt, variant)}
                         title="Editar"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
@@ -323,9 +265,9 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                   </div>
                 </div>
               ) : (
-                /* Free Slot Row Card */
+                /* Free Slot */
                 <div
-                  onClick={() => openNewDialog(slot)}
+                  onClick={() => onOpenNewDialog(slot, variant)}
                   className="bg-white/50 border border-dashed border-outline-variant rounded-lg p-3.5 flex items-center justify-between text-on-surface-variant/60 hover:border-primary hover:text-primary hover:bg-white transition-all cursor-pointer group"
                 >
                   <div className="flex items-center gap-3">
@@ -339,23 +281,6 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
           );
         })}
       </div>
-
-      <AppointmentDialog
-        key={`${variant}-${dialogResetKey}`}
-        open={dialogSlot !== null}
-        onClose={closeDialog}
-        slot={dialogSlot ?? slots[0]}
-        date={date}
-        variant={variant as any}
-        defaultTime={defaultTime}
-        title={title}
-        onAdd={onAdd}
-        onPatientsChanged={onPatientsChanged}
-        editAppointment={editAppointment}
-        onUpdate={onUpdateAppointment}
-        preselectedPatient={preselectedPatient}
-        onClearPreselectedPatient={onClearPreselectedPatient}
-      />
     </div>
   );
 }

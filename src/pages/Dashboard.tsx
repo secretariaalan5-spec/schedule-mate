@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { useScheduling, formatDateFull } from "@/hooks/useScheduling";
 import SlotPanel from "@/components/SlotPanel";
+import AppointmentDialog from "@/components/AppointmentDialog";
 import Sidebar from "@/components/Sidebar";
 import HeaderMenu from "@/components/HeaderMenu";
 const PatientManager = lazy(() => import("@/components/PatientManager"));
@@ -30,7 +31,8 @@ import {
   Menu,
   LogOut
 } from "lucide-react";
-import type { Patient } from "@/hooks/useScheduling";
+import type { Patient, Appointment } from "@/hooks/useScheduling";
+import { useAppointmentDraft } from "@/hooks/useAppointmentDraft";
 import {
   Select,
   SelectContent,
@@ -59,6 +61,68 @@ export default function Dashboard() {
 
   // Active shift for mobile view
   const [mobileShift, setMobileShift] = useState<"morning" | "afternoon">("morning");
+
+  // ---- Persistent dialog state (survives tab switches within the app) ----
+  const { hasDraft, clearDraft } = useAppointmentDraft();
+  const DIALOG_KEY = "appt_dialog_state_v1";
+
+  type DialogState = {
+    slot: number;
+    variant: "morning" | "afternoon";
+    editAppointment: Appointment | null;
+    dialogResetKey: number;
+  } | null;
+
+  const loadDialogState = useCallback((): DialogState => {
+    try {
+      const raw = sessionStorage.getItem(DIALOG_KEY);
+      if (!raw) return null;
+      const s: DialogState = JSON.parse(raw);
+      if (!s) return null;
+      // Only restore new-appointment dialogs that have a live draft
+      if (!s.editAppointment && !hasDraft(s.slot, sched.selectedDate, s.variant)) {
+        sessionStorage.removeItem(DIALOG_KEY);
+        return null;
+      }
+      return s;
+    } catch { return null; }
+  }, [hasDraft, sched.selectedDate]);
+
+  const [dialogState, setDialogState] = useState<DialogState>(() => loadDialogState());
+
+  const openNewDialog = useCallback((slot: number, variant: string) => {
+    const state: DialogState = {
+      slot,
+      variant: variant as "morning" | "afternoon",
+      editAppointment: null,
+      dialogResetKey: Date.now(),
+    };
+    sessionStorage.setItem(DIALOG_KEY, JSON.stringify(state));
+    setDialogState(state);
+  }, []);
+
+  const openEditDialog = useCallback((appt: Appointment, variant: string) => {
+    const state: DialogState = {
+      slot: appt.slot,
+      variant: variant as "morning" | "afternoon",
+      editAppointment: appt,
+      dialogResetKey: Date.now(),
+    };
+    sessionStorage.setItem(DIALOG_KEY, JSON.stringify(state));
+    setDialogState(state);
+  }, []);
+
+  const closeDialog = useCallback(() => {
+    sessionStorage.removeItem(DIALOG_KEY);
+    setDialogState(null);
+    setPreselectedPatient(null);
+  }, []);
+
+  // Find which shift corresponds to the current dialog variant
+  const dialogShift = useMemo(() => {
+    if (!dialogState) return null;
+    return shifts.find(s => s.label === dialogState.variant) ?? null;
+  }, [dialogState, shifts]);
 
   const queryClient = useQueryClient();
 
@@ -235,6 +299,7 @@ export default function Dashboard() {
   };
 
   return (
+    <>
     <div className="flex h-[100dvh] overflow-hidden bg-background">
       <Sidebar activeTab={tab} onTabChange={(t) => setTab(t as Tab)} onSignOut={signOut} />
       
@@ -493,8 +558,8 @@ export default function Dashboard() {
                     onRefresh={() => sched.fetchAppointments()}
                     onUpdateTime={sched.updateAppointmentTime}
                     onUpdateAppointment={sched.updateAppointment}
-                    preselectedPatient={preselectedPatient}
-                    onClearPreselectedPatient={() => setPreselectedPatient(null)}
+                    onOpenNewDialog={openNewDialog}
+                    onOpenEditDialog={openEditDialog}
                   />
                 </div>
               ))}
@@ -584,7 +649,7 @@ export default function Dashboard() {
                 <div className="flex-1 flex overflow-hidden gap-6">
                   {shifts.map(shift => (
                     <article key={shift.id} className="flex-1 flex flex-col bg-transparent overflow-hidden">
-                      <SlotPanel
+                    <SlotPanel
                         title={shift.display_title}
                         slots={Array.from({ length: shift.end_slot - shift.start_slot + 1 }, (_, i) => i + shift.start_slot)}
                         appointments={filteredAppointments}
@@ -598,8 +663,8 @@ export default function Dashboard() {
                         onRefresh={() => sched.fetchAppointments()}
                         onUpdateTime={sched.updateAppointmentTime}
                         onUpdateAppointment={sched.updateAppointment}
-                        preselectedPatient={preselectedPatient}
-                        onClearPreselectedPatient={() => setPreselectedPatient(null)}
+                        onOpenNewDialog={openNewDialog}
+                        onOpenEditDialog={openEditDialog}
                       />
                     </article>
                   ))}
@@ -742,6 +807,27 @@ export default function Dashboard() {
         </nav>
       )}
     </div>
+
+      {/* AppointmentDialog lives OUTSIDE the tab conditional so it never unmounts
+          when the user switches to Pacientes/Unidades tabs */}
+      {dialogState && dialogShift && (
+        <AppointmentDialog
+          key={dialogState.dialogResetKey}
+          open={true}
+          onClose={closeDialog}
+          slot={dialogState.slot}
+          date={sched.selectedDate}
+          variant={dialogState.variant}
+          defaultTime={dialogShift.default_time}
+          title={dialogShift.display_title}
+          onAdd={sched.addAppointment}
+          onPatientsChanged={handleRefresh}
+          editAppointment={dialogState.editAppointment}
+          onUpdate={sched.updateAppointment}
+          preselectedPatient={preselectedPatient}
+        />
+      )}
+    </>
   );
 }
 
