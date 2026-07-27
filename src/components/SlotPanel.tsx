@@ -7,6 +7,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import AppointmentDialog from "./AppointmentDialog";
 import { printAppointments } from "./PrintSlip";
 import { cn } from "@/lib/utils";
+import { useAppointmentDraft } from "@/hooks/useAppointmentDraft";
 
 interface Props {
   title: string;
@@ -29,6 +30,23 @@ interface Props {
 export default function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment, preselectedPatient, onClearPreselectedPatient }: Props) {
   const isMobile = useIsMobile();
   const [dialogSlot, setDialogSlot] = useState<number | null>(null);
+  const { hasDraft } = useAppointmentDraft();
+  const DIALOG_SLOT_KEY = `dialog_slot_${variant}_${date}`;
+
+  // Restore open dialog slot from sessionStorage (if there was a draft in progress)
+  useEffect(() => {
+    const stored = sessionStorage.getItem(DIALOG_SLOT_KEY);
+    if (stored !== null) {
+      const slot = parseInt(stored, 10);
+      if (!isNaN(slot) && hasDraft(slot, date, variant as any)) {
+        setDialogSlot(slot);
+      } else {
+        sessionStorage.removeItem(DIALOG_SLOT_KEY);
+      }
+    }
+  // Only run on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -96,13 +114,15 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
     setEditAppointment(null);
     setDialogResetKey(k => k + 1);
     setDialogSlot(slot);
-  }, []);
+    sessionStorage.setItem(DIALOG_SLOT_KEY, String(slot));
+  }, [DIALOG_SLOT_KEY]);
 
   const closeDialog = useCallback(() => {
     setDialogSlot(null);
     setEditAppointment(null);
+    sessionStorage.removeItem(DIALOG_SLOT_KEY);
     onClearPreselectedPatient?.();
-  }, [onClearPreselectedPatient]);
+  }, [onClearPreselectedPatient, DIALOG_SLOT_KEY]);
 
   useEffect(() => {
     // Close dialog PROPERLY (set open=false) before any key change, so Radix

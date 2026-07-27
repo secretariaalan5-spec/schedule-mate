@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePatients } from "@/hooks/usePatients";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useHealthUnits } from "@/hooks/useHealthUnits";
+import { useAppointmentDraft } from "@/hooks/useAppointmentDraft";
 
 interface Props {
   open: boolean;
@@ -36,6 +37,8 @@ interface Props {
 
 export default function AppointmentDialog({ open, onClose, slot, date, variant, defaultTime, title, onAdd, onPatientsChanged, editAppointment, onUpdate, preselectedPatient }: Props) {
   const isEditing = !!editAppointment;
+  const { saveDraft, loadDraft, clearDraft } = useAppointmentDraft();
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 200);
   const effectiveSearch = debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : "";
@@ -74,6 +77,32 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
       .order("date");
     setPatientMonthAppointments((data as any) || []);
   }, [date]);
+
+  // ----- Draft persistence: restore on open (new appointments only) -----
+  useEffect(() => {
+    if (!open || isEditing) return;
+    const draft = loadDraft(slot, date, variant);
+    if (!draft) return;
+    // Only restore if there is meaningful content
+    if (!draft.name && !draft.susCard && !draft.reason) return;
+    setName(draft.name);
+    setSusCard(draft.susCard);
+    setDob(draft.dob);
+    setPsf(draft.psf);
+    setReason(draft.reason);
+    setType(draft.type);
+    setScheduleTime(draft.scheduleTime);
+    setSelectedPatient(draft.selectedPatient);
+    if (draft.name) setSearch(draft.name);
+    if (draft.selectedPatient) checkMonthAppointments(draft.selectedPatient.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // ----- Draft persistence: save on every field change (new appointments only) -----
+  useEffect(() => {
+    if (!open || isEditing) return;
+    saveDraft({ slot, date, variant, name, susCard, dob, psf, reason, type, scheduleTime, selectedPatientId: selectedPatient?.id ?? null, selectedPatient });
+  }, [open, isEditing, slot, date, variant, name, susCard, dob, psf, reason, type, scheduleTime, selectedPatient, saveDraft]);
 
   // Load patient_ids already booked this month — used to flag duplicates inside dropdown
   useEffect(() => {
@@ -257,6 +286,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
       };
       onUpdate(editAppointment!.id, updates);
       setLoading(false);
+      clearDraft();
       onClose();
       return;
     }
@@ -290,8 +320,17 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
 
     const ok = await onAdd(slot, date, patientId!, reason, type, scheduleTime);
     setLoading(false);
-    if (ok) onClose();
+    if (ok) {
+      clearDraft();
+      onClose();
+    }
   };
+
+  const handleClose = useCallback(() => {
+    // Keep the draft so the user can return and continue from where they left off.
+    // The draft is only cleared on successful save or explicit new dialog open.
+    onClose();
+  }, [onClose]);
 
   // Filter out current appointment from month list
   const existingAppointments = patientMonthAppointments.filter(
@@ -299,7 +338,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   );
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="w-[95vw] sm:w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -462,7 +501,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button variant="outline" onClick={handleClose}>Cancelar</Button>
             <Button onClick={handleSave} disabled={!name.trim() || loading}>
               {loading ? "Salvando..." : isEditing ? "Atualizar" : "Salvar"}
             </Button>
