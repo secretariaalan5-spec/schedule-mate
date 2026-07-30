@@ -13,6 +13,8 @@ const LoanManager = lazy(() => import("@/components/LoanManager"));
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
+import InviteLink from "@/components/InviteLink";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   CalendarDays, 
   Users, 
@@ -29,7 +31,9 @@ import {
   Mail,
   Plus,
   Menu,
-  LogOut
+  LogOut,
+  User,
+  UserPlus
 } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { useAppointmentDraft } from "@/hooks/useAppointmentDraft";
@@ -52,7 +56,38 @@ type Tab = "dashboard" | "agenda" | "pacientes" | "unidades" | "emprestimos" | "
 
 export default function Dashboard() {
   const sched = useScheduling();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
+
+  // Team management
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [pendingTeamCount, setPendingTeamCount] = useState(0);
+  const [profileName, setProfileName] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from("team_members")
+        .select("name, email")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) setProfileName(data.name || data.email.split("@")[0]);
+    };
+    fetchProfile();
+    const fetchPending = async () => {
+      const { count } = await supabase
+        .from("team_members")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      setPendingTeamCount(count ?? 0);
+    };
+    fetchPending();
+    const channel = supabase
+      .channel("dashboard_team_badge")
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, fetchPending)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
   const { data: shifts = DEFAULT_SHIFTS } = useShifts();
   const [tab, setTab] = useState<Tab>("agenda");
   const [mobileShowSlots, setMobileShowSlots] = useState(false);
@@ -709,46 +744,109 @@ export default function Dashboard() {
 
         {/* MOBILE MENU TAB */}
         {tab === "menu" && isMobile && (
-          <div className="flex-1 overflow-auto p-4 space-y-6 bg-[#F7FAFC] pb-28">
-            <div>
-              <h3 className="text-xl font-bold text-primary">Menu Geral</h3>
-              <p className="text-sm text-on-surface-variant">Saúde da Mulher — Portal Clínico</p>
-            </div>
-            
-            <div className="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden divide-y divide-outline-variant/40">
-              <button
-                onClick={() => setTab("dashboard")}
-                className="w-full text-left p-4 hover:bg-slate-50 transition-colors flex items-center justify-between font-semibold text-sm"
-              >
-                <span>Painel de Estatísticas</span>
-                <ChevronLeft className="w-4 h-4 rotate-180 text-on-surface-variant/40" />
-              </button>
-              
-              <button
-                onClick={() => setTab("emprestimos")}
-                className="w-full text-left p-4 hover:bg-slate-50 transition-colors flex items-center justify-between font-semibold text-sm"
-              >
-                <span>Gerenciar Empréstimos</span>
-                <ChevronLeft className="w-4 h-4 rotate-180 text-on-surface-variant/40" />
-              </button>
-
-              <div className="p-4 bg-slate-50/50">
-                <p className="text-[11px] font-black uppercase text-on-surface-variant opacity-60 mb-2">Equipe e Unidades de Saúde</p>
-                <div className="flex flex-wrap gap-2">
-                </div>
+          <div className="flex-1 overflow-auto p-4 space-y-4 bg-slate-50/70 pb-28">
+            {/* User Profile Card */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0369a1] to-[#0284c7] text-white flex items-center justify-center font-black text-base shadow-sm shrink-0">
+                {profileName ? profileName.substring(0, 2).toUpperCase() : <User className="w-6 h-6" />}
               </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-base text-slate-800 truncate">{profileName || "Administradora"}</h3>
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                <span className="inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-full mt-1">
+                  Equipe Portal Clínico
+                </span>
+              </div>
+            </div>
 
+            {/* Team & Access Management Section */}
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 px-1 mb-2">Equipe & Acessos</p>
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden divide-y divide-slate-100">
+                <button
+                  onClick={() => setTeamOpen(true)}
+                  className="w-full text-left p-4 hover:bg-sky-50/50 active:bg-sky-50 transition-colors flex items-center justify-between font-bold text-sm text-slate-800"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-sky-50 text-[#0369a1] flex items-center justify-center">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <span>Gerenciar Equipe & Convites</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {pendingTeamCount > 0 ? (
+                      <span className="bg-red-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse">
+                        {pendingTeamCount} pendente{pendingTeamCount > 1 ? "s" : ""}
+                      </span>
+                    ) : (
+                      <ChevronLeft className="w-4 h-4 rotate-180 text-slate-400" />
+                    )}
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setTab("unidades")}
+                  className="w-full text-left p-4 hover:bg-sky-50/50 active:bg-sky-50 transition-colors flex items-center justify-between font-bold text-sm text-slate-800"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <Building className="w-4 h-4" />
+                    </div>
+                    <span>Unidades de Saúde (PSF/UBS)</span>
+                  </div>
+                  <ChevronLeft className="w-4 h-4 rotate-180 text-slate-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Clinical Services Section */}
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 px-1 mb-2">Serviços Clínicos</p>
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden divide-y divide-slate-100">
+                <button
+                  onClick={() => setTab("emprestimos")}
+                  className="w-full text-left p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-center justify-between font-bold text-sm text-slate-800"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                      <HandCoins className="w-4 h-4" />
+                    </div>
+                    <span>Controle de Empréstimos</span>
+                  </div>
+                  <ChevronLeft className="w-4 h-4 rotate-180 text-slate-400" />
+                </button>
+
+                <button
+                  onClick={() => setTab("dashboard")}
+                  className="w-full text-left p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-center justify-between font-bold text-sm text-slate-800"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                      <CalendarDays className="w-4 h-4" />
+                    </div>
+                    <span>Painel de Estatísticas</span>
+                  </div>
+                  <ChevronLeft className="w-4 h-4 rotate-180 text-slate-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* Logout Button */}
+            <div className="pt-2">
               <button
                 onClick={signOut}
-                className="w-full text-left p-4 hover:bg-red-50 transition-colors flex items-center justify-between font-semibold text-sm text-error"
+                className="w-full p-3.5 rounded-2xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 transition-all flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
               >
+                <LogOut className="w-4 h-4" />
                 <span>Sair da Conta</span>
-                <LogOut className="w-4 h-4 text-error/60" />
               </button>
             </div>
           </div>
         )}
       </main>
+
+      {/* InviteLink dialog - available from menu tab */}
+      <InviteLink open={teamOpen} onOpenChange={setTeamOpen} />
 
       {/* Mobile Bottom Navigation Bar */}
       {isMobile && (
