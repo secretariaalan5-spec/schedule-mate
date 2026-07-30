@@ -211,60 +211,60 @@ export default function PatientManager({ onGetHistory }: Props) {
     <div className="flex flex-col h-full">
       {/* Stats bar */}
       <div className="p-4 border-b bg-card">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-3">
           <Card className={`border-primary/20 cursor-pointer transition-all hover:shadow-md ${filter === "all" ? "ring-2 ring-primary" : ""}`} onClick={() => setFilter("all")}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <User className="w-4 h-4 text-primary" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-primary">{stats.total}</p>
-                <p className="text-xs text-muted-foreground">Total</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-xl font-bold text-primary truncate">{stats.total}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total</p>
               </div>
             </CardContent>
           </Card>
           <Card className={`border-amber-500/20 cursor-pointer transition-all hover:shadow-md ${filter === "no_sus" ? "ring-2 ring-amber-500" : ""}`} onClick={() => setFilter(filter === "no_sus" ? "all" : "no_sus")}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
                 <CreditCard className="w-4 h-4 text-amber-600" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-amber-600">{stats.total - stats.withSus}</p>
-                <p className="text-xs text-muted-foreground">Sem SUS</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-xl font-bold text-amber-600 truncate">{stats.total - stats.withSus}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Sem SUS</p>
               </div>
             </CardContent>
           </Card>
           <Card className={`border-amber-500/20 cursor-pointer transition-all hover:shadow-md ${filter === "no_dob" ? "ring-2 ring-amber-500" : ""}`} onClick={() => setFilter(filter === "no_dob" ? "all" : "no_dob")}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
                 <User className="w-4 h-4 text-amber-600" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-amber-600">{stats.withoutDob}</p>
-                <p className="text-xs text-muted-foreground">Sem Nascimento</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-xl font-bold text-amber-600 truncate">{stats.withoutDob}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Sem Nascimento</p>
               </div>
             </CardContent>
           </Card>
           <Card className={`border-rose-500/20 cursor-pointer transition-all hover:shadow-md ${filter === "no_psf" ? "ring-2 ring-rose-500" : ""}`} onClick={() => setFilter(filter === "no_psf" ? "all" : "no_psf")}>
-            <CardContent className="p-3 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-rose-500/10 flex items-center justify-center">
+            <CardContent className="p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
                 <User className="w-4 h-4 text-rose-600" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-rose-600">{stats.withoutPsf}</p>
-                <p className="text-xs text-muted-foreground">Sem PSF</p>
+              <div className="min-w-0">
+                <p className="text-lg sm:text-xl font-bold text-rose-600 truncate">{stats.withoutPsf}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Sem PSF</p>
               </div>
             </CardContent>
           </Card>
         </div>
-        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div className="relative flex-1 min-w-0 w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar por nome, cartão SUS ou PSF..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+            <Input placeholder="Buscar por nome, cartão SUS ou PSF..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-full" />
           </div>
 
           <Select value={filter} onValueChange={(val: any) => setFilter(val)}>
-            <SelectTrigger className="w-[180px] shrink-0">
+            <SelectTrigger className="w-full sm:w-[180px] shrink-0">
               <SelectValue placeholder="Filtro de Cadastro" />
             </SelectTrigger>
             <SelectContent>
@@ -276,7 +276,7 @@ export default function PatientManager({ onGetHistory }: Props) {
             </SelectContent>
           </Select>
 
-          <Button onClick={openNew} size="sm" className="gap-1.5 shrink-0">
+          <Button onClick={openNew} size="sm" className="w-full sm:w-auto gap-1.5 shrink-0 justify-center">
             <Plus className="w-4 h-4" /> Nova Paciente
           </Button>
         </div>

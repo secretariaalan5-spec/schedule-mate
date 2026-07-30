@@ -308,14 +308,14 @@ export default function Dashboard() {
         
         {/* Mobile Top App Bar */}
         {isMobile && (
-          <header className="h-14 w-full bg-primary-container flex justify-between items-center px-4 border-b border-primary shrink-0 shadow-sm z-30">
+          <header className="h-14 w-full bg-gradient-to-r from-[#0369a1] to-[#0284c7] flex justify-between items-center px-4 border-b border-sky-400/30 shrink-0 shadow-md z-30">
             <div className="flex items-center gap-2">
               <img src="/logo.png" className="w-7 h-7 object-contain bg-white rounded-full p-0.5 shadow-xs" alt="Logo Saúde da Mulher" />
               <h1 className="text-sm font-bold text-white uppercase tracking-wider">Saúde da Mulher</h1>
             </div>
             <button
               onClick={handleExport}
-              className="bg-primary hover:bg-primary-container text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-all shadow-sm"
+              className="bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-all shadow-xs backdrop-blur-sm border border-white/20"
             >
               <Download className="w-3.5 h-3.5" />
               Exportar
@@ -430,7 +430,7 @@ export default function Dashboard() {
         {tab === "agenda" && (
           isMobile ? (
             /* MOBILE AGENDA VIEW — Scrollable single page */
-            <div className="flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden box-border p-4 space-y-6 pb-24 bg-slate-50/50">
+            <div className="flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden box-border p-4 space-y-6 pb-28 bg-slate-50/50">
               {/* Header Section */}
               <div className="w-full max-w-full overflow-hidden">
                 <p className="text-label-bold text-on-surface-variant uppercase tracking-widest mb-1 text-[10px]">Agenda Selecionada</p>
@@ -676,7 +676,7 @@ export default function Dashboard() {
 
         {/* Patients tab */}
         {tab === "pacientes" && (
-          <div className="flex-1 overflow-hidden p-6 pb-24 md:pb-6">
+          <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
             <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
               <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
                 <PatientManager onGetHistory={sched.getPatientHistory} />
@@ -687,7 +687,7 @@ export default function Dashboard() {
 
         {/* Health Units tab */}
         {tab === "unidades" && (
-          <div className="flex-1 overflow-hidden p-6 pb-24 md:pb-6">
+          <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
             <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
               <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
                 <HealthUnitsManager />
@@ -698,7 +698,7 @@ export default function Dashboard() {
 
         {/* Loans tab */}
         {tab === "emprestimos" && (
-          <div className="flex-1 overflow-hidden p-6 pb-24 md:pb-6">
+          <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
             <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
               <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
                 <LoanManager />
@@ -709,7 +709,7 @@ export default function Dashboard() {
 
         {/* MOBILE MENU TAB */}
         {tab === "menu" && isMobile && (
-          <div className="flex-1 overflow-auto p-4 space-y-6 bg-[#F7FAFC] pb-24">
+          <div className="flex-1 overflow-auto p-4 space-y-6 bg-[#F7FAFC] pb-28">
             <div>
               <h3 className="text-xl font-bold text-primary">Menu Geral</h3>
               <p className="text-sm text-on-surface-variant">Saúde da Mulher — Portal Clínico</p>
@@ -752,57 +752,57 @@ export default function Dashboard() {
 
       {/* Mobile Bottom Navigation Bar */}
       {isMobile && (
-        <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-primary-container/95 backdrop-blur-md border-t border-primary/50 shadow-lg pb-safe">
+        <nav className="fixed bottom-3 left-3 right-3 z-50 flex justify-around items-center px-2 py-2 bg-[#0369a1]/95 backdrop-blur-xl border border-sky-400/40 shadow-[0_8px_32px_rgba(3,105,161,0.3)] rounded-2xl pb-safe">
           <button
             onClick={() => setTab("agenda")}
             className={cn(
-              "flex flex-col items-center justify-center py-1 transition-all duration-200 active:scale-90",
+              "flex flex-col items-center justify-center py-1.5 px-3 transition-all duration-200 active:scale-95 rounded-xl flex-1 max-w-[80px]",
               tab === "agenda"
-                ? "bg-white text-primary rounded-full px-4 py-1 scale-105 font-bold shadow-sm"
-                : "text-on-primary/80 hover:text-white"
+                ? "bg-white text-[#0369a1] font-bold shadow-md scale-105"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             )}
           >
             <CalendarDays className="w-5 h-5" />
-            <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Agenda</span>
+            <span className="text-[9px] font-extrabold uppercase leading-none mt-1">Agenda</span>
           </button>
           
           <button
             onClick={() => setTab("pacientes")}
             className={cn(
-              "flex flex-col items-center justify-center py-1 transition-all duration-200 active:scale-90",
+              "flex flex-col items-center justify-center py-1.5 px-3 transition-all duration-200 active:scale-95 rounded-xl flex-1 max-w-[80px]",
               tab === "pacientes"
-                ? "bg-white text-primary rounded-full px-4 py-1 scale-105 font-bold shadow-sm"
-                : "text-on-primary/80 hover:text-white"
+                ? "bg-white text-[#0369a1] font-bold shadow-md scale-105"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             )}
           >
             <Users className="w-5 h-5" />
-            <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Pacientes</span>
+            <span className="text-[9px] font-extrabold uppercase leading-none mt-1">Pacientes</span>
           </button>
 
           <button
             onClick={() => setTab("unidades")}
             className={cn(
-              "flex flex-col items-center justify-center py-1 transition-all duration-200 active:scale-90",
+              "flex flex-col items-center justify-center py-1.5 px-3 transition-all duration-200 active:scale-95 rounded-xl flex-1 max-w-[80px]",
               tab === "unidades"
-                ? "bg-white text-primary rounded-full px-4 py-1 scale-105 font-bold shadow-sm"
-                : "text-on-primary/80 hover:text-white"
+                ? "bg-white text-[#0369a1] font-bold shadow-md scale-105"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             )}
           >
             <Building className="w-5 h-5" />
-            <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Unidades</span>
+            <span className="text-[9px] font-extrabold uppercase leading-none mt-1">Unidades</span>
           </button>
 
           <button
             onClick={() => setTab("menu")}
             className={cn(
-              "flex flex-col items-center justify-center py-1 transition-all duration-200 active:scale-90",
+              "flex flex-col items-center justify-center py-1.5 px-3 transition-all duration-200 active:scale-95 rounded-xl flex-1 max-w-[80px]",
               tab === "menu"
-                ? "bg-white text-primary rounded-full px-4 py-1 scale-105 font-bold shadow-sm"
-                : "text-on-primary/80 hover:text-white"
+                ? "bg-white text-[#0369a1] font-bold shadow-md scale-105"
+                : "text-white/80 hover:text-white hover:bg-white/10"
             )}
           >
             <Menu className="w-5 h-5" />
-            <span className="text-[9px] font-bold uppercase leading-none mt-0.5">Menu</span>
+            <span className="text-[9px] font-extrabold uppercase leading-none mt-1">Menu</span>
           </button>
         </nav>
       )}

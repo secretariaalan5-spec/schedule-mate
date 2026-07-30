@@ -214,7 +214,7 @@ export default function HealthUnitsManager() {
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Title Header */}
-      <div className="p-4 border-b bg-card flex justify-between items-center flex-shrink-0">
+      <div className="p-4 border-b bg-card flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 flex-shrink-0">
         <div>
           <h2 className="text-xl font-bold text-primary flex items-center gap-2">
             <Building className="w-5 h-5 text-primary" /> Unidades de Saúde
@@ -223,7 +223,7 @@ export default function HealthUnitsManager() {
             Gerenciamento de PSFs, UBSs, endereços e estatísticas de vinculação de pacientes.
           </p>
         </div>
-        <Button onClick={openNew} size="sm" className="gap-1.5 font-semibold">
+        <Button onClick={openNew} size="sm" className="w-full sm:w-auto gap-1.5 font-semibold justify-center">
           <Plus className="w-4 h-4" /> Nova Unidade
         </Button>
       </div>

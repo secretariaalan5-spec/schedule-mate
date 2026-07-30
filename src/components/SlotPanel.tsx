@@ -143,7 +143,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
               {appt ? (
                 <div
                   className={cn(
-                    "border rounded-lg shadow-sm flex gap-4 p-4 hover:shadow-md transition-all cursor-pointer group border-l-4",
+                    "border rounded-lg shadow-sm flex gap-2.5 sm:gap-4 p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer group border-l-4",
                     isPrinted
                       ? "bg-emerald-50/30 border-emerald-200 border-l-emerald-600"
                       : "bg-amber-50/40 border-amber-200 border-l-amber-500",
@@ -185,7 +185,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 mt-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2.5">
                       <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                         {editingTimeId === appt.id ? (
                           <Input

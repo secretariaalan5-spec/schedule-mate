@@ -177,7 +177,7 @@ export default function LoanManager() {
               Controle de glicosímetros emprestados às pacientes
             </p>
           </div>
-          <Button onClick={() => setOpenNew(true)} className="gap-1.5 shadow-sm">
+          <Button onClick={() => setOpenNew(true)} className="w-full sm:w-auto gap-1.5 shadow-sm justify-center">
             <Plus className="w-4 h-4" /> Novo Empréstimo
           </Button>
         </div>
@@ -274,8 +274,8 @@ export default function LoanManager() {
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-card border-b px-4 md:px-6 py-0.5">
-          <TabsList className="bg-transparent h-10 p-0 justify-start gap-4">
+        <div className="bg-card border-b px-4 md:px-6 py-0.5 overflow-x-auto no-scrollbar">
+          <TabsList className="bg-transparent h-10 p-0 justify-start gap-4 flex shrink-0 whitespace-nowrap">
             <TabsTrigger
               value="active"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2 text-sm font-medium shadow-none gap-1.5"
