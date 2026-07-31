@@ -123,7 +123,6 @@ export default function HeaderMenu({ onImportComplete }: HeaderMenuProps) {
           <InviteLink
             open={teamOpen}
             onOpenChange={setTeamOpen}
-            trigger={<span className="hidden" />}
           />
 
           {/* Health Units dialog */}

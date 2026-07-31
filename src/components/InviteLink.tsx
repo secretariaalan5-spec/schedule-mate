@@ -124,21 +124,7 @@ export default function InviteLink({ trigger, open: openProp, onOpenChange }: In
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {trigger ? (
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-      ) : (
-        <DialogTrigger asChild>
-          <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-primary-foreground/10 relative h-10 px-1 flex flex-col items-center justify-center gap-0">
-            <Users className="w-5 h-5" />
-            <span className="text-[8px] font-bold uppercase leading-none mt-0.5">Equipe</span>
-            {pendingCount > 0 && (
-              <span className="absolute top-0 right-1 bg-destructive text-destructive-foreground text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center border border-primary">
-                {pendingCount}
-              </span>
-            )}
-          </Button>
-        </DialogTrigger>
-      )}
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto">
 
         <DialogHeader>
