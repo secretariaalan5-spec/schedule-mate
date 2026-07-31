@@ -38,12 +38,7 @@ export function useShifts() {
 
   useEffect(() => {
     let timer: number | undefined;
-    // Remove any existing channel with this name before creating a new one
-    // This prevents the React StrictMode double-invoke error:
-    // "cannot add postgres_changes callbacks after subscribe()"
-    const CHANNEL_NAME = "realtime-shifts";
-    const existing = supabase.getChannels().find((c) => c.topic === `realtime:${CHANNEL_NAME}`);
-    if (existing) supabase.removeChannel(existing);
+    const CHANNEL_NAME = `realtime-shifts_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
     const refresh = () => {
       window.clearTimeout(timer);

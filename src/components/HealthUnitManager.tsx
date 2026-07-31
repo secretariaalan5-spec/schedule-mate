@@ -32,8 +32,9 @@ export default function HealthUnitManager() {
   useEffect(() => { fetchUnits(); }, [fetchUnits]);
 
   useEffect(() => {
+    const channelName = `realtime-health-units_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const channel = supabase
-      .channel("realtime-health-units")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "health_units" }, () => fetchUnits())
       .subscribe();
     return () => { supabase.removeChannel(channel); };

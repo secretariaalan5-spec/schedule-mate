@@ -32,6 +32,8 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
   const { user } = useAuth();
   const [profileName, setProfileName] = useState("");
 
+  const [pendingCount, setPendingCount] = useState(0);
+
   useEffect(() => {
     if (!user) return;
     const fetchProfile = async () => {
@@ -45,6 +47,23 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
       }
     };
     fetchProfile();
+
+    const fetchPending = async () => {
+      const { count } = await supabase
+        .from("team_members")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending");
+      setPendingCount(count ?? 0);
+    };
+    fetchPending();
+    const channelName = `sidebar_team_members_badge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const channel = supabase
+      .channel(channelName)
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, fetchPending)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   return (
@@ -101,16 +120,19 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
           <DropdownMenuTrigger asChild>
             <button
               className={cn(
-                "flex items-center gap-3 py-1 w-full text-left transition-all duration-150 rounded-lg hover:bg-white/10",
+                "flex items-center gap-3 py-1 w-full text-left transition-all duration-150 rounded-lg hover:bg-white/10 relative",
                 collapsed && "justify-center"
               )}
               title={collapsed ? "Perfil e Equipe" : undefined}
             >
-              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden relative">
                 {profileName ? (
                   profileName.substring(0, 2).toUpperCase()
                 ) : (
                   <User className="w-4 h-4" />
+                )}
+                {pendingCount > 0 && (
+                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border border-primary animate-pulse" />
                 )}
               </div>
               {!collapsed && (
@@ -118,14 +140,28 @@ export default function Sidebar({ activeTab, onTabChange, onSignOut }: SidebarPr
                   <h4 className="font-bold text-[13px] text-white truncate" title={profileName || "Administradora"}>
                     {profileName || "Administradora"}
                   </h4>
-                  <p className="text-[11px] text-white/70">Equipe Clínico</p>
+                  <p className="text-[11px] text-white/70 flex items-center gap-1">
+                    Equipe Clínico
+                    {pendingCount > 0 && (
+                      <span className="bg-red-500 text-white text-[9px] px-1 rounded-full font-bold">
+                        +{pendingCount}
+                      </span>
+                    )}
+                  </p>
                 </div>
               )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56" side="right" sideOffset={10}>
-            <DropdownMenuLabel>Configurações</DropdownMenuLabel>
-            <DropdownMenuItem onSelect={() => setTeamOpen(true)}>Configurar Equipe</DropdownMenuItem>
+            <DropdownMenuLabel>Configurações & Perfil</DropdownMenuLabel>
+            <DropdownMenuItem onSelect={() => setTeamOpen(true)} className="flex items-center justify-between font-semibold">
+              <span>Gerenciar Equipe</span>
+              {pendingCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+                  {pendingCount}
+                </span>
+              )}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

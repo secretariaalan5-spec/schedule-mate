@@ -45,8 +45,9 @@ export default function HeaderMenu({ onImportComplete }: HeaderMenuProps) {
       setPendingCount(count ?? 0);
     };
     fetchPending();
+    const channelName = `team_members_badge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const channel = supabase
-      .channel("team_members_badge")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, fetchPending)
       .subscribe();
     return () => {

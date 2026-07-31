@@ -85,9 +85,7 @@ export function useScheduling() {
   // Realtime subscriptions
   useEffect(() => {
     let timer: number | undefined;
-    const CHANNEL_NAME = "realtime-scheduling";
-    const existing = supabase.getChannels().find((c) => c.topic === `realtime:${CHANNEL_NAME}`);
-    if (existing) supabase.removeChannel(existing);
+    const CHANNEL_NAME = `realtime-scheduling_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
     const refresh = () => {
       window.clearTimeout(timer);

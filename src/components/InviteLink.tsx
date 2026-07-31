@@ -53,8 +53,9 @@ export default function InviteLink({ trigger, open: openProp, onOpenChange }: In
 
   // Realtime
   useEffect(() => {
+    const channelName = `team_members_changes_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const channel = supabase
-      .channel("team_members_changes")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, () => {
         fetchMembers();
       })

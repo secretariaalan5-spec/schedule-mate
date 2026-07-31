@@ -127,9 +127,7 @@ export function usePatients(search: string, filter: PatientsFilter = "all") {
   // Realtime subscription for patients
   useEffect(() => {
     let timer: number | undefined;
-    const CHANNEL_NAME = "realtime-patients";
-    const existing = supabase.getChannels().find((c) => c.topic === `realtime:${CHANNEL_NAME}`);
-    if (existing) supabase.removeChannel(existing);
+    const CHANNEL_NAME = `realtime-patients_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
     const refresh = () => {
       window.clearTimeout(timer);

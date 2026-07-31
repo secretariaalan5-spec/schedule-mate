@@ -82,8 +82,9 @@ export default function Dashboard() {
       setPendingTeamCount(count ?? 0);
     };
     fetchPending();
+    const channelName = `dashboard_team_badge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const channel = supabase
-      .channel("dashboard_team_badge")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "team_members" }, fetchPending)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
