@@ -178,141 +178,150 @@ export default function LoanManager() {
   }, [gluc, searchQuery]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-slate-50/50">
-      {/* ── Clean Header ────────────────────────────────────────────── */}
-      <div className="p-4 md:p-6 border-b border-slate-200/80 bg-white shrink-0 shadow-xs space-y-4">
+    <div className="flex flex-col h-full overflow-hidden bg-background">
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <div className="p-4 md:p-6 border-b bg-card space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Serviço Clínico</span>
-            <h1 className="text-xl font-bold tracking-tight text-slate-800 flex items-center gap-2">
-              <HandCoins className="w-5 h-5 text-primary" /> Controle de Empréstimos
+            <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <HandCoins className="w-5 h-5 text-primary" /> Painel de Empréstimos
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Gestão e monitoramento de glicosímetros emprestados às pacientes
+            <p className="text-xs text-muted-foreground">
+              Controle de glicosímetros emprestados às pacientes
             </p>
           </div>
-          <Button
-            onClick={() => setOpenNew(true)}
-            className="w-full sm:w-auto gap-2 shadow-xs justify-center font-bold px-4 py-2 rounded-xl transition-all active:scale-95"
-          >
+          <Button onClick={() => setOpenNew(true)} className="w-full sm:w-auto gap-1.5 shadow-sm justify-center">
             <Plus className="w-4 h-4" /> Novo Empréstimo
           </Button>
         </div>
 
-        {/* Clean KPI Summary Cards */}
+        {/* KPI cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-slate-50/80 rounded-xl border border-slate-200/80 p-3.5 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center font-bold shrink-0">
-              <PackageCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xl font-black text-slate-800 leading-tight tabular-nums">{available}</p>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Aparelhos Disponíveis</p>
-            </div>
-          </div>
+          <Card className="shadow-none border-emerald-500/20 bg-emerald-500/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+                <PackageCheck className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-600 tabular-nums">{available}</p>
+                <p className="text-xs text-emerald-700/80 font-medium">Aparelhos Disponíveis</p>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-slate-50/80 rounded-xl border border-slate-200/80 p-3.5 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-sky-100/80 text-sky-700 flex items-center justify-center font-bold shrink-0">
-              <HandCoins className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xl font-black text-slate-800 leading-tight tabular-nums">{loanedCount}</p>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Emprestados (Ativos)</p>
-            </div>
-          </div>
+          <Card className="shadow-none border-blue-500/20 bg-blue-500/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                <HandCoins className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600 tabular-nums">{loanedCount}</p>
+                <p className="text-xs text-blue-700/80 font-medium">Emprestados (Ativos)</p>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-slate-50/80 rounded-xl border border-slate-200/80 p-3.5 flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-rose-100/80 text-rose-700 flex items-center justify-center font-bold shrink-0">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xl font-black text-slate-800 leading-tight tabular-nums">{overdue.length}</p>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Empréstimos Vencidos</p>
-            </div>
-          </div>
+          <Card className="shadow-none border-rose-500/20 bg-rose-500/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-rose-500/15 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-rose-600 tabular-nums">{overdue.length}</p>
+                <p className="text-xs text-rose-700/80 font-medium">Empréstimos Vencidos</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* ── Clean Filter toolbar & Tabs ───────────────────────────── */}
+      {/* ── Filter toolbar ───────────────────────────────────────────── */}
+      <div className="bg-card px-4 md:px-6 py-2.5 border-b flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          <div className="relative w-full md:w-80">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              className="pl-9 h-9 text-sm"
+              placeholder={
+                activeTab === "stock"
+                  ? "Buscar por código, marca..."
+                  : "Buscar por paciente, CPF ou glicosímetro..."
+              }
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {activeTab !== "stock" && (
+            <Select value={selectedPsf} onValueChange={setSelectedPsf}>
+              <SelectTrigger className="w-full md:w-56 h-9 text-xs">
+                <SelectValue placeholder="Filtrar por unidade (PSF)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Unidades (PSF)</SelectItem>
+                {healthUnits.map((u) => (
+                  <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {(searchQuery || selectedPsf !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <FilterX className="w-3.5 h-3.5 mr-1" /> Limpar
+            </Button>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {activeTab === "active" && `${filteredActive.length} empréstimo(s)`}
+          {activeTab === "history" && `${filteredHistory.length} devolução(ões)`}
+          {activeTab === "stock" && `${filteredGluc.length} aparelho(s)`}
+        </p>
+      </div>
+
+      {/* ── Tabs ─────────────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white px-4 md:px-6 py-3 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
-          {/* Clean Pill Tabs */}
-          <TabsList className="bg-slate-100/90 h-10 p-1 justify-start gap-1 flex shrink-0 rounded-xl border border-slate-200/60">
+        <div className="bg-card border-b px-4 md:px-6 py-0.5 overflow-x-auto no-scrollbar">
+          <TabsList className="bg-transparent h-10 p-0 justify-start gap-4 flex shrink-0 whitespace-nowrap">
             <TabsTrigger
               value="active"
-              className="rounded-lg px-3 py-1.5 text-xs font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-xs text-slate-500 gap-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2 text-sm font-medium shadow-none gap-1.5"
             >
-              <HandCoins className="w-3.5 h-3.5 text-primary" />
+              <HandCoins className="w-4 h-4" />
               Empréstimos Ativos
-              <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-extrabold bg-slate-200/70 text-slate-700">
+              <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px]">
                 {active.length}
               </Badge>
             </TabsTrigger>
 
             <TabsTrigger
               value="history"
-              className="rounded-lg px-3 py-1.5 text-xs font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-xs text-slate-500 gap-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2 text-sm font-medium shadow-none gap-1.5"
             >
-              <History className="w-3.5 h-3.5 text-slate-500" />
+              <History className="w-4 h-4" />
               Histórico
-              <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-extrabold bg-slate-200/70 text-slate-700">
+              <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px]">
                 {historyList.length}
               </Badge>
             </TabsTrigger>
 
             <TabsTrigger
               value="stock"
-              className="rounded-lg px-3 py-1.5 text-xs font-bold transition-all data-[state=active]:bg-white data-[state=active]:text-slate-800 data-[state=active]:shadow-xs text-slate-500 gap-2"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-1 py-2 text-sm font-medium shadow-none gap-1.5"
             >
-              <HardDrive className="w-3.5 h-3.5 text-slate-500" />
+              <HardDrive className="w-4 h-4" />
               Estoque
-              <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-extrabold bg-slate-200/70 text-slate-700">
+              <Badge variant="secondary" className="ml-0.5 px-1.5 py-0 text-[10px]">
                 {gluc.length}
               </Badge>
             </TabsTrigger>
           </TabsList>
-
-          {/* Clean Search & PSF Filters */}
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-2">
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                className="pl-9 h-9 text-xs bg-slate-50/80 border-slate-200/80 rounded-xl focus:bg-white transition-all"
-                placeholder={
-                  activeTab === "stock"
-                    ? "Buscar por código, marca..."
-                    : "Buscar por paciente, CPF ou código..."
-                }
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            {activeTab !== "stock" && (
-              <Select value={selectedPsf} onValueChange={setSelectedPsf}>
-                <SelectTrigger className="w-full md:w-48 h-9 text-xs bg-slate-50/80 border-slate-200/80 rounded-xl">
-                  <SelectValue placeholder="Todas Unidades (PSF)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as Unidades (PSF)</SelectItem>
-                  {healthUnits.map((u) => (
-                    <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {(searchQuery || selectedPsf !== "all") && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="h-9 px-2.5 text-xs text-slate-500 hover:text-slate-800 rounded-xl"
-              >
-                <FilterX className="w-3.5 h-3.5 mr-1" /> Limpar
-              </Button>
-            )}
-          </div>
         </div>
 
         {/* ── Tab 1: Active Loans — CARD GRID ─────────────────────────── */}
@@ -361,51 +370,51 @@ export default function LoanManager() {
                 }
 
                 const statusClasses: Record<string, string> = {
-                  emerald: "bg-emerald-50 text-emerald-700 border-emerald-200/80 font-bold",
-                  amber:   "bg-amber-50   text-amber-700   border-amber-200/80 font-bold",
-                  rose:    "bg-rose-50    text-rose-700    border-rose-200/80 font-bold animate-pulse",
+                  emerald: "bg-emerald-500/10 text-emerald-700 border-emerald-200/60 font-bold",
+                  amber:   "bg-amber-500/10  text-amber-700  border-amber-200/60 font-bold",
+                  rose:    "bg-rose-500/10   text-rose-700   border-rose-200/60 font-bold animate-pulse",
                 };
                 const cardBorder: Record<string, string> = {
-                  emerald: "border-l-4 border-l-emerald-500",
-                  amber:   "border-l-4 border-l-amber-500",
-                  rose:    "border-l-4 border-l-rose-500",
+                  emerald: "border-l-4 border-l-emerald-400",
+                  amber:   "border-l-4 border-l-amber-400",
+                  rose:    "border-l-4 border-l-rose-400",
                 };
 
                 return (
-                  <Card key={l.id} className={`shadow-xs ${cardBorder[statusColor]} bg-white border border-slate-200/90 rounded-2xl hover:shadow-md transition-all hover:border-[#871e47]/30 flex flex-col justify-between overflow-hidden`}>
+                  <Card key={l.id} className={`shadow-sm ${cardBorder[statusColor]} bg-card hover:shadow-md transition-shadow`}>
                     <CardContent className="p-4 space-y-3">
                       {/* Row 1: name + status badge */}
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#871e47]/10 to-[#871e47]/20 text-[#871e47] flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
-                            {patient?.name ? patient.name.substring(0, 2).toUpperCase() : <User className="w-4 h-4" />}
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-primary" />
                           </div>
                           <div className="min-w-0">
-                            <h3 className="font-bold text-sm text-slate-800 truncate leading-tight">
+                            <p className="font-semibold text-sm text-foreground truncate leading-tight">
                               {patient?.name ?? "—"}
-                            </h3>
+                            </p>
                             {patient?.psf && (
-                              <p className="text-[11px] font-medium text-slate-500 flex items-center gap-1 mt-0.5">
-                                <MapPin className="w-3 h-3 text-slate-400" /> {patient.psf}
+                              <p className="text-[10px] text-muted-foreground flex items-center gap-0.5 mt-0.5">
+                                <MapPin className="w-2.5 h-2.5" /> {patient.psf}
                               </p>
                             )}
                           </div>
                         </div>
-                        <span className={`flex-shrink-0 text-[10px] px-2.5 py-1 rounded-full border font-extrabold uppercase flex items-center gap-1 ${statusClasses[statusColor]}`}>
-                          <StatusIcon className="w-3 h-3" />
+                        <Badge className={`flex-shrink-0 text-[10px] px-2 py-0.5 border font-semibold ${statusClasses[statusColor]}`}>
+                          <StatusIcon className="w-3 h-3 mr-1" />
                           {statusLabel}
-                        </span>
+                        </Badge>
                       </div>
 
                       {/* Separator */}
-                      <div className="border-t border-slate-100" />
+                      <div className="border-t border-dashed border-border/70" />
 
                       {/* Row 2: patient details grid */}
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
                         {cpf && (
-                          <div className="flex items-center gap-1.5 text-slate-500 col-span-2 font-mono text-[11px]">
-                            <CreditCard className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span>{cpf}</span>
+                          <div className="flex items-center gap-1 text-muted-foreground col-span-2">
+                            <CreditCard className="w-3 h-3 flex-shrink-0" />
+                            <span className="font-mono">{cpf}</span>
                           </div>
                         )}
                         {phone && (
@@ -413,36 +422,36 @@ export default function LoanManager() {
                             href={whatsappLink(phone)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 col-span-2 font-bold hover:underline transition-colors text-xs"
+                            className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 col-span-2 font-medium hover:underline transition-colors"
                             title="Abrir no WhatsApp"
                           >
-                            <svg className="w-3.5 h-3.5 flex-shrink-0 fill-current" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                             </svg>
                             {phone}
                           </a>
                         )}
                         {acs && (
-                          <div className="flex items-center gap-1.5 text-slate-500 col-span-2">
-                            <Activity className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <div className="flex items-center gap-1 text-muted-foreground col-span-2">
+                            <Activity className="w-3 h-3 flex-shrink-0" />
                             <span>ACS: {acs}</span>
                           </div>
                         )}
                       </div>
 
                       {/* Row 3: Glucometer info & Prazo */}
-                      <div className="flex items-center justify-between bg-slate-50/90 rounded-xl p-3 border border-slate-200/60">
+                      <div className="flex items-center justify-between bg-muted/40 rounded-lg px-3 py-2.5">
                         <div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold">Aparelho</p>
-                          <p className="font-mono font-bold text-sm text-[#871e47]">{l.glucometer?.code ?? "—"}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Glicosímetro</p>
+                          <p className="font-mono font-bold text-sm text-primary">{l.glucometer?.code ?? "—"}</p>
                           {l.glucometer?.brand && (
-                            <p className="text-[10px] text-slate-500 font-medium">{l.glucometer.brand}</p>
+                            <p className="text-[10px] text-muted-foreground">{l.glucometer.brand}</p>
                           )}
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wider font-extrabold">Devolução</p>
-                          <p className="flex items-center justify-end gap-1 text-xs font-bold text-slate-800">
-                            <CalendarDays className="w-3.5 h-3.5 text-[#871e47]" />
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Devolução Prevista</p>
+                          <p className="flex items-center justify-end gap-1 text-xs font-bold text-foreground">
+                            <CalendarDays className="w-3.5 h-3.5 text-primary" />
                             {fmtBR(l.expected_return_date)}
                           </p>
                           <p
@@ -452,6 +461,8 @@ export default function LoanManager() {
                                 ? "text-rose-600 animate-pulse"
                                 : diff === 0
                                 ? "text-amber-600 font-black"
+                                : diff <= 3
+                                ? "text-amber-600"
                                 : "text-emerald-700"
                             )}
                           >
@@ -460,17 +471,28 @@ export default function LoanManager() {
                               : diff === 0
                               ? "⚡ Vence Hoje"
                               : diff === 1
-                              ? "⏳ Falta 1 dia"
-                              : `⏳ Faltam ${diff} dias`}
+                              ? "⏳ Falta 1 dia para vencer"
+                              : `⏳ Faltam ${diff} dias para vencer`}
                           </p>
+                          {l.loaned_at && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Saída: {fmtBR(l.loaned_at)} ({totalLoanDays(l.loaned_at, l.expected_return_date)} dias total)
+                            </p>
+                          )}
                         </div>
                       </div>
+
+                      {/* Notes */}
+                      {l.notes && (
+                        <p className="text-[11px] text-muted-foreground italic border-l-2 border-muted pl-2">{l.notes}</p>
+                      )}
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 pt-1 flex-wrap">
                         <Button
                           size="sm"
-                          className="flex-1 h-8 rounded-xl text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-2xs active:scale-95 transition-all"
+                          variant="outline"
+                          className="flex-1 h-8 text-xs gap-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 font-semibold"
                           onClick={() => setReturnLoan(l)}
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Devolver
@@ -479,10 +501,10 @@ export default function LoanManager() {
                           size="sm"
                           variant="outline"
                           className={cn(
-                            "flex-1 h-8 rounded-xl text-xs gap-1.5 font-bold transition-all active:scale-95",
+                            "flex-1 h-8 text-xs gap-1.5 font-semibold transition-all",
                             diff < 0
-                              ? "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 shadow-2xs"
-                              : "bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100"
+                              ? "bg-amber-500/15 text-amber-800 border-amber-300 hover:bg-amber-500/25 shadow-xs"
+                              : "text-sky-700 border-sky-200 hover:bg-sky-50"
                           )}
                           onClick={() => setRenewLoan(l)}
                         >
@@ -491,7 +513,7 @@ export default function LoanManager() {
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-8 w-8 rounded-xl text-slate-500 border-slate-200 hover:text-slate-800 hover:bg-slate-100 shrink-0"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
                           title="Reimprimir Recibo"
                           onClick={() => printLoanReceipt(l)}
                         >
@@ -500,7 +522,7 @@ export default function LoanManager() {
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-8 w-8 rounded-xl text-rose-500 border-rose-200 hover:bg-rose-50 hover:text-rose-700 shrink-0"
+                          className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/5 hover:border-destructive/40 shrink-0"
                           title="Excluir"
                           onClick={() => setDeleteLoan(l)}
                         >
