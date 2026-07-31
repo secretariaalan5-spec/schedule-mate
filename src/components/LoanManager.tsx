@@ -62,6 +62,7 @@ import {
   CalendarDays,
   CreditCard,
   Activity,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -107,6 +108,7 @@ export default function LoanManager() {
 
   // Dialog states
   const [openNew, setOpenNew] = useState(false);
+  const [renewLoan, setRenewLoan] = useState<Loan | null>(null);
   const [returnLoan, setReturnLoan] = useState<Loan | null>(null);
   const [deleteLoan, setDeleteLoan] = useState<Loan | null>(null);
 
@@ -486,19 +488,32 @@ export default function LoanManager() {
                       )}
 
                       {/* Actions */}
-                      <div className="flex gap-2 pt-1">
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="flex-1 h-8 text-xs gap-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+                          className="flex-1 h-8 text-xs gap-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 font-semibold"
                           onClick={() => setReturnLoan(l)}
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Devolver
                         </Button>
                         <Button
+                          size="sm"
+                          variant="outline"
+                          className={cn(
+                            "flex-1 h-8 text-xs gap-1.5 font-semibold transition-all",
+                            diff < 0
+                              ? "bg-amber-500/15 text-amber-800 border-amber-300 hover:bg-amber-500/25 shadow-xs"
+                              : "text-sky-700 border-sky-200 hover:bg-sky-50"
+                          )}
+                          onClick={() => setRenewLoan(l)}
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" /> Renovar
+                        </Button>
+                        <Button
                           size="icon"
                           variant="outline"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
                           title="Reimprimir Recibo"
                           onClick={() => printLoanReceipt(l)}
                         >
@@ -507,7 +522,7 @@ export default function LoanManager() {
                         <Button
                           size="icon"
                           variant="outline"
-                          className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/5 hover:border-destructive/40"
+                          className="h-8 w-8 text-destructive border-destructive/20 hover:bg-destructive/5 hover:border-destructive/40 shrink-0"
                           title="Excluir"
                           onClick={() => setDeleteLoan(l)}
                         >
@@ -689,6 +704,15 @@ export default function LoanManager() {
         }}
       />
 
+      {/* ── Renew Loan Dialog ────────────────────────────────────────── */}
+      <RenewLoanModal
+        loan={renewLoan}
+        open={!!renewLoan}
+        onOpenChange={(o) => {
+          if (!o) setRenewLoan(null);
+        }}
+      />
+
       {/* ── Return confirmation dialog ──────────────────────────────── */}
       <AlertDialog open={!!returnLoan} onOpenChange={(o) => !o && setReturnLoan(null)}>
         <AlertDialogContent>
@@ -824,12 +848,6 @@ function NewLoanDialog({
     const diffTime = target.getTime() - today.getTime();
     return Math.round(diffTime / (1000 * 60 * 60 * 24));
   }, [expected]);
-
-  const setPresetDays = (days: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    setExpected(d.toISOString().split("T")[0]);
-  };
 
   useEffect(() => {
     if (!open) {
@@ -1074,30 +1092,6 @@ function NewLoanDialog({
               className="bg-background font-medium"
             />
 
-            {/* Atalhos Rápidos de Prazo */}
-            <div className="space-y-1 pt-1">
-              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Atalhos rápidos de prazo:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { label: "7 dias (1 sem)", days: 7 },
-                  { label: "14 dias (2 sem)", days: 14 },
-                  { label: "30 dias (1 mês)", days: 30 },
-                  { label: "60 dias (2 meses)", days: 60 },
-                ].map((preset) => (
-                  <Button
-                    key={preset.days}
-                    type="button"
-                    variant={loanDurationDays === preset.days ? "default" : "outline"}
-                    size="sm"
-                    className="h-7 text-xs px-2 py-0 font-medium transition-all"
-                    onClick={() => setPresetDays(preset.days)}
-                  >
-                    +{preset.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
             {/* Dynamic summary banner */}
             {expected && loanDurationDays !== null && (
               <div
@@ -1132,6 +1126,152 @@ function NewLoanDialog({
           <Button className="w-full" onClick={submit} disabled={saving || create.isPending}>
             {saving || create.isPending ? "Salvando..." : "Registrar e imprimir recibo"}
           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── RenewLoanModal ──────────────────────────────────────────────────────────
+function RenewLoanModal({
+  loan,
+  open,
+  onOpenChange,
+}: {
+  loan: Loan | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { renew } = useLoans();
+  const [newDate, setNewDate] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (loan) {
+      const today = new Date();
+      const currentExpected = new Date(loan.expected_return_date + "T12:00:00");
+      const baseDate = currentExpected > today ? currentExpected : today;
+      baseDate.setDate(baseDate.getDate() + 14);
+      setNewDate(baseDate.toISOString().split("T")[0]);
+    }
+  }, [loan, open]);
+
+  const durationDays = useMemo(() => {
+    if (!newDate) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [y, m, d] = newDate.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    const target = new Date(y, m - 1, d);
+    const diffTime = target.getTime() - today.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+  }, [newDate]);
+
+  const handleRenewSubmit = async () => {
+    if (!loan || !newDate) return;
+    setSaving(true);
+    try {
+      await renew.mutateAsync({
+        id: loan.id,
+        expected_return_date: newDate,
+      });
+      onOpenChange(false);
+    } catch {
+      // Toast handles errors
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loan) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-primary">
+            <RefreshCw className="w-5 h-5 text-primary" /> Renovar Prazo de Empréstimo
+          </DialogTitle>
+          <DialogDescription>
+            Escolha no calendário a nova data prevista para a devolução do glicosímetro.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          <div className="p-3 bg-muted/40 rounded-xl border space-y-1 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground font-medium">Paciente:</span>
+              <span className="font-bold text-foreground">{loan.patient?.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground font-medium">Glicosímetro:</span>
+              <span className="font-mono font-bold text-primary">{loan.glucometer?.code}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground font-medium">Prazo Anterior:</span>
+              <span className="font-bold text-muted-foreground">{fmtBR(loan.expected_return_date)}</span>
+            </div>
+          </div>
+
+          <div className="space-y-2 p-3 bg-background rounded-xl border border-border">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5 text-foreground">
+                <CalendarDays className="w-4 h-4 text-primary" /> Nova Data de Devolução
+              </Label>
+              {durationDays !== null && durationDays > 0 && (
+                <Badge variant="outline" className="text-[11px] font-extrabold bg-sky-500/10 text-sky-700 border-sky-300 px-2 py-0.5">
+                  ⏱️ {durationDays} {durationDays === 1 ? "dia" : "dias"} a partir de hoje
+                </Badge>
+              )}
+            </div>
+
+            <Input
+              type="date"
+              min={new Date().toISOString().split("T")[0]}
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              className="bg-background font-medium"
+            />
+
+            {newDate && durationDays !== null && (
+              <div
+                className={cn(
+                  "p-2.5 rounded-lg border text-xs flex items-center justify-between font-semibold mt-2 shadow-xs transition-colors",
+                  durationDays > 0
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-800"
+                    : durationDays === 0
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-800"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-800"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 shrink-0" />
+                  <span>
+                    {durationDays > 0
+                      ? `Novo prazo até ${fmtBR(newDate)} (mais ${durationDays} ${durationDays === 1 ? "dia" : "dias"})`
+                      : durationDays === 0
+                      ? "Prazo renovado para HOJE"
+                      : `Atenção: A nova data já passou (${Math.abs(durationDays)} dias atrás)`}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleRenewSubmit}
+              disabled={saving || renew.isPending || !newDate}
+              className="gap-1.5 font-bold"
+            >
+              <RefreshCw className="w-4 h-4" />
+              {saving || renew.isPending ? "Renovando..." : "Confirmar Renovação"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
