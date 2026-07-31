@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -45,13 +46,38 @@ function PatientLoansSection({ patientId }: { patientId: string }) {
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
         <HandCoins className="w-3.5 h-3.5" /> Empréstimos
       </div>
-      {active.map((l) => (
-        <div key={l.id} className="text-xs flex flex-wrap gap-x-3">
-          <span className="font-semibold text-emerald-700">Ativo:</span>
-          <span className="font-mono">{l.glucometer?.code}</span>
-          <span>Devolução: {formatDateBR(l.expected_return_date)}</span>
-        </div>
-      ))}
+      {active.map((l) => {
+        const [y, m, d] = l.expected_return_date.split("T")[0].split("-").map(Number);
+        const target = new Date(y, (m ?? 1) - 1, d ?? 1);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        return (
+          <div key={l.id} className="text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-semibold text-emerald-700">Ativo:</span>
+            <span className="font-mono font-bold">{l.glucometer?.code}</span>
+            <span>Devolução: {formatDateBR(l.expected_return_date)}</span>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] py-0 px-1.5 font-bold",
+                diff < 0
+                  ? "text-rose-700 border-rose-300 bg-rose-50"
+                  : diff === 0
+                  ? "text-amber-700 border-amber-300 bg-amber-50"
+                  : "text-emerald-700 border-emerald-300 bg-emerald-50"
+              )}
+            >
+              {diff < 0
+                ? `Vencido há ${Math.abs(diff)}d`
+                : diff === 0
+                ? "Vence hoje"
+                : `Faltam ${diff} dias`}
+            </Badge>
+          </div>
+        );
+      })}
       {past.length > 0 && (
         <div className="text-xs text-muted-foreground">
           Histórico: {past.length} devolução(ões) — última em{" "}

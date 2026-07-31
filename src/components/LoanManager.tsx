@@ -4,6 +4,7 @@ import { useGlucometers, useLoans, type Loan } from "@/hooks/useLoans";
 import { printLoanReceipt } from "@/lib/printLoan";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -70,16 +71,26 @@ import type { Patient } from "@/hooks/useScheduling";
 
 function fmtBR(d?: string | null) {
   if (!d) return "—";
-  const [y, m, day] = d.split("-");
+  const [y, m, day] = d.split("T")[0].split("-");
   return y && m && day ? `${day}/${m}/${y}` : d;
 }
 
 function daysDiff(dateStr: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const [y, m, d] = dateStr.split("-").map(Number);
+  const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
   const target = new Date(y, (m ?? 1) - 1, d ?? 1);
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function totalLoanDays(startDateStr: string, endDateStr: string) {
+  if (!startDateStr || !endDateStr) return 0;
+  const [y1, m1, d1] = startDateStr.split("T")[0].split("-").map(Number);
+  const [y2, m2, d2] = endDateStr.split("T")[0].split("-").map(Number);
+  const start = new Date(y1, (m1 ?? 1) - 1, d1 ?? 1);
+  const end = new Date(y2, (m2 ?? 1) - 1, d2 ?? 1);
+  const diffTime = end.getTime() - start.getTime();
+  return Math.max(0, Math.round(diffTime / (1000 * 60 * 60 * 24)));
 }
 
 /** Formata numero de telefone para link do WhatsApp (remove tudo que não é dígito, adiciona 55 se necessário) */
@@ -332,14 +343,34 @@ export default function LoanManager() {
 
                 let statusColor = "emerald";
                 let StatusIcon = CheckCircle2;
-                let statusLabel = "Em dia";
-                if (diff < 0) { statusColor = "rose"; StatusIcon = AlertTriangle; statusLabel = `Vencido há ${Math.abs(diff)}d`; }
-                else if (diff <= 3) { statusColor = "amber"; StatusIcon = Clock; statusLabel = `Vence em ${diff}d`; }
+                let statusLabel = `Vence em ${diff} dias`;
+
+                if (diff < 0) {
+                  statusColor = "rose";
+                  StatusIcon = AlertTriangle;
+                  statusLabel = `Vencido há ${Math.abs(diff)} ${Math.abs(diff) === 1 ? "dia" : "dias"}`;
+                } else if (diff === 0) {
+                  statusColor = "amber";
+                  StatusIcon = Clock;
+                  statusLabel = "Vence HOJE!";
+                } else if (diff === 1) {
+                  statusColor = "amber";
+                  StatusIcon = Clock;
+                  statusLabel = "Vence amanhã (1d)";
+                } else if (diff <= 7) {
+                  statusColor = "amber";
+                  StatusIcon = Clock;
+                  statusLabel = `Vence em ${diff} dias`;
+                } else {
+                  statusColor = "emerald";
+                  StatusIcon = CheckCircle2;
+                  statusLabel = `Vence em ${diff} dias`;
+                }
 
                 const statusClasses: Record<string, string> = {
-                  emerald: "bg-emerald-500/10 text-emerald-700 border-emerald-200/60",
-                  amber:   "bg-amber-500/10  text-amber-700  border-amber-200/60",
-                  rose:    "bg-rose-500/10   text-rose-700   border-rose-200/60",
+                  emerald: "bg-emerald-500/10 text-emerald-700 border-emerald-200/60 font-bold",
+                  amber:   "bg-amber-500/10  text-amber-700  border-amber-200/60 font-bold",
+                  rose:    "bg-rose-500/10   text-rose-700   border-rose-200/60 font-bold animate-pulse",
                 };
                 const cardBorder: Record<string, string> = {
                   emerald: "border-l-4 border-l-emerald-400",
@@ -367,7 +398,7 @@ export default function LoanManager() {
                             )}
                           </div>
                         </div>
-                        <Badge className={`flex-shrink-0 text-[10px] px-2 py-0.5 border font-medium ${statusClasses[statusColor]}`}>
+                        <Badge className={`flex-shrink-0 text-[10px] px-2 py-0.5 border font-semibold ${statusClasses[statusColor]}`}>
                           <StatusIcon className="w-3 h-3 mr-1" />
                           {statusLabel}
                         </Badge>
@@ -392,7 +423,6 @@ export default function LoanManager() {
                             className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 col-span-2 font-medium hover:underline transition-colors"
                             title="Abrir no WhatsApp"
                           >
-                            {/* WhatsApp icon via SVG inline */}
                             <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                             </svg>
@@ -407,8 +437,8 @@ export default function LoanManager() {
                         )}
                       </div>
 
-                      {/* Row 3: Glucometer info */}
-                      <div className="flex items-center justify-between bg-muted/40 rounded-lg px-3 py-2">
+                      {/* Row 3: Glucometer info & Prazo */}
+                      <div className="flex items-center justify-between bg-muted/40 rounded-lg px-3 py-2.5">
                         <div>
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Glicosímetro</p>
                           <p className="font-mono font-bold text-sm text-primary">{l.glucometer?.code ?? "—"}</p>
@@ -417,12 +447,36 @@ export default function LoanManager() {
                           )}
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Prazo</p>
-                          <p className="flex items-center gap-1 text-xs font-medium text-foreground">
-                            <CalendarDays className="w-3 h-3 text-muted-foreground" />
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Devolução Prevista</p>
+                          <p className="flex items-center justify-end gap-1 text-xs font-bold text-foreground">
+                            <CalendarDays className="w-3.5 h-3.5 text-primary" />
                             {fmtBR(l.expected_return_date)}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">Saída: {fmtBR(l.loaned_at)}</p>
+                          <p
+                            className={cn(
+                              "text-[11px] font-extrabold mt-0.5",
+                              diff < 0
+                                ? "text-rose-600 animate-pulse"
+                                : diff === 0
+                                ? "text-amber-600 font-black"
+                                : diff <= 3
+                                ? "text-amber-600"
+                                : "text-emerald-700"
+                            )}
+                          >
+                            {diff < 0
+                              ? `⚠️ Vencido há ${Math.abs(diff)} ${Math.abs(diff) === 1 ? "dia" : "dias"}`
+                              : diff === 0
+                              ? "⚡ Vence Hoje"
+                              : diff === 1
+                              ? "⏳ Falta 1 dia para vencer"
+                              : `⏳ Faltam ${diff} dias para vencer`}
+                          </p>
+                          {l.loaned_at && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Saída: {fmtBR(l.loaned_at)} ({totalLoanDays(l.loaned_at, l.expected_return_date)} dias total)
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -760,11 +814,32 @@ function NewLoanDialog({
       .slice(0, 12);
   }, [searchResults, effectiveSearch]);
 
+  const loanDurationDays = useMemo(() => {
+    if (!expected) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const [y, m, d] = expected.split("-").map(Number);
+    if (!y || !m || !d) return null;
+    const target = new Date(y, m - 1, d);
+    const diffTime = target.getTime() - today.getTime();
+    return Math.round(diffTime / (1000 * 60 * 60 * 24));
+  }, [expected]);
+
+  const setPresetDays = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    setExpected(d.toISOString().split("T")[0]);
+  };
+
   useEffect(() => {
     if (!open) {
       setName(""); setSusCard(""); setCpf(""); setAcs(""); setPhone("");
       setDob(""); setPsf(""); setSelectedPatient(null); setShowResults(false);
       setGlucId(""); setExpected(""); setNotes(""); setSaving(false);
+    } else if (!expected) {
+      const d = new Date();
+      d.setDate(d.getDate() + 14);
+      setExpected(d.toISOString().split("T")[0]);
     }
   }, [open]);
 
@@ -959,7 +1034,7 @@ function NewLoanDialog({
 
           <hr className="border-border" />
 
-          {/* ── Loan details ── */}
+          {/* ── Loan details & Return date ── */}
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase tracking-wide">
               Glicosímetro disponível ({available.length})
@@ -979,9 +1054,74 @@ function NewLoanDialog({
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide">Data prevista de devolução</Label>
-            <Input type="date" value={expected} onChange={(e) => setExpected(e.target.value)} />
+          <div className="space-y-2 p-3 bg-muted/30 rounded-xl border border-border/60">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold uppercase tracking-wide flex items-center gap-1.5 text-foreground">
+                <CalendarDays className="w-4 h-4 text-primary" /> Data Prevista de Devolução
+              </Label>
+              {loanDurationDays !== null && loanDurationDays > 0 && (
+                <Badge variant="outline" className="text-[11px] font-extrabold bg-primary/10 text-primary border-primary/30 px-2 py-0.5">
+                  ⏱️ {loanDurationDays} {loanDurationDays === 1 ? "dia" : "dias"} de empréstimo
+                </Badge>
+              )}
+            </div>
+
+            <Input
+              type="date"
+              min={new Date().toISOString().split("T")[0]}
+              value={expected}
+              onChange={(e) => setExpected(e.target.value)}
+              className="bg-background font-medium"
+            />
+
+            {/* Atalhos Rápidos de Prazo */}
+            <div className="space-y-1 pt-1">
+              <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Atalhos rápidos de prazo:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { label: "7 dias (1 sem)", days: 7 },
+                  { label: "14 dias (2 sem)", days: 14 },
+                  { label: "30 dias (1 mês)", days: 30 },
+                  { label: "60 dias (2 meses)", days: 60 },
+                ].map((preset) => (
+                  <Button
+                    key={preset.days}
+                    type="button"
+                    variant={loanDurationDays === preset.days ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs px-2 py-0 font-medium transition-all"
+                    onClick={() => setPresetDays(preset.days)}
+                  >
+                    +{preset.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dynamic summary banner */}
+            {expected && loanDurationDays !== null && (
+              <div
+                className={cn(
+                  "p-2.5 rounded-lg border text-xs flex items-center justify-between font-semibold mt-2 shadow-xs transition-colors",
+                  loanDurationDays > 0
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-800"
+                    : loanDurationDays === 0
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-800"
+                    : "bg-rose-500/10 border-rose-500/30 text-rose-800"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 shrink-0" />
+                  <span>
+                    {loanDurationDays > 0
+                      ? `Devolução em ${fmtBR(expected)} — Empréstimo de ${loanDurationDays} ${loanDurationDays === 1 ? "dia" : "dias"}`
+                      : loanDurationDays === 0
+                      ? "Devolução prevista para HOJE"
+                      : `Atenção: A data escolhida já passou (${Math.abs(loanDurationDays)} dias atrás)`}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">
