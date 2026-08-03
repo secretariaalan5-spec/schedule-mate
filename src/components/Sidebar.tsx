@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Users, Building, Settings, LogOut, ChevronLeft, User } from "lucide-react";
+import { Calendar, Users, Building, Settings, LogOut, ChevronLeft, User, Syringe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +23,7 @@ const navItems = [
   { id: "agenda", label: "Agenda", icon: Calendar },
   { id: "pacientes", label: "Pacientes", icon: Users },
   { id: "unidades", label: "Unidades", icon: Building },
+  { id: "implanon", label: "Implanon", icon: Syringe },
   { id: "emprestimos", label: "Empréstimos", icon: Settings },
 ];
 

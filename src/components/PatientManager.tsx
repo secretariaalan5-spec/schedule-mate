@@ -33,6 +33,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { useHealthUnits } from "@/hooks/useHealthUnits";
 import MergePatientsDialog from "@/components/MergePatientsDialog";
+import PatientTimeline from "@/components/PatientTimeline";
 import { useLoans } from "@/hooks/useLoans";
 import { HandCoins } from "lucide-react";
 
@@ -496,6 +497,17 @@ export default function PatientManager({ onGetHistory }: Props) {
             </div>
           )}
           {historyPatient && <PatientLoansSection patientId={historyPatient.id} />}
+          <div className="mb-2">
+            <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-2">
+              Prontuário unificado
+            </p>
+            <ScrollArea className="max-h-72 pr-2">
+              <PatientTimeline patientId={historyPatient?.id} />
+            </ScrollArea>
+          </div>
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
+            Consultas
+          </p>
           <ScrollArea className="max-h-80">
             {history.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Sem consultas registradas</p>

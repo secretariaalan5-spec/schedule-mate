@@ -15,6 +15,7 @@ import { AlertTriangle, CalendarClock } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { formatDateBR } from "@/hooks/useScheduling";
 import { supabase } from "@/integrations/supabase/client";
+import { syncPatientRegistry } from "@/lib/patientRegistry";
 import { usePatients } from "@/hooks/usePatients";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useHealthUnits } from "@/hooks/useHealthUnits";
@@ -310,14 +311,13 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
       patientId = data.id;
       onPatientsChanged();
     } else {
-      const updates: Partial<Patient> = {};
-      if (susCard !== (selectedPatient.sus_card || "")) updates.sus_card = susCard || null;
-      if (dob !== (selectedPatient.dob || "")) updates.dob = dob || null;
-      if (psf !== (selectedPatient.psf || "")) updates.psf = psf || null;
-      if (Object.keys(updates).length > 0) {
-        await supabase.from("patients").update(updates).eq("id", patientId);
-        onPatientsChanged();
-      }
+      // Cadastro único: alimenta a ficha da paciente sem apagar dados já existentes
+      await syncPatientRegistry(patientId!, {
+        sus_card: susCard,
+        dob: dob,
+        psf: psf,
+      });
+      onPatientsChanged();
     }
 
     const ok = await onAdd(slot, date, patientId!, reason, type, scheduleTime);

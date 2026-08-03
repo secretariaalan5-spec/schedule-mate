@@ -10,6 +10,7 @@ import HeaderMenu from "@/components/HeaderMenu";
 const PatientManager = lazy(() => import("@/components/PatientManager"));
 const HealthUnitsManager = lazy(() => import("@/components/HealthUnitsManager"));
 const LoanManager = lazy(() => import("@/components/LoanManager"));
+const ImplanonManager = lazy(() => import("@/components/ImplanonManager"));
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarUI } from "@/components/ui/calendar";
@@ -33,7 +34,8 @@ import {
   Menu,
   LogOut,
   User,
-  UserPlus
+  UserPlus,
+  Syringe
 } from "lucide-react";
 import type { Patient, Appointment } from "@/hooks/useScheduling";
 import { useAppointmentDraft } from "@/hooks/useAppointmentDraft";
@@ -52,7 +54,7 @@ import { exportDayExcel } from "@/lib/exportUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { formatValidLocalDate, isValidDate, parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
 
-type Tab = "dashboard" | "agenda" | "pacientes" | "unidades" | "emprestimos" | "menu";
+type Tab = "dashboard" | "agenda" | "pacientes" | "unidades" | "implanon" | "emprestimos" | "menu";
 
 export default function Dashboard() {
   const sched = useScheduling();
@@ -326,6 +328,8 @@ export default function Dashboard() {
         return "Unidades";
       case "emprestimos":
         return "Empréstimos";
+      case "implanon":
+        return "Implanon";
       default:
         return "Dashboard";
     }
@@ -729,6 +733,17 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Implanon tab */}
+        {tab === "implanon" && (
+          <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
+            <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+              <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
+                <ImplanonManager />
+              </Suspense>
+            </div>
+          </div>
+        )}
+
         {/* Loans tab */}
         {tab === "emprestimos" && (
           <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
@@ -810,6 +825,19 @@ export default function Dashboard() {
                       <HandCoins className="w-4 h-4" />
                     </div>
                     <span>Controle de Empréstimos</span>
+                  </div>
+                  <ChevronLeft className="w-4 h-4 rotate-180 text-slate-400" />
+                </button>
+
+                <button
+                  onClick={() => setTab("implanon")}
+                  className="w-full text-left p-4 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-center justify-between font-bold text-sm text-slate-800"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <Syringe className="w-4 h-4" />
+                    </div>
+                    <span>Implanon</span>
                   </div>
                   <ChevronLeft className="w-4 h-4 rotate-180 text-slate-400" />
                 </button>
