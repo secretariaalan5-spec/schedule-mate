@@ -176,20 +176,19 @@ export default function Dashboard() {
 
   // Mobile horizontal scroll date picker memo
   const mobileDays = useMemo(() => {
-    if (!sched.selectedDate) return [];
     const baseDate = parseValidLocalDate(sched.selectedDate);
     if (!baseDate) return [];
+    
     const dayOfWeek = baseDate.getDay();
     const startOfWeek = new Date(baseDate);
     startOfWeek.setDate(baseDate.getDate() - dayOfWeek);
     
+    const labels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
       const dateStr = toLocalDateKey(d);
       if (!dateStr) return null;
-      
-      const labels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
       
       return {
         dateStr,
@@ -197,7 +196,7 @@ export default function Dashboard() {
         dayLabel: labels[i],
         isOccupied: (sched.appointmentCounts[dateStr] ?? 0) > 0
       };
-    }).filter((day): day is NonNullable<typeof day> => day !== null);
+    }).filter((d): d is NonNullable<typeof d> => !!d);
   }, [sched.selectedDate, sched.appointmentCounts]);
 
   const currentMonthLabel = useMemo(() => {
@@ -205,21 +204,19 @@ export default function Dashboard() {
   }, [sched.selectedDate]);
 
   const handlePrevWeek = () => {
-    if (!sched.selectedDate) return;
     const d = parseValidLocalDate(sched.selectedDate);
     if (!d) return;
     d.setDate(d.getDate() - 7);
-    const dateKey = toLocalDateKey(d);
-    if (dateKey) sched.setSelectedDate(dateKey);
+    const key = toLocalDateKey(d);
+    if (key) sched.setSelectedDate(key);
   };
 
   const handleNextWeek = () => {
-    if (!sched.selectedDate) return;
     const d = parseValidLocalDate(sched.selectedDate);
     if (!d) return;
     d.setDate(d.getDate() + 7);
-    const dateKey = toLocalDateKey(d);
-    if (dateKey) sched.setSelectedDate(dateKey);
+    const key = toLocalDateKey(d);
+    if (key) sched.setSelectedDate(key);
   };
 
   const handleRefresh = () => {
@@ -230,9 +227,7 @@ export default function Dashboard() {
     if (sched.selectedDate) sched.fetchAppointments();
   };
 
-  const calendarDate = (() => {
-    return parseValidLocalDate(sched.selectedDate) ?? undefined;
-  })();
+  const calendarDate = useMemo(() => parseValidLocalDate(sched.selectedDate) ?? undefined, [sched.selectedDate]);
 
   const handleCalendarSelect = (date: Date | undefined) => {
     if (!isValidDate(date)) return;
@@ -249,7 +244,7 @@ export default function Dashboard() {
     const full: Date[] = [];
     Object.entries(sched.appointmentCounts).forEach(([d, count]) => {
       const date = parseValidLocalDate(d);
-      if (!date || !Number.isFinite(count)) return;
+      if (!date) return;
       const ratio = count / total;
       if (count >= total) full.push(date);
       else if (ratio >= 0.8) high.push(date);
@@ -326,11 +321,11 @@ export default function Dashboard() {
       case "agenda":
         return sched.selectedDate ? formatDateFull(sched.selectedDate) : "Selecione uma data";
       case "pacientes":
-        return "Patients";
+        return "Pacientes";
       case "unidades":
-        return "Schedule";
+        return "Unidades";
       case "emprestimos":
-        return "Settings";
+        return "Empréstimos";
       default:
         return "Dashboard";
     }
@@ -617,10 +612,10 @@ export default function Dashboard() {
                       onSelect={handleCalendarSelect}
                       locale={ptBR}
                       modifiers={{
-                        occLow: occupancyModifiers.low.filter(d => d instanceof Date && !isNaN(d.getTime())),
-                        occMedium: occupancyModifiers.medium.filter(d => d instanceof Date && !isNaN(d.getTime())),
-                        occHigh: occupancyModifiers.high.filter(d => d instanceof Date && !isNaN(d.getTime())),
-                        occFull: occupancyModifiers.full.filter(d => d instanceof Date && !isNaN(d.getTime())),
+                        occLow: occupancyModifiers.low,
+                        occMedium: occupancyModifiers.medium,
+                        occHigh: occupancyModifiers.high,
+                        occFull: occupancyModifiers.full,
                       }}
                       modifiersClassNames={{
                         occLow: "occLow",
@@ -931,4 +926,3 @@ export default function Dashboard() {
     </>
   );
 }
-
