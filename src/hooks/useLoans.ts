@@ -23,7 +23,7 @@ export type Loan = {
   created_at: string;
   updated_at: string;
   glucometer?: Glucometer | null;
-  patient?: { id: string; name: string; sus_card: string | null; cpf: string | null; acs: string | null; phone: string | null; psf: string | null } | null;
+  patient?: { id: string; name: string; sus_card: string | null; cpf: string | null; acs: string | null; phone: string | null; psf: string | null; dob: string | null } | null;
 };
 
 const db = supabase as any;
@@ -78,7 +78,7 @@ export function useLoans(patientId?: string) {
     queryFn: async () => {
       let q = db
         .from("glucometer_loans")
-        .select("*, glucometer:glucometers(*), patient:patients(id,name,sus_card,cpf,acs,phone,psf)")
+        .select("*, glucometer:glucometers(*), patient:patients(id,name,sus_card,cpf,acs,phone,psf,dob)")
         .order("returned_at", { ascending: true, nullsFirst: true })
         .order("expected_return_date", { ascending: true });
       if (patientId) q = q.eq("patient_id", patientId);
@@ -110,7 +110,7 @@ export function useLoans(patientId?: string) {
           loaned_at: payload.loaned_at ?? new Date().toISOString().slice(0, 10),
           notes: payload.notes ?? null,
         })
-        .select("*, glucometer:glucometers(*), patient:patients(id,name,sus_card,cpf,acs,phone,psf)")
+        .select("*, glucometer:glucometers(*), patient:patients(id,name,sus_card,cpf,acs,phone,psf,dob)")
         .single();
       if (error) throw error;
       return data as Loan;

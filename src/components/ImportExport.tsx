@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import type { Patient } from "@/hooks/useScheduling";
 import { formatDateBR } from "@/hooks/useScheduling";
-import { format, parseISO, parse } from "date-fns";
+import { format, parse } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatValidLocalDate, parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
 
 interface Props {
   onImportComplete: () => void;
@@ -29,7 +30,8 @@ function parseSheetDate(raw: string): string | null {
   const month = m[2].padStart(2, "0");
   let year = m[3];
   if (year.length === 2) year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
-  return `${year}-${month}-${day}`;
+  const value = `${year}-${month}-${day}`;
+  return parseValidLocalDate(value) ? value : null;
 }
 
 function isMorningSheet(raw: string, sheetName: string): boolean {
@@ -46,7 +48,7 @@ function parseDob(val: any): string | null {
   // Handle JS Date objects (from XLSX cellDates)
   if (val instanceof Date) {
     if (!isNaN(val.getTime())) {
-      return `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, "0")}-${String(val.getDate()).padStart(2, "0")}`;
+      return toLocalDateKey(val);
     }
     return null;
   }
@@ -55,7 +57,7 @@ function parseDob(val: any): string | null {
     try {
       const d = new Date(val);
       if (!isNaN(d.getTime())) {
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return toLocalDateKey(d);
       }
     } catch { /* fall through */ }
   }
@@ -65,13 +67,14 @@ function parseDob(val: any): string | null {
   if (m) {
     let year = m[3];
     if (year.length === 2) year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
-    return `${year}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    const value = `${year}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+    return parseValidLocalDate(value) ? value : null;
   }
   // Handle Excel serial number
   if (typeof val === "number" && val > 10000 && val < 100000) {
     const d = new Date((val - 25569) * 86400000);
     if (!isNaN(d.getTime())) {
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return toLocalDateKey(d);
     }
   }
   return null;
@@ -137,12 +140,7 @@ export default function ImportExport({ onImportComplete, children }: Props) {
           ["T", afternoon, "14:00 h"],
         ] as [string, any[], string][]) {
           if (group.length === 0) continue;
-          let dayPart = "agenda";
-          try {
-            dayPart = format(parseISO(date), "dd_MM");
-          } catch (e) {
-            console.error("Erro ao formatar dia:", date, e);
-          }
+          const dayPart = formatValidLocalDate(date, "dd_MM", "agenda");
           const sheetName = `${dayPart} ${label}`.substring(0, 31);
 
           const rows: any[][] = [

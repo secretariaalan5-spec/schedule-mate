@@ -173,6 +173,9 @@ export default function PatientManager({ onGetHistory }: Props) {
     const data = {
       name: form.name.toUpperCase(),
       sus_card: form.sus_card || null,
+      cpf: editPatient?.cpf || null,
+      acs: editPatient?.acs || null,
+      phone: editPatient?.phone || null,
       dob: form.dob || null,
       psf: form.psf || null,
       observations: form.observations || null,
