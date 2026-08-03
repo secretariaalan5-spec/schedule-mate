@@ -163,18 +163,97 @@ export type Database = {
         }
         Relationships: []
       }
+      implanon_records: {
+        Row: {
+          application_site: string | null
+          applied_at: string | null
+          created_at: string
+          dum: string | null
+          expected_removal_at: string | null
+          health_unit_id: string | null
+          id: string
+          lot: string | null
+          lot_expiry: string | null
+          notes: string | null
+          patient_id: string
+          professional: string | null
+          released_at: string | null
+          removal_reason: string | null
+          removed_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          application_site?: string | null
+          applied_at?: string | null
+          created_at?: string
+          dum?: string | null
+          expected_removal_at?: string | null
+          health_unit_id?: string | null
+          id?: string
+          lot?: string | null
+          lot_expiry?: string | null
+          notes?: string | null
+          patient_id: string
+          professional?: string | null
+          released_at?: string | null
+          removal_reason?: string | null
+          removed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          application_site?: string | null
+          applied_at?: string | null
+          created_at?: string
+          dum?: string | null
+          expected_removal_at?: string | null
+          health_unit_id?: string | null
+          id?: string
+          lot?: string | null
+          lot_expiry?: string | null
+          notes?: string | null
+          patient_id?: string
+          professional?: string | null
+          released_at?: string | null
+          removal_reason?: string | null
+          removed_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "implanon_records_health_unit_id_fkey"
+            columns: ["health_unit_id"]
+            isOneToOne: false
+            referencedRelation: "health_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "implanon_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           acs: string | null
+          address: string | null
+          city: string | null
           cpf: string | null
           created_at: string
           dob: string | null
           dum: string | null
           gestational_notes: string | null
+          health_unit_id: string | null
           id: string
           is_pregnant: boolean | null
           legacy_id: string | null
           name: string
+          neighborhood: string | null
           observations: string | null
           phone: string | null
           psf: string | null
@@ -184,15 +263,19 @@ export type Database = {
         }
         Insert: {
           acs?: string | null
+          address?: string | null
+          city?: string | null
           cpf?: string | null
           created_at?: string
           dob?: string | null
           dum?: string | null
           gestational_notes?: string | null
+          health_unit_id?: string | null
           id?: string
           is_pregnant?: boolean | null
           legacy_id?: string | null
           name: string
+          neighborhood?: string | null
           observations?: string | null
           phone?: string | null
           psf?: string | null
@@ -202,15 +285,19 @@ export type Database = {
         }
         Update: {
           acs?: string | null
+          address?: string | null
+          city?: string | null
           cpf?: string | null
           created_at?: string
           dob?: string | null
           dum?: string | null
           gestational_notes?: string | null
+          health_unit_id?: string | null
           id?: string
           is_pregnant?: boolean | null
           legacy_id?: string | null
           name?: string
+          neighborhood?: string | null
           observations?: string | null
           phone?: string | null
           psf?: string | null
@@ -218,7 +305,15 @@ export type Database = {
           sus_card?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "patients_health_unit_id_fkey"
+            columns: ["health_unit_id"]
+            isOneToOne: false
+            referencedRelation: "health_units"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       released_days: {
         Row: {
@@ -317,6 +412,21 @@ export type Database = {
         Row: {
           name: string | null
           patient_count: number | null
+        }
+        Relationships: []
+      }
+      patient_timeline: {
+        Row: {
+          created_at: string | null
+          detail: string | null
+          event_date: string | null
+          event_time: string | null
+          event_type: string | null
+          id: string | null
+          module: string | null
+          patient_id: string | null
+          status: string | null
+          title: string | null
         }
         Relationships: []
       }

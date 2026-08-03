@@ -920,16 +920,15 @@ function NewLoanDialog({
         if (error) { toast.error("Erro ao cadastrar paciente: " + error.message); setSaving(false); return; }
         patientId = data.id;
       } else {
-        const updates: Record<string, string | null> = {};
-        if (susCard.trim() !== (selectedPatient.sus_card || "")) updates.sus_card = susCard.trim() || null;
-        if (cpf.trim() !== ((selectedPatient as any).cpf || "")) updates.cpf = cpf.trim() || null;
-        if (acs.trim() !== ((selectedPatient as any).acs || "")) updates.acs = acs.trim() || null;
-        if (phone.trim() !== ((selectedPatient as any).phone || "")) updates.phone = phone.trim() || null;
-        if (dob !== (selectedPatient.dob || "")) updates.dob = dob || null;
-        if (psf !== (selectedPatient.psf || "")) updates.psf = psf || null;
-        if (Object.keys(updates).length > 0) {
-          await (supabase as any).from("patients").update(updates).eq("id", patientId);
-        }
+        // Cadastro único compartilhado entre módulos
+        await syncPatientRegistry(patientId!, {
+          sus_card: susCard,
+          cpf,
+          acs,
+          phone,
+          dob,
+          psf,
+        });
       }
       const loan = await create.mutateAsync({
         patient_id: patientId!,
