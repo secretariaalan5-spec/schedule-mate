@@ -4,15 +4,14 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import type { Appointment } from "@/hooks/useScheduling";
 import type { ShiftConfiguration } from "@/hooks/useShifts";
+import { formatValidLocalDate, parseValidLocalDate } from "@/lib/dateUtils";
 
 export const EXPORT_HEADERS = ["Nº", "NOME", "CARTÃO SUS", "DATA NASCIMENTO", "PSF", "HORÁRIO", "MOTIVO", "TIPO", "ASSINATURA"];
 
 export const capitalizeText = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 export const formatPatientDob = (dob: string | null | undefined) => {
-  if (!dob) return "";
-  const parsed = new Date(`${dob}T12:00:00`);
-  return Number.isNaN(parsed.getTime()) ? dob : format(parsed, "dd/MM/yyyy");
+  return formatValidLocalDate(dob, "dd/MM/yyyy", dob || "");
 };
 
 export const buildShiftRows = (
@@ -43,8 +42,8 @@ export const exportDayExcel = (selectedDate: string | undefined, appointments: A
     return;
   }
 
-  const parsedDate = new Date(`${selectedDate}T12:00:00`);
-  if (Number.isNaN(parsedDate.getTime())) {
+  const parsedDate = parseValidLocalDate(selectedDate);
+  if (!parsedDate) {
     toast.error("Data inválida — não foi possível exportar.");
     return;
   }

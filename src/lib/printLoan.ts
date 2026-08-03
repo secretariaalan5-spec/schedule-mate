@@ -1,4 +1,5 @@
 import type { Loan } from "@/hooks/useLoans";
+import { toast } from "sonner";
 
 function fmt(dateStr: string | null | undefined) {
   if (!dateStr) return "—";

@@ -19,6 +19,7 @@ import { usePatients } from "@/hooks/usePatients";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useHealthUnits } from "@/hooks/useHealthUnits";
 import { useAppointmentDraft } from "@/hooks/useAppointmentDraft";
+import { parseValidLocalDate } from "@/lib/dateUtils";
 
 interface Props {
   open: boolean;
@@ -62,6 +63,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
 
   // When a patient is selected, check for existing appointments this month
   const checkMonthAppointments = useCallback(async (patientId: string) => {
+    if (!parseValidLocalDate(date)) return;
     const monthStart = date.substring(0, 7) + "-01";
     const month = parseInt(date.substring(5, 7));
     const year = parseInt(date.substring(0, 4));
@@ -107,6 +109,7 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   // Load patient_ids already booked this month — used to flag duplicates inside dropdown
   useEffect(() => {
     if (!open) return;
+    if (!parseValidLocalDate(date)) return;
     const monthStart = date.substring(0, 7) + "-01";
     const month = parseInt(date.substring(5, 7));
     const year = parseInt(date.substring(0, 4));
@@ -169,9 +172,8 @@ export default function AppointmentDialog({ open, onClose, slot, date, variant, 
   useEffect(() => { setActiveIndex(0); }, [filtered]);
 
   const calcAge = (dobStr: string | null) => {
-    if (!dobStr) return null;
-    const d = new Date(dobStr + "T12:00:00");
-    if (isNaN(d.getTime())) return null;
+    const d = parseValidLocalDate(dobStr);
+    if (!d) return null;
     const now = new Date();
     let age = now.getFullYear() - d.getFullYear();
     const m = now.getMonth() - d.getMonth();

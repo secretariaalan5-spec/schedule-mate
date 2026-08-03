@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DEFAULT_SHIFTS, useShifts } from "./useShifts";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { formatValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
 
 export interface Patient {
   id: string;
@@ -38,7 +38,7 @@ export interface Appointment {
 export function useScheduling() {
   const queryClient = useQueryClient();
   const { data: shifts = DEFAULT_SHIFTS } = useShifts();
-  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [selectedDate, setSelectedDate] = useState<string>(() => toLocalDateKey(new Date()) ?? "");
 
   // Query: Appointment counts per date (used for calendar occupancy heatmap)
   // Uses a database view that does GROUP BY on the server — much faster than downloading every row
@@ -220,25 +220,9 @@ export function useScheduling() {
 }
 
 export function formatDateBR(dateStr: string | null | undefined) {
-  if (!dateStr) return "—";
-  try {
-    const parsed = parseISO(dateStr);
-    if (isNaN(parsed.getTime())) return dateStr;
-    return format(parsed, "dd/MM/yyyy", { locale: ptBR });
-  } catch (e) {
-    console.error("Erro ao formatar data (formatDateBR):", dateStr, e);
-    return dateStr;
-  }
+  return formatValidLocalDate(dateStr, "dd/MM/yyyy", dateStr || "—", { locale: ptBR });
 }
 
 export function formatDateFull(dateStr: string | null | undefined) {
-  if (!dateStr) return "—";
-  try {
-    const parsed = parseISO(dateStr);
-    if (isNaN(parsed.getTime())) return dateStr;
-    return format(parsed, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-  } catch (e) {
-    console.error("Erro ao formatar data por extenso (formatDateFull):", dateStr, e);
-    return dateStr;
-  }
+  return formatValidLocalDate(dateStr, "EEEE, dd 'de' MMMM 'de' yyyy", dateStr || "—", { locale: ptBR });
 }
