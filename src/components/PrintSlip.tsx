@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Appointment } from "@/hooks/useScheduling";
-import { format, parseISO } from "date-fns";
+import { formatValidLocalDate } from "@/lib/dateUtils";
 
 interface SlipData {
   patientName: string;
@@ -44,14 +44,7 @@ function buildSlipHTML(slip: SlipData): string {
 }
 
 function safeFormatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return "—";
-  try {
-    const parsed = parseISO(dateStr);
-    return Number.isNaN(parsed.getTime()) ? "Data Inválida" : format(parsed, "dd/MM/yyyy");
-  } catch (e) {
-    console.error("Invalid date:", dateStr);
-    return "Data Inválida";
-  }
+  return formatValidLocalDate(dateStr, "dd/MM/yyyy", dateStr ? "Data Inválida" : "—");
 }
 
 export async function printAppointments(

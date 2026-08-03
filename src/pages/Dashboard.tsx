@@ -44,13 +44,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { DEFAULT_SHIFTS, useShifts } from "@/hooks/useShifts";
 import { exportDayExcel } from "@/lib/exportUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { formatValidLocalDate, isValidDate, parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
 
 type Tab = "dashboard" | "agenda" | "pacientes" | "unidades" | "emprestimos" | "menu";
 
@@ -177,7 +177,8 @@ export default function Dashboard() {
   // Mobile horizontal scroll date picker memo
   const mobileDays = useMemo(() => {
     if (!sched.selectedDate) return [];
-    const baseDate = new Date(sched.selectedDate + "T12:00:00");
+    const baseDate = parseValidLocalDate(sched.selectedDate);
+    if (!baseDate) return [];
     const dayOfWeek = baseDate.getDay();
     const startOfWeek = new Date(baseDate);
     startOfWeek.setDate(baseDate.getDate() - dayOfWeek);
@@ -185,7 +186,8 @@ export default function Dashboard() {
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
-      const dateStr = format(d, "yyyy-MM-dd");
+      const dateStr = toLocalDateKey(d);
+      if (!dateStr) return null;
       
       const labels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
       
@@ -195,27 +197,29 @@ export default function Dashboard() {
         dayLabel: labels[i],
         isOccupied: (sched.appointmentCounts[dateStr] ?? 0) > 0
       };
-    });
+    }).filter((day): day is NonNullable<typeof day> => day !== null);
   }, [sched.selectedDate, sched.appointmentCounts]);
 
   const currentMonthLabel = useMemo(() => {
-    if (!sched.selectedDate) return "";
-    const d = new Date(sched.selectedDate + "T12:00:00");
-    return format(d, "MMMM yyyy", { locale: ptBR });
+    return formatValidLocalDate(sched.selectedDate, "MMMM yyyy", "", { locale: ptBR });
   }, [sched.selectedDate]);
 
   const handlePrevWeek = () => {
     if (!sched.selectedDate) return;
-    const d = new Date(sched.selectedDate + "T12:00:00");
+    const d = parseValidLocalDate(sched.selectedDate);
+    if (!d) return;
     d.setDate(d.getDate() - 7);
-    sched.setSelectedDate(format(d, "yyyy-MM-dd"));
+    const dateKey = toLocalDateKey(d);
+    if (dateKey) sched.setSelectedDate(dateKey);
   };
 
   const handleNextWeek = () => {
     if (!sched.selectedDate) return;
-    const d = new Date(sched.selectedDate + "T12:00:00");
+    const d = parseValidLocalDate(sched.selectedDate);
+    if (!d) return;
     d.setDate(d.getDate() + 7);
-    sched.setSelectedDate(format(d, "yyyy-MM-dd"));
+    const dateKey = toLocalDateKey(d);
+    if (dateKey) sched.setSelectedDate(dateKey);
   };
 
   const handleRefresh = () => {
@@ -227,15 +231,13 @@ export default function Dashboard() {
   };
 
   const calendarDate = (() => {
-    if (!sched.selectedDate) return undefined;
-    const d = new Date(sched.selectedDate + "T12:00:00");
-    return isNaN(d.getTime()) ? undefined : d;
+    return parseValidLocalDate(sched.selectedDate) ?? undefined;
   })();
 
   const handleCalendarSelect = (date: Date | undefined) => {
-    if (!date) return;
-    const dateStr = format(date, "yyyy-MM-dd");
-    sched.setSelectedDate(dateStr);
+    if (!isValidDate(date)) return;
+    const dateStr = toLocalDateKey(date);
+    if (dateStr) sched.setSelectedDate(dateStr);
   };
 
   // Occupancy metrics
@@ -246,8 +248,8 @@ export default function Dashboard() {
     const high: Date[] = [];
     const full: Date[] = [];
     Object.entries(sched.appointmentCounts).forEach(([d, count]) => {
-      const date = new Date(d + "T12:00:00");
-      if (isNaN(date.getTime())) return;
+      const date = parseValidLocalDate(d);
+      if (!date || !Number.isFinite(count)) return;
       const ratio = count / total;
       if (count >= total) full.push(date);
       else if (ratio >= 0.8) high.push(date);
