@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatValidLocalDate } from "@/lib/dateUtils";
 import { useDebounce } from "@/hooks/use-debounce";
+import { toast } from "sonner";
 import {
   Syringe,
   Plus,
@@ -36,11 +37,20 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  UserPlus,
+  UserSearch,
+  User,
+  Phone,
+  MapPin,
+  Cake,
+  BadgeCheck,
+  X,
 } from "lucide-react";
 
 const db = supabase as any;
 const today = () => new Date().toISOString().slice(0, 10);
 
+/* ─── helpers ─────────────────────────────────────────────────────────── */
 function daysUntil(date: string | null) {
   if (!date) return null;
   const d = new Date(`${date}T12:00:00`);
@@ -48,32 +58,64 @@ function daysUntil(date: string | null) {
   return Math.round((d.getTime() - Date.now()) / 86400000);
 }
 
+function calcAge(dob: string): number | null {
+  if (!dob) return null;
+  const birth = new Date(`${dob}T12:00:00`);
+  if (!Number.isFinite(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  return age >= 0 ? age : null;
+}
+
+function formatCpf(v: string) {
+  return v
+    .replace(/\D/g, "")
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+function formatPhone(v: string) {
+  return v
+    .replace(/\D/g, "")
+    .slice(0, 11)
+    .replace(/(\d{2})(\d)/, "($1) $2")
+    .replace(/(\d{4,5})(\d{4})$/, "$1-$2");
+}
+
+/* ─── types ────────────────────────────────────────────────────────────── */
 type PatientLite = {
   id: string;
   name: string;
+  cpf: string | null;
   sus_card: string | null;
   phone: string | null;
+  dob: string | null;
+  address: string | null;
+  neighborhood: string | null;
   psf: string | null;
 };
 
-function PatientPicker({
-  value,
-  onChange,
+/* ─── PatientSearch: busca paciente existente ──────────────────────────── */
+function PatientSearch({
+  onSelect,
 }: {
-  value: PatientLite | null;
-  onChange: (p: PatientLite | null) => void;
+  onSelect: (p: PatientLite) => void;
 }) {
   const [term, setTerm] = useState("");
   const debounced = useDebounce(term, 300);
   const { data } = useQuery({
     queryKey: ["implanon-patient-search", debounced],
-    enabled: debounced.trim().length >= 2 && !value,
+    enabled: debounced.trim().length >= 2,
     queryFn: async () => {
       const safe = debounced.replace(/[,()\"']/g, " ").trim();
       const { data, error } = await db
         .from("patients")
-        .select("id,name,sus_card,phone,psf")
-        .ilike("name", `%${safe}%`)
+        .select("id,name,cpf,sus_card,phone,dob,address,neighborhood,psf")
+        .or(`name.ilike.%${safe}%,cpf.ilike.%${safe}%`)
         .order("name")
         .limit(8);
       if (error) throw error;
@@ -81,55 +123,48 @@ function PatientPicker({
     },
   });
 
-  if (value) {
-    return (
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
-        <div className="min-w-0">
-          <p className="font-semibold text-sm truncate">{value.name}</p>
-          <p className="text-xs text-muted-foreground truncate">
-            {value.sus_card ? `CNS ${value.sus_card}` : "Sem CNS"}{" "}
-            {value.psf ? `· ${value.psf}` : ""}
-          </p>
-        </div>
-        <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
-          Trocar
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           className="pl-9"
-          placeholder="Buscar paciente pelo nome..."
+          placeholder="Buscar por nome ou CPF..."
           value={term}
           onChange={(e) => setTerm(e.target.value)}
         />
       </div>
       {(data ?? []).length > 0 && (
-        <div className="max-h-44 overflow-auto rounded-lg border border-border divide-y">
-          {(data ?? []).map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onChange(p)}
-              className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors"
-            >
-              <p className="text-sm font-medium truncate">{p.name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">
-                {p.sus_card ?? "sem CNS"} {p.psf ? `· ${p.psf}` : ""}
-              </p>
-            </button>
-          ))}
+        <div className="max-h-48 overflow-auto rounded-lg border border-border divide-y shadow-sm">
+          {(data ?? []).map((p) => {
+            const age = calcAge(p.dob ?? "");
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onSelect(p)}
+                className="w-full text-left px-3 py-2.5 hover:bg-muted/60 transition-colors"
+              >
+                <p className="text-sm font-semibold truncate">{p.name}</p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {p.cpf ?? "Sem CPF"} {age !== null ? `· ${age} anos` : ""}{" "}
+                  {p.psf ? `· ${p.psf}` : ""}
+                </p>
+              </button>
+            );
+          })}
         </div>
+      )}
+      {debounced.trim().length >= 2 && (data ?? []).length === 0 && (
+        <p className="text-xs text-muted-foreground text-center py-2">
+          Nenhuma paciente encontrada com esse nome/CPF.
+        </p>
       )}
     </div>
   );
 }
 
+/* ─── Status badges ─────────────────────────────────────────────────────── */
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   released: { label: "Liberado", cls: "bg-sky-50 text-sky-700 border-sky-200" },
   applied: { label: "Aplicado", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -138,7 +173,6 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 
 const SEM_UNIDADE = "— Sem unidade definida";
 
-/** Groups records by the patient's PSF unit */
 function groupByUnit(records: ImplanonRecord[]): Map<string, ImplanonRecord[]> {
   const map = new Map<string, ImplanonRecord[]>();
   for (const r of records) {
@@ -146,17 +180,39 @@ function groupByUnit(records: ImplanonRecord[]): Map<string, ImplanonRecord[]> {
     if (!map.has(key)) map.set(key, []);
     map.get(key)!.push(r);
   }
-  // Sort keys alphabetically, putting SEM_UNIDADE last
-  const sorted = new Map(
+  return new Map(
     [...map.entries()].sort(([a], [b]) => {
       if (a === SEM_UNIDADE) return 1;
       if (b === SEM_UNIDADE) return -1;
       return a.localeCompare(b, "pt-BR");
     }),
   );
-  return sorted;
 }
 
+/* ─── empty form state ─────────────────────────────────────────────────── */
+const emptyPatientForm = {
+  name: "",
+  cpf: "",
+  dob: "",
+  phone: "",
+  address: "",
+  neighborhood: "",
+  psf: "",
+};
+const emptyImplanonForm = {
+  released_at: today(),
+  applied_at: "",
+  lot: "",
+  lot_expiry: "",
+  expected_removal_at: "",
+  professional: "",
+  application_site: "",
+  notes: "",
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ImplanonManager
+═══════════════════════════════════════════════════════════════════════ */
 export default function ImplanonManager() {
   const { data, isLoading, create, update, remove } = useImplanon();
   const [open, setOpen] = useState(false);
@@ -164,22 +220,22 @@ export default function ImplanonManager() {
   const [filterUnit, setFilterUnit] = useState("all");
   const [collapsedUnits, setCollapsedUnits] = useState<Set<string>>(new Set());
 
-  const [patient, setPatient] = useState<PatientLite | null>(null);
-  const emptyForm = {
-    released_at: today(),
-    applied_at: "",
-    lot: "",
-    lot_expiry: "",
-    expected_removal_at: "",
-    professional: "",
-    application_site: "",
-    notes: "",
-  };
-  const [form, setForm] = useState(emptyForm);
+  /* Dialog mode: "new" = cadastrar nova paciente | "existing" = buscar existente */
+  const [mode, setMode] = useState<"new" | "existing">("new");
+  const [selectedPatient, setSelectedPatient] = useState<PatientLite | null>(null);
+  const [patientForm, setPatientForm] = useState(emptyPatientForm);
+  const [implanonForm, setImplanonForm] = useState(emptyImplanonForm);
+  const [saving, setSaving] = useState(false);
 
   const records = data ?? [];
 
-  // Distinct PSF units from all records
+  /* Idade calculada automaticamente */
+  const age = useMemo(
+    () => (mode === "new" ? calcAge(patientForm.dob) : calcAge(selectedPatient?.dob ?? "")),
+    [mode, patientForm.dob, selectedPatient?.dob],
+  );
+
+  /* Unidades distintas */
   const unitOptions = useMemo(() => {
     const set = new Set<string>();
     for (const r of records) {
@@ -189,6 +245,7 @@ export default function ImplanonManager() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [records]);
 
+  /* KPIs */
   const indicators = useMemo(() => {
     const applied = records.filter((r) => r.status === "applied");
     const expiring = applied.filter((r) => {
@@ -213,15 +270,14 @@ export default function ImplanonManager() {
     };
   }, [records]);
 
+  /* Filtro + busca */
   const filtered = useMemo(() => {
     const t = search.trim().toLowerCase();
     return records.filter((r) => {
-      // Unit filter
       if (filterUnit !== "all") {
         const unit = r.patient?.psf?.trim() || SEM_UNIDADE;
         if (unit !== filterUnit) return false;
       }
-      // Text search
       if (t) {
         return (
           r.patient?.name?.toLowerCase().includes(t) ||
@@ -245,29 +301,101 @@ export default function ImplanonManager() {
     });
   };
 
-  const resetForm = () => {
-    setPatient(null);
-    setForm({ ...emptyForm, released_at: today() });
+  /* Reset form */
+  const resetDialog = () => {
+    setMode("new");
+    setSelectedPatient(null);
+    setPatientForm(emptyPatientForm);
+    setImplanonForm({ ...emptyImplanonForm, released_at: today() });
   };
 
+  /* ── Submit ─────────────────────────────────────────────────────────── */
   const submit = async () => {
-    if (!patient) return;
-    await create.mutateAsync({
-      patient_id: patient.id,
-      released_at: form.released_at || null,
-      applied_at: form.applied_at || null,
-      lot: form.lot || null,
-      lot_expiry: form.lot_expiry || null,
-      expected_removal_at: form.expected_removal_at || null,
-      professional: form.professional || null,
-      application_site: form.application_site || null,
-      notes: form.notes || null,
-    } as any);
-    setOpen(false);
-    resetForm();
+    setSaving(true);
+    try {
+      let patientId: string;
+
+      if (mode === "new") {
+        /* Validações mínimas */
+        if (!patientForm.name.trim()) {
+          toast.error("Nome completo é obrigatório");
+          return;
+        }
+        /* Upsert paciente pelo CPF (se informado) ou inserir novo */
+        const cpfClean = patientForm.cpf.replace(/\D/g, "") || null;
+        const phoneClean = patientForm.phone.replace(/\D/g, "") || null;
+
+        let existingId: string | null = null;
+        if (cpfClean) {
+          const { data: found } = await db
+            .from("patients")
+            .select("id")
+            .eq("cpf", cpfClean)
+            .maybeSingle();
+          if (found) existingId = found.id;
+        }
+
+        if (existingId) {
+          /* Atualiza dados da paciente existente */
+          await db.from("patients").update({
+            name: patientForm.name.trim(),
+            dob: patientForm.dob || null,
+            phone: phoneClean,
+            address: patientForm.address.trim() || null,
+            neighborhood: patientForm.neighborhood.trim() || null,
+            psf: patientForm.psf.trim() || null,
+          }).eq("id", existingId);
+          patientId = existingId;
+        } else {
+          /* Insere nova paciente */
+          const { data: inserted, error } = await db
+            .from("patients")
+            .insert({
+              name: patientForm.name.trim(),
+              cpf: cpfClean,
+              dob: patientForm.dob || null,
+              phone: phoneClean,
+              address: patientForm.address.trim() || null,
+              neighborhood: patientForm.neighborhood.trim() || null,
+              psf: patientForm.psf.trim() || null,
+            })
+            .select("id")
+            .single();
+          if (error) throw error;
+          patientId = inserted.id;
+        }
+      } else {
+        if (!selectedPatient) {
+          toast.error("Selecione uma paciente");
+          return;
+        }
+        patientId = selectedPatient.id;
+      }
+
+      /* Cria o registro de Implanon */
+      await create.mutateAsync({
+        patient_id: patientId,
+        released_at: implanonForm.released_at || null,
+        applied_at: implanonForm.applied_at || null,
+        lot: implanonForm.lot || null,
+        lot_expiry: implanonForm.lot_expiry || null,
+        expected_removal_at: implanonForm.expected_removal_at || null,
+        professional: implanonForm.professional || null,
+        application_site: implanonForm.application_site || null,
+        notes: implanonForm.notes || null,
+      } as any);
+
+      setOpen(false);
+      resetDialog();
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const cards = [
+  /* KPI cards */
+  const kpiCards = [
     { label: "Liberados", value: indicators.released, icon: FileClock, cls: "text-sky-600 bg-sky-50" },
     { label: "Aplicados ativos", value: indicators.applied, icon: CheckCircle2, cls: "text-emerald-600 bg-emerald-50" },
     { label: "Retirada próxima", value: indicators.expiring, icon: CalendarClock, cls: "text-amber-600 bg-amber-50" },
@@ -276,6 +404,9 @@ export default function ImplanonManager() {
     { label: "Retirados", value: indicators.removed, icon: Syringe, cls: "text-slate-600 bg-slate-100" },
   ];
 
+  /* ══════════════════════════════════════════════════════════════════════
+     RENDER
+  ═══════════════════════════════════════════════════════════════════════ */
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Header */}
@@ -284,7 +415,9 @@ export default function ImplanonManager() {
           <Syringe className="w-5 h-5 text-primary" />
           <div>
             <h2 className="font-bold text-lg leading-tight">Implanon</h2>
-            <p className="text-xs text-muted-foreground">Liberação, aplicação, lote e retirada por unidade de saúde</p>
+            <p className="text-xs text-muted-foreground">
+              Liberação, aplicação, lote e retirada por unidade de saúde
+            </p>
           </div>
         </div>
         <Button onClick={() => setOpen(true)} className="gap-2">
@@ -295,7 +428,7 @@ export default function ImplanonManager() {
       <div className="flex-1 overflow-auto p-5 space-y-5">
         {/* KPI Cards */}
         <section className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-          {cards.map((c) => {
+          {kpiCards.map((c) => {
             const Icon = c.icon;
             return (
               <div key={c.label} className="rounded-xl border border-border bg-white p-3 shadow-sm">
@@ -311,7 +444,6 @@ export default function ImplanonManager() {
 
         {/* Filters Row */}
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -321,8 +453,6 @@ export default function ImplanonManager() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-
-          {/* Unit Filter */}
           <div className="flex items-center gap-2 shrink-0">
             <Building2 className="w-4 h-4 text-muted-foreground" />
             <Select value={filterUnit} onValueChange={setFilterUnit}>
@@ -341,20 +471,20 @@ export default function ImplanonManager() {
           </div>
         </div>
 
-        {/* Records — grouped by unit */}
+        {/* Records list — grouped by unit */}
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando registros...</p>
         ) : filtered.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-10 text-center">Nenhum registro encontrado.</p>
+          <p className="text-sm text-muted-foreground py-10 text-center">
+            Nenhum registro encontrado.
+          </p>
         ) : (
           <div className="space-y-6">
             {[...groupedFiltered.entries()].map(([unit, unitRecords]) => {
               const isCollapsed = collapsedUnits.has(unit);
               const isSemUnidade = unit === SEM_UNIDADE;
-
               return (
                 <section key={unit}>
-                  {/* Unit Section Header */}
                   <button
                     type="button"
                     onClick={() => toggleUnit(unit)}
@@ -383,27 +513,29 @@ export default function ImplanonManager() {
                     </div>
                     <div className="flex-1 h-px bg-border" />
                     {isCollapsed ? (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
                     )}
                   </button>
 
-                  {/* Unit Records */}
                   {!isCollapsed && (
                     <div className="space-y-2 pl-1">
                       {unitRecords.map((r) => {
                         const meta = STATUS_META[r.status] ?? STATUS_META.released;
                         const d = daysUntil(r.expected_removal_at);
-
+                        const patAge = calcAge(r.patient?.dob ?? "");
                         return (
                           <article
                             key={r.id}
                             className="rounded-xl border border-border bg-white p-4 shadow-sm flex flex-col md:flex-row md:items-center gap-3"
                           >
                             <div className="flex-1 min-w-0">
+                              {/* Name + status badges */}
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h3 className="font-bold text-sm truncate">{r.patient?.name ?? "Paciente"}</h3>
+                                <h3 className="font-bold text-sm truncate">
+                                  {r.patient?.name ?? "Paciente"}
+                                </h3>
                                 <span
                                   className={cn(
                                     "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border",
@@ -424,22 +556,58 @@ export default function ImplanonManager() {
                                 )}
                               </div>
 
-                              {/* Patient info row */}
-                              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                                {r.patient?.sus_card && <span>CNS: {r.patient.sus_card}</span>}
-                                {r.patient?.phone && <span>Tel: {r.patient.phone}</span>}
-                                {r.patient?.acs && <span>ACS: {r.patient.acs}</span>}
+                              {/* Patient details */}
+                              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground">
+                                {r.patient?.cpf && (
+                                  <span className="flex items-center gap-1">
+                                    <BadgeCheck className="w-3 h-3" />
+                                    CPF: {r.patient.cpf}
+                                  </span>
+                                )}
+                                {patAge !== null && (
+                                  <span className="flex items-center gap-1">
+                                    <Cake className="w-3 h-3" />
+                                    {patAge} anos
+                                  </span>
+                                )}
+                                {r.patient?.phone && (
+                                  <span className="flex items-center gap-1">
+                                    <Phone className="w-3 h-3" />
+                                    {r.patient.phone}
+                                  </span>
+                                )}
+                                {(r.patient?.address || r.patient?.neighborhood) && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {[r.patient.address, r.patient.neighborhood]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </span>
+                                )}
                               </div>
 
-                              {/* Implanon dates row */}
+                              {/* Implanon dates */}
                               <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                                <span>Liberação: {formatValidLocalDate(r.released_at, "dd/MM/yyyy")}</span>
-                                <span>Aplicação: {formatValidLocalDate(r.applied_at, "dd/MM/yyyy")}</span>
+                                <span>
+                                  Liberação: {formatValidLocalDate(r.released_at, "dd/MM/yyyy")}
+                                </span>
+                                <span>
+                                  Aplicação: {formatValidLocalDate(r.applied_at, "dd/MM/yyyy")}
+                                </span>
                                 <span>Lote: {r.lot ?? "—"}</span>
-                                <span>Validade: {formatValidLocalDate(r.lot_expiry, "dd/MM/yyyy")}</span>
-                                <span>Prev. retirada: {formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}</span>
-                                <span>Retirada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}</span>
-                                <span className="md:col-span-2">Prof.: {r.professional ?? "—"}</span>
+                                <span>
+                                  Validade: {formatValidLocalDate(r.lot_expiry, "dd/MM/yyyy")}
+                                </span>
+                                <span>
+                                  Prev. retirada:{" "}
+                                  {formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}
+                                </span>
+                                <span>
+                                  Retirada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}
+                                </span>
+                                <span className="md:col-span-2">
+                                  Prof.: {r.professional ?? "—"}
+                                </span>
                               </div>
                             </div>
 
@@ -449,7 +617,10 @@ export default function ImplanonManager() {
                                 <Button
                                   size="sm"
                                   onClick={() =>
-                                    update.mutate({ id: r.id, updates: { applied_at: today() } })
+                                    update.mutate({
+                                      id: r.id,
+                                      updates: { applied_at: today() },
+                                    })
                                   }
                                 >
                                   Aplicar
@@ -460,7 +631,10 @@ export default function ImplanonManager() {
                                   size="sm"
                                   variant="secondary"
                                   onClick={() =>
-                                    update.mutate({ id: r.id, updates: { removed_at: today() } })
+                                    update.mutate({
+                                      id: r.id,
+                                      updates: { removed_at: today() },
+                                    })
                                   }
                                 >
                                   Registrar retirada
@@ -487,95 +661,297 @@ export default function ImplanonManager() {
         )}
       </div>
 
-      {/* New Record Dialog */}
+      {/* ── New Record Dialog ─────────────────────────────────────────────── */}
       <Dialog
         open={open}
         onOpenChange={(v) => {
           setOpen(v);
-          if (!v) resetForm();
+          if (!v) resetDialog();
         }}
       >
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-auto">
+        <DialogContent className="max-w-2xl max-h-[92vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>Novo registro de Implanon</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Syringe className="w-4 h-4 text-primary" />
+              Novo registro de Implanon
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Paciente</Label>
-              <PatientPicker value={patient} onChange={setPatient} />
+
+          {/* Mode toggle */}
+          <div className="flex rounded-lg border border-border overflow-hidden text-sm">
+            <button
+              type="button"
+              onClick={() => { setMode("new"); setSelectedPatient(null); }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 font-semibold transition-colors",
+                mode === "new"
+                  ? "bg-primary text-white"
+                  : "bg-white text-muted-foreground hover:bg-muted/40",
+              )}
+            >
+              <UserPlus className="w-4 h-4" />
+              Nova paciente
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("existing"); setPatientForm(emptyPatientForm); }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 font-semibold transition-colors",
+                mode === "existing"
+                  ? "bg-primary text-white"
+                  : "bg-white text-muted-foreground hover:bg-muted/40",
+              )}
+            >
+              <UserSearch className="w-4 h-4" />
+              Paciente existente
+            </button>
+          </div>
+
+          {/* ── PATIENT SECTION ──────────────────────────────────────────── */}
+          {mode === "new" ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+                <User className="w-3.5 h-3.5" />
+                Dados da paciente
+              </div>
+
+              {/* Nome + CPF */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>
+                    Nome completo <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Ex.: Maria das Graças Silva"
+                    value={patientForm.name}
+                    onChange={(e) =>
+                      setPatientForm({ ...patientForm, name: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>CPF</Label>
+                  <Input
+                    placeholder="000.000.000-00"
+                    value={patientForm.cpf}
+                    onChange={(e) =>
+                      setPatientForm({ ...patientForm, cpf: formatCpf(e.target.value) })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Telefone</Label>
+                  <Input
+                    placeholder="(00) 00000-0000"
+                    value={patientForm.phone}
+                    onChange={(e) =>
+                      setPatientForm({
+                        ...patientForm,
+                        phone: formatPhone(e.target.value),
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Data de nascimento</Label>
+                  <Input
+                    type="date"
+                    value={patientForm.dob}
+                    onChange={(e) =>
+                      setPatientForm({ ...patientForm, dob: e.target.value })
+                    }
+                  />
+                </div>
+
+                {/* Idade calculada automaticamente */}
+                <div className="space-y-1">
+                  <Label>Idade</Label>
+                  <div className="flex items-center h-10 px-3 rounded-md border border-border bg-muted/40 text-sm font-semibold text-muted-foreground">
+                    {age !== null ? `${age} anos` : "—"}
+                  </div>
+                </div>
+
+                <div className="space-y-1 sm:col-span-2">
+                  <Label>Endereço</Label>
+                  <Input
+                    placeholder="Rua, número, complemento"
+                    value={patientForm.address}
+                    onChange={(e) =>
+                      setPatientForm({ ...patientForm, address: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Bairro</Label>
+                  <Input
+                    placeholder="Ex.: Centro"
+                    value={patientForm.neighborhood}
+                    onChange={(e) =>
+                      setPatientForm({ ...patientForm, neighborhood: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label>Unidade de Saúde (PSF/UBS)</Label>
+                  <Input
+                    placeholder="Ex.: PSF Vila Nova"
+                    value={patientForm.psf}
+                    onChange={(e) =>
+                      setPatientForm({ ...patientForm, psf: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
             </div>
+          ) : (
+            /* ── EXISTING PATIENT SEARCH ─────────────────────────────── */
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+                <UserSearch className="w-3.5 h-3.5" />
+                Buscar paciente existente
+              </div>
+              {selectedPatient ? (
+                <div className="rounded-lg border border-border bg-muted/30 p-3 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm">{selectedPatient.name}</p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground mt-0.5">
+                      {selectedPatient.cpf && <span>CPF: {selectedPatient.cpf}</span>}
+                      {calcAge(selectedPatient.dob ?? "") !== null && (
+                        <span>{calcAge(selectedPatient.dob ?? "")} anos</span>
+                      )}
+                      {selectedPatient.phone && <span>Tel: {selectedPatient.phone}</span>}
+                      {selectedPatient.psf && <span>PSF: {selectedPatient.psf}</span>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPatient(null)}
+                    className="shrink-0 p-1 rounded-md hover:bg-muted transition-colors"
+                  >
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+              ) : (
+                <PatientSearch onSelect={setSelectedPatient} />
+              )}
+            </div>
+          )}
+
+          {/* ── IMPLANON SECTION ────────────────────────────────────────── */}
+          <div className="space-y-4 pt-2 border-t border-border">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+              <Syringe className="w-3.5 h-3.5" />
+              Dados do Implanon
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Data de liberação</Label>
                 <Input
                   type="date"
-                  value={form.released_at}
-                  onChange={(e) => setForm({ ...form, released_at: e.target.value })}
+                  value={implanonForm.released_at}
+                  onChange={(e) =>
+                    setImplanonForm({ ...implanonForm, released_at: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1">
                 <Label>Data de aplicação</Label>
                 <Input
                   type="date"
-                  value={form.applied_at}
-                  onChange={(e) => setForm({ ...form, applied_at: e.target.value })}
+                  value={implanonForm.applied_at}
+                  onChange={(e) =>
+                    setImplanonForm({ ...implanonForm, applied_at: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1">
                 <Label>Lote</Label>
                 <Input
-                  value={form.lot}
-                  onChange={(e) => setForm({ ...form, lot: e.target.value })}
                   placeholder="Ex.: A1234"
+                  value={implanonForm.lot}
+                  onChange={(e) =>
+                    setImplanonForm({ ...implanonForm, lot: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1">
                 <Label>Validade do lote</Label>
                 <Input
                   type="date"
-                  value={form.lot_expiry}
-                  onChange={(e) => setForm({ ...form, lot_expiry: e.target.value })}
+                  value={implanonForm.lot_expiry}
+                  onChange={(e) =>
+                    setImplanonForm({ ...implanonForm, lot_expiry: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1">
                 <Label>Previsão de retirada</Label>
                 <Input
                   type="date"
-                  value={form.expected_removal_at}
-                  onChange={(e) => setForm({ ...form, expected_removal_at: e.target.value })}
+                  value={implanonForm.expected_removal_at}
+                  onChange={(e) =>
+                    setImplanonForm({
+                      ...implanonForm,
+                      expected_removal_at: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-1">
                 <Label>Profissional responsável</Label>
                 <Input
-                  value={form.professional}
-                  onChange={(e) => setForm({ ...form, professional: e.target.value })}
+                  value={implanonForm.professional}
+                  onChange={(e) =>
+                    setImplanonForm({ ...implanonForm, professional: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-1 col-span-2">
                 <Label>Local de aplicação</Label>
                 <Input
-                  value={form.application_site}
-                  onChange={(e) => setForm({ ...form, application_site: e.target.value })}
-                  placeholder="Braço esquerdo"
+                  placeholder="Ex.: Braço esquerdo"
+                  value={implanonForm.application_site}
+                  onChange={(e) =>
+                    setImplanonForm({
+                      ...implanonForm,
+                      application_site: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>
+
             <div className="space-y-1">
               <Label>Observações</Label>
               <Textarea
-                rows={3}
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                rows={2}
+                value={implanonForm.notes}
+                onChange={(e) =>
+                  setImplanonForm({ ...implanonForm, notes: e.target.value })
+                }
               />
             </div>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={submit} disabled={!patient || create.isPending}>
-              Salvar
+            <Button
+              onClick={submit}
+              disabled={
+                saving ||
+                (mode === "new" && !patientForm.name.trim()) ||
+                (mode === "existing" && !selectedPatient)
+              }
+            >
+              {saving ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
         </DialogContent>
