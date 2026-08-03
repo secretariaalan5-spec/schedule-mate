@@ -165,6 +165,8 @@ export type Database = {
       }
       patients: {
         Row: {
+          acs: string | null
+          cpf: string | null
           created_at: string
           dob: string | null
           dum: string | null
@@ -174,15 +176,15 @@ export type Database = {
           legacy_id: string | null
           name: string
           observations: string | null
+          phone: string | null
           psf: string | null
           risk_classification: string | null
           sus_card: string | null
-          cpf: string | null
-          acs: string | null
-          phone: string | null
           updated_at: string
         }
         Insert: {
+          acs?: string | null
+          cpf?: string | null
           created_at?: string
           dob?: string | null
           dum?: string | null
@@ -192,15 +194,15 @@ export type Database = {
           legacy_id?: string | null
           name: string
           observations?: string | null
+          phone?: string | null
           psf?: string | null
           risk_classification?: string | null
           sus_card?: string | null
-          cpf?: string | null
-          acs?: string | null
-          phone?: string | null
           updated_at?: string
         }
         Update: {
+          acs?: string | null
+          cpf?: string | null
           created_at?: string
           dob?: string | null
           dum?: string | null
@@ -210,12 +212,10 @@ export type Database = {
           legacy_id?: string | null
           name?: string
           observations?: string | null
+          phone?: string | null
           psf?: string | null
           risk_classification?: string | null
           sus_card?: string | null
-          cpf?: string | null
-          acs?: string | null
-          phone?: string | null
           updated_at?: string
         }
         Relationships: []
