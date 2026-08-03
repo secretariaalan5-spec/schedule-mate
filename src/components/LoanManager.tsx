@@ -1,3 +1,4 @@
+import { syncPatientRegistry } from "@/lib/patientRegistry";
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useGlucometers, useLoans, type Loan } from "@/hooks/useLoans";
