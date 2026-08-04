@@ -128,6 +128,7 @@ export default function ImplanonManager() {
   const [phone, setPhone]               = useState("");
   const [psf, setPsf]                   = useState("");
   const [releasedAt, setReleasedAt]     = useState(today());
+  const [appliedAt, setAppliedAt]       = useState("");
   const [indication, setIndication]     = useState("");
   const [saving, setSaving]             = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -226,8 +227,18 @@ export default function ImplanonManager() {
     setPhone("");
     setPsf("");
     setReleasedAt(today());
+    setAppliedAt("");
     setIndication("");
   };
+
+  /* auto-compute expected removal: applied + 3 years */
+  const computedRemoval = useMemo(() => {
+    if (!appliedAt) return null;
+    const d = new Date(`${appliedAt}T12:00:00`);
+    if (!Number.isFinite(d.getTime())) return null;
+    d.setFullYear(d.getFullYear() + 3);
+    return d.toISOString().slice(0, 10);
+  }, [appliedAt]);
 
   const toggleUnit = (unit: string) => {
     setCollapsedUnits((prev) => {
@@ -298,7 +309,9 @@ export default function ImplanonManager() {
       await create.mutateAsync({
         patient_id:  patientId,
         released_at: releasedAt || null,
-        status: "released",
+        applied_at:  appliedAt || null,
+        expected_removal_at: appliedAt ? computedRemoval : null,
+        status: appliedAt ? "applied" : "released",
         notes: indication.trim() || null,
         health_unit_id: healthUnits?.find((u) => u.name === psf)?.id ?? null,
       } as any);
@@ -685,15 +698,38 @@ export default function ImplanonManager() {
               </Select>
             </div>
 
-            {/* ── Data de liberação ─────────────────────────────────── */}
-            <div className="space-y-1">
-              <Label>Data de liberação</Label>
-              <Input
-                type="date"
-                value={releasedAt}
-                onChange={(e) => setReleasedAt(e.target.value)}
-              />
+            {/* ── Datas: liberação + aplicação ──────────────────────── */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Data de liberação</Label>
+                <Input
+                  type="date"
+                  value={releasedAt}
+                  onChange={(e) => setReleasedAt(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Data de aplicação</Label>
+                <Input
+                  type="date"
+                  value={appliedAt}
+                  onChange={(e) => setAppliedAt(e.target.value)}
+                />
+              </div>
             </div>
+
+            {/* ── Previsão de retirada — calculada automaticamente ─── */}
+            {computedRemoval && (
+              <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px]">
+                <CalendarClock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="text-amber-900">
+                  Previsão de retirada:{" "}
+                  <b>{new Date(`${computedRemoval}T12:00:00`).toLocaleDateString("pt-BR")}</b>
+                  {" — em "}
+                  <b>{daysUntil(computedRemoval)} dias</b>
+                </span>
+              </div>
+            )}
 
             {/* ── Indicação ─────────────────────────────────────────── */}
             <div className="space-y-1">
