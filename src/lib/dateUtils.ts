@@ -36,9 +36,24 @@ export function formatValidLocalDate(
   options?: FormatOptions,
 ): string {
   const date = parseValidLocalDate(value);
-  return date ? format(date, pattern, options) : fallback;
+  if (!date) return fallback;
+
+  // Last-resort boundary: date-fns intentionally throws RangeError for an
+  // invalid date. Imported/legacy records must never be able to crash React.
+  try {
+    return format(date, pattern, options);
+  } catch (error) {
+    console.warn("Data inválida ignorada durante formatação", { value, pattern, error });
+    return fallback;
+  }
 }
 
 export function toLocalDateKey(date: Date): string | null {
-  return isValidDate(date) ? format(date, "yyyy-MM-dd") : null;
+  if (!isValidDate(date)) return null;
+  try {
+    return format(date, "yyyy-MM-dd");
+  } catch (error) {
+    console.warn("Data inválida ignorada ao gerar chave local", { error });
+    return null;
+  }
 }

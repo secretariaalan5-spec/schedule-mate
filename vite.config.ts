@@ -24,22 +24,13 @@ export default defineConfig(({ mode, command }) => {
       react(),
       mode === "development" && componentTagger(),
       VitePWA({
-        // Only ever emit/register the service worker for real production
-        // builds. In dev/preview `disable: true` makes vite-plugin-pwa
-        // fall back to a no-op stub for `virtual:pwa-register/react`,
-        // so PWAHandler stays safe to import everywhere.
+        // Kill the previously generated Workbox worker. It cached an old
+        // index-RPKwUvcr.js bundle that still throws on malformed legacy dates.
+        // Keep this enabled in production until installed copies receive the
+        // self-destroying worker and release their stale caches.
         disable: !isProdBuild,
+        selfDestroying: true,
         devOptions: { enabled: false },
-        registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-        workbox: {
-          cleanupOutdatedCaches: true,
-          clientsClaim: true,
-          skipWaiting: true,
-          // Never let the SW answer navigations with a stale cached
-          // index.html pointing at an old, deleted hashed bundle.
-          navigateFallbackDenylist: [/\.[a-zA-Z0-9]+$/],
-        },
         manifest: {
           name: 'Saúde da Mulher — Agendamento',
           short_name: 'Saúde Mulher',
