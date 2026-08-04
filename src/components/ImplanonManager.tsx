@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatValidLocalDate } from "@/lib/dateUtils";
 import { useDebounce } from "@/hooks/use-debounce";
+import { printImplanonReport } from "@/lib/printImplanon";
 import { toast } from "sonner";
 import {
   Syringe,
@@ -43,6 +44,9 @@ import {
   BadgeCheck,
   UserCheck,
   UserPlus,
+  FileDown,
+  ClipboardList,
+  Filter,
 } from "lucide-react";
 
 const db = supabase as any;
@@ -113,6 +117,7 @@ export default function ImplanonManager() {
   const [open, setOpen]             = useState(false);
   const [search, setSearch]         = useState("");
   const [filterUnit, setFilterUnit] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [collapsedUnits, setCollapsedUnits] = useState<Set<string>>(new Set());
 
   /* ── form state ──────────────────────────────────────────────────── */
@@ -123,7 +128,7 @@ export default function ImplanonManager() {
   const [phone, setPhone]               = useState("");
   const [psf, setPsf]                   = useState("");
   const [releasedAt, setReleasedAt]     = useState(today());
-  const [status, setStatus]             = useState<"released" | "applied" | "removed">("released");
+  const [indication, setIndication]     = useState("");
   const [saving, setSaving]             = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: healthUnits } = useHealthUnits();
@@ -149,12 +154,13 @@ export default function ImplanonManager() {
   const records    = data ?? [];
   const unitOptions = useMemo(() => {
     const set = new Set<string>();
+    for (const u of healthUnits ?? []) if (u.name?.trim()) set.add(u.name.trim());
     for (const r of records) {
       const u = r.patient?.psf?.trim();
       if (u) set.add(u);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [records]);
+  }, [records, healthUnits]);
 
   const indicators = useMemo(() => {
     const applied    = records.filter((r) => r.status === "applied");
@@ -178,15 +184,17 @@ export default function ImplanonManager() {
         const unit = r.patient?.psf?.trim() || SEM_UNIDADE;
         if (unit !== filterUnit) return false;
       }
+      if (filterStatus !== "all" && r.status !== filterStatus) return false;
       if (t) return (
         r.patient?.name?.toLowerCase().includes(t) ||
         (r.lot ?? "").toLowerCase().includes(t) ||
         (r.professional ?? "").toLowerCase().includes(t) ||
+        (r.notes ?? "").toLowerCase().includes(t) ||
         (r.patient?.psf ?? "").toLowerCase().includes(t)
       );
       return true;
     });
-  }, [records, search, filterUnit]);
+  }, [records, search, filterUnit, filterStatus]);
 
   const groupedFiltered = useMemo(() => groupByUnit(filtered), [filtered]);
 
@@ -218,7 +226,7 @@ export default function ImplanonManager() {
     setPhone("");
     setPsf("");
     setReleasedAt(today());
-    setStatus("released");
+    setIndication("");
   };
 
   const toggleUnit = (unit: string) => {
