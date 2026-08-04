@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatValidLocalDate } from "@/lib/dateUtils";
 import { useDebounce } from "@/hooks/use-debounce";
+import { printImplanonReport } from "@/lib/printImplanon";
 import { toast } from "sonner";
 import {
   Syringe,
@@ -43,6 +44,9 @@ import {
   BadgeCheck,
   UserCheck,
   UserPlus,
+  FileDown,
+  ClipboardList,
+  Filter,
 } from "lucide-react";
 
 const db = supabase as any;
@@ -113,6 +117,7 @@ export default function ImplanonManager() {
   const [open, setOpen]             = useState(false);
   const [search, setSearch]         = useState("");
   const [filterUnit, setFilterUnit] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [collapsedUnits, setCollapsedUnits] = useState<Set<string>>(new Set());
 
   /* ── form state ──────────────────────────────────────────────────── */
@@ -123,7 +128,7 @@ export default function ImplanonManager() {
   const [phone, setPhone]               = useState("");
   const [psf, setPsf]                   = useState("");
   const [releasedAt, setReleasedAt]     = useState(today());
-  const [status, setStatus]             = useState<"released" | "applied" | "removed">("released");
+  const [indication, setIndication]     = useState("");
   const [saving, setSaving]             = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { data: healthUnits } = useHealthUnits();
@@ -149,12 +154,13 @@ export default function ImplanonManager() {
   const records    = data ?? [];
   const unitOptions = useMemo(() => {
     const set = new Set<string>();
+    for (const u of healthUnits ?? []) if (u.name?.trim()) set.add(u.name.trim());
     for (const r of records) {
       const u = r.patient?.psf?.trim();
       if (u) set.add(u);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [records]);
+  }, [records, healthUnits]);
 
   const indicators = useMemo(() => {
     const applied    = records.filter((r) => r.status === "applied");
@@ -178,15 +184,17 @@ export default function ImplanonManager() {
         const unit = r.patient?.psf?.trim() || SEM_UNIDADE;
         if (unit !== filterUnit) return false;
       }
+      if (filterStatus !== "all" && r.status !== filterStatus) return false;
       if (t) return (
         r.patient?.name?.toLowerCase().includes(t) ||
         (r.lot ?? "").toLowerCase().includes(t) ||
         (r.professional ?? "").toLowerCase().includes(t) ||
+        (r.notes ?? "").toLowerCase().includes(t) ||
         (r.patient?.psf ?? "").toLowerCase().includes(t)
       );
       return true;
     });
-  }, [records, search, filterUnit]);
+  }, [records, search, filterUnit, filterStatus]);
 
   const groupedFiltered = useMemo(() => groupByUnit(filtered), [filtered]);
 
@@ -218,7 +226,7 @@ export default function ImplanonManager() {
     setPhone("");
     setPsf("");
     setReleasedAt(today());
-    setStatus("released");
+    setIndication("");
   };
 
   const toggleUnit = (unit: string) => {
@@ -290,9 +298,8 @@ export default function ImplanonManager() {
       await create.mutateAsync({
         patient_id:  patientId,
         released_at: releasedAt || null,
-        status,
-        applied_at:  status === "applied" ? releasedAt || today() : null,
-        removed_at:  status === "removed" ? today() : null,
+        status: "released",
+        notes: indication.trim() || null,
         health_unit_id: healthUnits?.find((u) => u.name === psf)?.id ?? null,
       } as any);
 
@@ -330,9 +337,18 @@ export default function ImplanonManager() {
             <p className="text-xs text-muted-foreground">Liberação, aplicação e retirada por unidade de saúde</p>
           </div>
         </div>
-        <Button onClick={() => setOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> Novo registro
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => printImplanonReport(filtered, { unit: filterUnit, status: filterStatus, search })}
+          >
+            <FileDown className="w-4 h-4" /> Exportar PDF
+          </Button>
+          <Button onClick={() => setOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" /> Novo registro
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-5 space-y-5">
@@ -354,20 +370,23 @@ export default function ImplanonManager() {
         </section>
 
         {/* ── Filters ─────────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Buscar por paciente, lote, profissional ou unidade..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        <div className="rounded-xl border border-border bg-white p-3 shadow-sm space-y-3">
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <Filter className="w-3.5 h-3.5" /> Filtros
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Building2 className="w-4 h-4 text-muted-foreground" />
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Buscar por paciente, lote, profissional, indicação ou unidade..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
             <Select value={filterUnit} onValueChange={setFilterUnit}>
-              <SelectTrigger className="w-52">
+              <SelectTrigger className="md:w-56">
+                <Building2 className="w-4 h-4 text-muted-foreground mr-1 shrink-0" />
                 <SelectValue placeholder="Todas as unidades" />
               </SelectTrigger>
               <SelectContent>
@@ -375,9 +394,32 @@ export default function ImplanonManager() {
                 {unitOptions.map((u) => (
                   <SelectItem key={u} value={u}>{u}</SelectItem>
                 ))}
+                <SelectItem value={SEM_UNIDADE}>Sem unidade definida</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="md:w-44">
+                <SelectValue placeholder="Todas as situações" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as situações</SelectItem>
+                <SelectItem value="released">Liberado</SelectItem>
+                <SelectItem value="applied">Aplicado</SelectItem>
+                <SelectItem value="removed">Retirado</SelectItem>
+              </SelectContent>
+            </Select>
+            {(filterUnit !== "all" || filterStatus !== "all" || search) && (
+              <Button
+                variant="ghost"
+                onClick={() => { setSearch(""); setFilterUnit("all"); setFilterStatus("all"); }}
+              >
+                Limpar
+              </Button>
+            )}
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            {filtered.length} registro(s) encontrados — a exportação em PDF segue estes filtros.
+          </p>
         </div>
 
         {/* ── Records list ────────────────────────────────────────────── */}
@@ -425,8 +467,16 @@ export default function ImplanonManager() {
                         const d      = daysUntil(r.expected_removal_at);
                         const patAge = calcAge(r.patient?.dob);
                         return (
-                          <article key={r.id} className="rounded-xl border border-border bg-white p-4 shadow-sm flex flex-col md:flex-row md:items-center gap-3">
-                            <div className="flex-1 min-w-0">
+                          <article key={r.id} className="rounded-xl border border-border bg-white shadow-sm overflow-hidden flex flex-col md:flex-row">
+                            <span
+                              className={cn(
+                                "w-full h-1 md:h-auto md:w-1.5 shrink-0",
+                                r.status === "applied" ? "bg-emerald-500"
+                                  : r.status === "removed" ? "bg-slate-300" : "bg-primary",
+                              )}
+                              aria-hidden
+                            />
+                            <div className="flex-1 min-w-0 p-4">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-bold text-sm truncate">{r.patient?.name ?? "Paciente"}</h3>
                                 <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border", meta.cls)}>
@@ -465,9 +515,16 @@ export default function ImplanonManager() {
                                 <span>Retirada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}</span>
                                 <span className="md:col-span-2">Prof.: {r.professional ?? "—"}</span>
                               </div>
+
+                              {r.notes && (
+                                <p className="mt-2 flex items-start gap-1.5 text-[11px] text-foreground/80 bg-muted/50 border border-border rounded-lg px-2.5 py-1.5">
+                                  <ClipboardList className="w-3.5 h-3.5 mt-[1px] shrink-0 text-primary" />
+                                  <span><b className="font-semibold">Indicação:</b> {r.notes}</span>
+                                </p>
+                              )}
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0 px-4 pb-4 md:py-4 md:pl-0">
                               {r.status === "released" && (
                                 <Button size="sm" onClick={() => update.mutate({ id: r.id, updates: { applied_at: today() } })}>
                                   Aplicar
@@ -638,19 +695,14 @@ export default function ImplanonManager() {
               />
             </div>
 
-            {/* ── Situação ──────────────────────────────────────────── */}
+            {/* ── Indicação ─────────────────────────────────────────── */}
             <div className="space-y-1">
-              <Label>Situação</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a situação" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="released">Liberado</SelectItem>
-                  <SelectItem value="applied">Aplicado</SelectItem>
-                  <SelectItem value="removed">Retirado</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Indicação</Label>
+              <Input
+                placeholder="Ex.: planejamento familiar, contraindicação a estrogênio..."
+                value={indication}
+                onChange={(e) => setIndication(e.target.value)}
+              />
             </div>
           </div>
 
