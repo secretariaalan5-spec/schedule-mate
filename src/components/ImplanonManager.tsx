@@ -298,9 +298,8 @@ export default function ImplanonManager() {
       await create.mutateAsync({
         patient_id:  patientId,
         released_at: releasedAt || null,
-        status,
-        applied_at:  status === "applied" ? releasedAt || today() : null,
-        removed_at:  status === "removed" ? today() : null,
+        status: "released",
+        notes: indication.trim() || null,
         health_unit_id: healthUnits?.find((u) => u.name === psf)?.id ?? null,
       } as any);
 
@@ -338,9 +337,18 @@ export default function ImplanonManager() {
             <p className="text-xs text-muted-foreground">Liberação, aplicação e retirada por unidade de saúde</p>
           </div>
         </div>
-        <Button onClick={() => setOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" /> Novo registro
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => printImplanonReport(filtered, { unit: filterUnit, status: filterStatus, search })}
+          >
+            <FileDown className="w-4 h-4" /> Exportar PDF
+          </Button>
+          <Button onClick={() => setOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" /> Novo registro
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-5 space-y-5">
@@ -362,20 +370,23 @@ export default function ImplanonManager() {
         </section>
 
         {/* ── Filters ─────────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              className="pl-9"
-              placeholder="Buscar por paciente, lote, profissional ou unidade..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        <div className="rounded-xl border border-border bg-white p-3 shadow-sm space-y-3">
+          <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <Filter className="w-3.5 h-3.5" /> Filtros
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Building2 className="w-4 h-4 text-muted-foreground" />
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Buscar por paciente, lote, profissional, indicação ou unidade..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
             <Select value={filterUnit} onValueChange={setFilterUnit}>
-              <SelectTrigger className="w-52">
+              <SelectTrigger className="md:w-56">
+                <Building2 className="w-4 h-4 text-muted-foreground mr-1 shrink-0" />
                 <SelectValue placeholder="Todas as unidades" />
               </SelectTrigger>
               <SelectContent>
@@ -383,9 +394,32 @@ export default function ImplanonManager() {
                 {unitOptions.map((u) => (
                   <SelectItem key={u} value={u}>{u}</SelectItem>
                 ))}
+                <SelectItem value={SEM_UNIDADE}>Sem unidade definida</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="md:w-44">
+                <SelectValue placeholder="Todas as situações" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as situações</SelectItem>
+                <SelectItem value="released">Liberado</SelectItem>
+                <SelectItem value="applied">Aplicado</SelectItem>
+                <SelectItem value="removed">Retirado</SelectItem>
+              </SelectContent>
+            </Select>
+            {(filterUnit !== "all" || filterStatus !== "all" || search) && (
+              <Button
+                variant="ghost"
+                onClick={() => { setSearch(""); setFilterUnit("all"); setFilterStatus("all"); }}
+              >
+                Limpar
+              </Button>
+            )}
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            {filtered.length} registro(s) encontrados — a exportação em PDF segue estes filtros.
+          </p>
         </div>
 
         {/* ── Records list ────────────────────────────────────────────── */}
@@ -646,19 +680,14 @@ export default function ImplanonManager() {
               />
             </div>
 
-            {/* ── Situação ──────────────────────────────────────────── */}
+            {/* ── Indicação ─────────────────────────────────────────── */}
             <div className="space-y-1">
-              <Label>Situação</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a situação" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="released">Liberado</SelectItem>
-                  <SelectItem value="applied">Aplicado</SelectItem>
-                  <SelectItem value="removed">Retirado</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Indicação</Label>
+              <Input
+                placeholder="Ex.: planejamento familiar, contraindicação a estrogênio..."
+                value={indication}
+                onChange={(e) => setIndication(e.target.value)}
+              />
             </div>
           </div>
 
