@@ -467,8 +467,16 @@ export default function ImplanonManager() {
                         const d      = daysUntil(r.expected_removal_at);
                         const patAge = calcAge(r.patient?.dob);
                         return (
-                          <article key={r.id} className="rounded-xl border border-border bg-white p-4 shadow-sm flex flex-col md:flex-row md:items-center gap-3">
-                            <div className="flex-1 min-w-0">
+                          <article key={r.id} className="rounded-xl border border-border bg-white shadow-sm overflow-hidden flex flex-col md:flex-row">
+                            <span
+                              className={cn(
+                                "w-full h-1 md:h-auto md:w-1.5 shrink-0",
+                                r.status === "applied" ? "bg-emerald-500"
+                                  : r.status === "removed" ? "bg-slate-300" : "bg-primary",
+                              )}
+                              aria-hidden
+                            />
+                            <div className="flex-1 min-w-0 p-4">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-bold text-sm truncate">{r.patient?.name ?? "Paciente"}</h3>
                                 <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border", meta.cls)}>
@@ -507,9 +515,16 @@ export default function ImplanonManager() {
                                 <span>Retirada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}</span>
                                 <span className="md:col-span-2">Prof.: {r.professional ?? "—"}</span>
                               </div>
+
+                              {r.notes && (
+                                <p className="mt-2 flex items-start gap-1.5 text-[11px] text-foreground/80 bg-muted/50 border border-border rounded-lg px-2.5 py-1.5">
+                                  <ClipboardList className="w-3.5 h-3.5 mt-[1px] shrink-0 text-primary" />
+                                  <span><b className="font-semibold">Indicação:</b> {r.notes}</span>
+                                </p>
+                              )}
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-2 shrink-0 px-4 pb-4 md:py-4 md:pl-0">
                               {r.status === "released" && (
                                 <Button size="sm" onClick={() => update.mutate({ id: r.id, updates: { applied_at: today() } })}>
                                   Aplicar
