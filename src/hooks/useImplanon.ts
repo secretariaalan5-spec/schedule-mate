@@ -34,11 +34,13 @@ export type ImplanonRecord = {
     psf: string | null;
     acs: string | null;
     dob: string | null;
+    address: string | null;
+    neighborhood: string | null;
   } | null;
 };
 
 const SELECT =
-  "*, patient:patients(id,name,sus_card,cpf,phone,psf,acs,dob)";
+  "*, patient:patients(id,name,sus_card,cpf,phone,psf,acs,dob,address,neighborhood)";
 
 export function useImplanon(patientId?: string) {
   const qc = useQueryClient();
