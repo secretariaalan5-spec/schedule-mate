@@ -2,10 +2,10 @@ import { useMemo, useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useImplanon, type ImplanonRecord } from "@/hooks/useImplanon";
+import { useHealthUnits } from "@/hooks/useHealthUnits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -123,9 +123,10 @@ export default function ImplanonManager() {
   const [phone, setPhone]               = useState("");
   const [psf, setPsf]                   = useState("");
   const [releasedAt, setReleasedAt]     = useState(today());
-  const [notes, setNotes]               = useState("");
+  const [status, setStatus]             = useState<"released" | "applied" | "removed">("released");
   const [saving, setSaving]             = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { data: healthUnits } = useHealthUnits();
 
   /* autocomplete search */
   const debouncedName = useDebounce(nameTerm, 280);
@@ -217,7 +218,7 @@ export default function ImplanonManager() {
     setPhone("");
     setPsf("");
     setReleasedAt(today());
-    setNotes("");
+    setStatus("released");
   };
 
   const toggleUnit = (unit: string) => {
@@ -289,7 +290,10 @@ export default function ImplanonManager() {
       await create.mutateAsync({
         patient_id:  patientId,
         released_at: releasedAt || null,
-        notes:       notes || null,
+        status,
+        applied_at:  status === "applied" ? releasedAt || today() : null,
+        removed_at:  status === "removed" ? today() : null,
+        health_unit_id: healthUnits?.find((u) => u.name === psf)?.id ?? null,
       } as any);
 
       setOpen(false);
@@ -608,11 +612,20 @@ export default function ImplanonManager() {
             {/* ── Unidade de Saúde ──────────────────────────────────── */}
             <div className="space-y-1">
               <Label>Unidade de Saúde (PSF/UBS)</Label>
-              <Input
-                placeholder="Ex.: PSF Centro"
-                value={psf}
-                onChange={(e) => setPsf(e.target.value)}
-              />
+              <Select value={psf || "none"} onValueChange={(v) => setPsf(v === "none" ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a unidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem unidade definida</SelectItem>
+                  {(healthUnits ?? []).map((u) => (
+                    <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+                  ))}
+                  {psf && !(healthUnits ?? []).some((u) => u.name === psf) && (
+                    <SelectItem value={psf}>{psf}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* ── Data de liberação ─────────────────────────────────── */}
@@ -625,15 +638,19 @@ export default function ImplanonManager() {
               />
             </div>
 
-            {/* ── Observações ───────────────────────────────────────── */}
+            {/* ── Situação ──────────────────────────────────────────── */}
             <div className="space-y-1">
-              <Label>Observações</Label>
-              <Textarea
-                rows={2}
-                placeholder="Informações adicionais..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
+              <Label>Situação</Label>
+              <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a situação" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="released">Liberado</SelectItem>
+                  <SelectItem value="applied">Aplicado</SelectItem>
+                  <SelectItem value="removed">Retirado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
