@@ -746,15 +746,30 @@ export default function ImplanonManager() {
               </Select>
             </div>
 
-            {/* ── Data de liberação ─────────────────────────────────── */}
+            {/* ── Situação inicial ──────────────────────────────────── */}
             <div className="space-y-1">
-              <Label>Data de liberação</Label>
-              <Input
-                type="date"
-                value={releasedAt}
-                onChange={(e) => setReleasedAt(e.target.value)}
-              />
+              <Label>Situação inicial</Label>
+              <Select value={initialStatus} onValueChange={(v) => setInitialStatus(v as "pending" | "released")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Aguardando liberação (lista do posto)</SelectItem>
+                  <SelectItem value="released">Já liberado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {initialStatus === "released" && (
+              <div className="space-y-1">
+                <Label>Data de liberação</Label>
+                <Input
+                  type="date"
+                  value={releasedAt}
+                  onChange={(e) => setReleasedAt(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* ── Indicação ─────────────────────────────────────────── */}
             <div className="space-y-1">
