@@ -427,15 +427,26 @@ export default function ImplanonManager() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as situações</SelectItem>
+                <SelectItem value="pending">Aguardando liberação</SelectItem>
                 <SelectItem value="released">Liberado</SelectItem>
                 <SelectItem value="applied">Aplicado</SelectItem>
                 <SelectItem value="removed">Retirado</SelectItem>
               </SelectContent>
             </Select>
-            {(filterUnit !== "all" || filterStatus !== "all" || search) && (
+          </div>
+          <div className="flex flex-col md:flex-row gap-3 md:items-end">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">De</Label>
+              <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className="md:w-40" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Até</Label>
+              <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="md:w-40" />
+            </div>
+            {(filterUnit !== "all" || filterStatus !== "all" || search || filterFrom || filterTo) && (
               <Button
                 variant="ghost"
-                onClick={() => { setSearch(""); setFilterUnit("all"); setFilterStatus("all"); }}
+                onClick={() => { setSearch(""); setFilterUnit("all"); setFilterStatus("all"); setFilterFrom(""); setFilterTo(""); }}
               >
                 Limpar
               </Button>
