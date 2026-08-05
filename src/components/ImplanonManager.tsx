@@ -72,6 +72,14 @@ function calcAge(dob: string | null | undefined): number | null {
 }
 
 /* ─── types ────────────────────────────────────────────────────────────── */
+function maskCpf(value: string): string {
+  const d = String(value ?? "").replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+}
+
 type PatientLite = {
   id: string;
   name: string;
@@ -202,7 +210,7 @@ export default function ImplanonManager() {
   const selectPatient = (p: PatientLite) => {
     setMatchedPatient(p);
     setNameTerm(p.name);
-    setCpf(p.cpf ?? "");
+    setCpf(maskCpf(p.cpf ?? ""));
     setPhone(p.phone ?? "");
     setPsf(p.psf ?? "");
     setShowDropdown(false);
@@ -252,10 +260,15 @@ export default function ImplanonManager() {
         patientId = matchedPatient.id;
         /* atualiza contato/unidade se o usuário mudou */
         const updates: Record<string, unknown> = {};
+        const cpfClean = cpf.replace(/\D/g, "") || null;
+        if (cpfClean && cpfClean !== (matchedPatient.cpf ?? "").replace(/\D/g, "")) {
+          updates.cpf = cpfClean;
+        }
         if (phone && phone !== matchedPatient.phone) updates.phone = phone.replace(/\D/g, "");
         if (psf  && psf  !== matchedPatient.psf)   updates.psf   = psf.trim();
         if (Object.keys(updates).length) {
-          await db.from("patients").update(updates).eq("id", patientId);
+          const { error: upErr } = await db.from("patients").update(updates).eq("id", patientId);
+          if (upErr) throw upErr;
         }
       } else {
         /* nova paciente — verifica duplicata por CPF antes de inserir */
@@ -275,6 +288,7 @@ export default function ImplanonManager() {
           patientId = existingId;
           await db.from("patients").update({
             name:  nameClean,
+            cpf:   cpfClean,
             phone: phone.replace(/\D/g, "") || null,
             psf:   psf.trim() || null,
           }).eq("id", existingId);
@@ -651,9 +665,15 @@ export default function ImplanonManager() {
               <Input
                 placeholder="000.000.000-00"
                 value={cpf}
-                disabled={!!matchedPatient}
-                onChange={(e) => setCpf(e.target.value)}
+                inputMode="numeric"
+                maxLength={14}
+                onChange={(e) => setCpf(maskCpf(e.target.value))}
               />
+              {matchedPatient && (
+                <p className="text-[11px] text-muted-foreground">
+                  Alterar o CPF atualiza o cadastro da paciente.
+                </p>
+              )}
             </div>
 
             {/* ── Contato ───────────────────────────────────────────── */}
