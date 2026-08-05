@@ -17,6 +17,12 @@ const STATUS_LABEL: Record<string, string> = {
 const esc = (v: unknown) =>
   String(v ?? "—").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
 
+const fmtCpf = (v: unknown) => {
+  const d = String(v ?? "").replace(/\D/g, "");
+  if (d.length !== 11) return v ? String(v) : "—";
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+};
+
 export function printImplanonReport(
   records: ImplanonRecord[],
   filters: { unit?: string; status?: string; search?: string } = {},
@@ -49,7 +55,7 @@ export function printImplanonReport(
       <tr>
         <td class="c">${i + 1}</td>
         <td><b>${esc(r.patient?.name)}</b></td>
-        <td>${esc(r.patient?.cpf)}</td>
+        <td>${esc(fmtCpf(r.patient?.cpf))}</td>
         <td>${esc(r.patient?.phone)}</td>
         <td class="c">${fmt(r.released_at)}</td>
         <td class="c">${fmt(r.applied_at)}</td>
