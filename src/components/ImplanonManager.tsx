@@ -507,7 +507,8 @@ export default function ImplanonManager() {
                               className={cn(
                                 "w-full h-1 md:h-auto md:w-1.5 shrink-0",
                                 r.status === "applied" ? "bg-emerald-500"
-                                  : r.status === "removed" ? "bg-slate-300" : "bg-primary",
+                                  : r.status === "removed" ? "bg-slate-300"
+                                  : r.status === "pending" ? "bg-amber-400" : "bg-primary",
                               )}
                               aria-hidden
                             />
@@ -559,11 +560,30 @@ export default function ImplanonManager() {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0 px-4 pb-4 md:py-4 md:pl-0">
-                              {r.status === "released" && (
-                                <Button size="sm" onClick={() => update.mutate({ id: r.id, updates: { applied_at: today() } })}>
-                                  Aplicar
+                            <div className="flex items-center gap-2 shrink-0 px-4 pb-4 md:py-4 md:pl-0 flex-wrap">
+                              {r.status === "pending" && (
+                                <Button size="sm" onClick={() => update.mutate({ id: r.id, updates: { released_at: today() } })}>
+                                  Liberar
                                 </Button>
+                              )}
+                              {r.status === "released" && (
+                                <>
+                                  <Input
+                                    type="date"
+                                    className="h-8 w-[140px] text-xs"
+                                    value={applyDates[r.id] ?? today()}
+                                    onChange={(e) => setApplyDates((p) => ({ ...p, [r.id]: e.target.value }))}
+                                    title="Data de aplicação informada pelo posto"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      update.mutate({ id: r.id, updates: { applied_at: applyDates[r.id] || today() } })
+                                    }
+                                  >
+                                    Aplicar
+                                  </Button>
+                                </>
                               )}
                               {r.status === "applied" && (
                                 <Button size="sm" variant="secondary" onClick={() => update.mutate({ id: r.id, updates: { removed_at: today() } })}>
