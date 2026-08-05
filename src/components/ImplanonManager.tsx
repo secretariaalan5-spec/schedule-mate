@@ -321,8 +321,8 @@ export default function ImplanonManager() {
       /* cria o registro de implanon */
       await create.mutateAsync({
         patient_id:  patientId,
-        released_at: releasedAt || null,
-        status: "released",
+        released_at: initialStatus === "released" ? (releasedAt || today()) : null,
+        status: initialStatus,
         notes: indication.trim() || null,
         health_unit_id: healthUnits?.find((u) => u.name === psf)?.id ?? null,
       } as any);
@@ -338,11 +338,11 @@ export default function ImplanonManager() {
 
   /* ── KPI cards ──────────────────────────────────────────────────── */
   const kpiCards = [
+    { label: "Aguardando",      value: indicators.pending,     icon: ClipboardList,cls: "text-amber-600 bg-amber-50" },
     { label: "Liberados",       value: indicators.released,    icon: FileClock,    cls: "text-sky-600 bg-sky-50" },
     { label: "Aplicados ativos",value: indicators.applied,     icon: CheckCircle2, cls: "text-emerald-600 bg-emerald-50" },
     { label: "Retirada próxima",value: indicators.expiring,    icon: CalendarClock,cls: "text-amber-600 bg-amber-50" },
     { label: "Retirada vencida",value: indicators.overdue,     icon: AlertTriangle,cls: "text-red-600 bg-red-50" },
-    { label: "Lote vencendo",   value: indicators.lotExpiring, icon: PackageCheck, cls: "text-orange-600 bg-orange-50" },
     { label: "Retirados",       value: indicators.removed,     icon: Syringe,      cls: "text-slate-600 bg-slate-100" },
   ];
 
