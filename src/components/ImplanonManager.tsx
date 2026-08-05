@@ -72,6 +72,14 @@ function calcAge(dob: string | null | undefined): number | null {
 }
 
 /* ─── types ────────────────────────────────────────────────────────────── */
+function maskCpf(value: string): string {
+  const d = String(value ?? "").replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+}
+
 type PatientLite = {
   id: string;
   name: string;
@@ -202,7 +210,7 @@ export default function ImplanonManager() {
   const selectPatient = (p: PatientLite) => {
     setMatchedPatient(p);
     setNameTerm(p.name);
-    setCpf(p.cpf ?? "");
+    setCpf(maskCpf(p.cpf ?? ""));
     setPhone(p.phone ?? "");
     setPsf(p.psf ?? "");
     setShowDropdown(false);
