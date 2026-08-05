@@ -9,6 +9,7 @@ function fmt(dateStr: string | null | undefined) {
 }
 
 const STATUS_LABEL: Record<string, string> = {
+  pending: "Aguardando",
   released: "Liberado",
   applied: "Aplicado",
   removed: "Retirado",
@@ -118,6 +119,7 @@ export function printImplanonReport(
   .c{text-align:center;}
   .st{display:inline-block;padding:1px 6px;border-radius:99px;font-size:8.5px;font-weight:bold;border:1px solid;}
   .st.released{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;}
+  .st.pending{background:#fff7ed;color:#b45309;border-color:#fed7aa;}
   .st.applied{background:#ecfdf5;color:#047857;border-color:#a7f3d0;}
   .st.removed{background:#f1f5f9;color:#475569;border-color:#cbd5e1;}
   footer{margin-top:10px;border-top:1px solid #ddd;padding-top:6px;font-size:8.5px;color:#666;display:flex;justify-content:space-between;}

@@ -31,7 +31,6 @@ import {
   Search,
   AlertTriangle,
   CheckCircle2,
-  PackageCheck,
   CalendarClock,
   FileClock,
   Trash2,
@@ -94,6 +93,7 @@ type PatientLite = {
 
 /* ─── Status badges ─────────────────────────────────────────────────────── */
 const STATUS_META: Record<string, { label: string; cls: string }> = {
+  pending:  { label: "Aguardando liberação", cls: "bg-amber-50 text-amber-700 border-amber-200" },
   released: { label: "Liberado", cls: "bg-sky-50 text-sky-700 border-sky-200" },
   applied:  { label: "Aplicado",  cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   removed:  { label: "Retirado",  cls: "bg-slate-100 text-slate-600 border-slate-200" },
@@ -126,6 +126,9 @@ export default function ImplanonManager() {
   const [search, setSearch]         = useState("");
   const [filterUnit, setFilterUnit] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo]     = useState("");
+  const [applyDates, setApplyDates] = useState<Record<string, string>>({});
   const [collapsedUnits, setCollapsedUnits] = useState<Set<string>>(new Set());
 
   /* ── form state ──────────────────────────────────────────────────── */
@@ -136,6 +139,7 @@ export default function ImplanonManager() {
   const [phone, setPhone]               = useState("");
   const [psf, setPsf]                   = useState("");
   const [releasedAt, setReleasedAt]     = useState(today());
+  const [initialStatus, setInitialStatus] = useState<"pending" | "released">("pending");
   const [indication, setIndication]     = useState("");
   const [saving, setSaving]             = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -176,6 +180,7 @@ export default function ImplanonManager() {
     const overdue    = applied.filter((r) => { const d = daysUntil(r.expected_removal_at); return d !== null && d < 0; });
     const lotExpiring = records.filter((r) => { const d = daysUntil(r.lot_expiry); return r.status !== "removed" && d !== null && d <= 60; });
     return {
+      pending:     records.filter((r) => r.status === "pending").length,
       released:    records.filter((r) => r.status === "released").length,
       applied:     applied.length,
       removed:     records.filter((r) => r.status === "removed").length,
@@ -193,6 +198,9 @@ export default function ImplanonManager() {
         if (unit !== filterUnit) return false;
       }
       if (filterStatus !== "all" && r.status !== filterStatus) return false;
+      const ref = r.applied_at ?? r.released_at ?? (r.created_at ?? "").slice(0, 10);
+      if (filterFrom && (!ref || ref < filterFrom)) return false;
+      if (filterTo && (!ref || ref > filterTo)) return false;
       if (t) return (
         r.patient?.name?.toLowerCase().includes(t) ||
         (r.lot ?? "").toLowerCase().includes(t) ||
@@ -202,7 +210,7 @@ export default function ImplanonManager() {
       );
       return true;
     });
-  }, [records, search, filterUnit, filterStatus]);
+  }, [records, search, filterUnit, filterStatus, filterFrom, filterTo]);
 
   const groupedFiltered = useMemo(() => groupByUnit(filtered), [filtered]);
 
@@ -234,6 +242,7 @@ export default function ImplanonManager() {
     setPhone("");
     setPsf("");
     setReleasedAt(today());
+    setInitialStatus("pending");
     setIndication("");
   };
 
@@ -311,8 +320,8 @@ export default function ImplanonManager() {
       /* cria o registro de implanon */
       await create.mutateAsync({
         patient_id:  patientId,
-        released_at: releasedAt || null,
-        status: "released",
+        released_at: initialStatus === "released" ? (releasedAt || today()) : null,
+        status: initialStatus,
         notes: indication.trim() || null,
         health_unit_id: healthUnits?.find((u) => u.name === psf)?.id ?? null,
       } as any);
@@ -328,11 +337,11 @@ export default function ImplanonManager() {
 
   /* ── KPI cards ──────────────────────────────────────────────────── */
   const kpiCards = [
+    { label: "Aguardando",      value: indicators.pending,     icon: ClipboardList,cls: "text-amber-600 bg-amber-50" },
     { label: "Liberados",       value: indicators.released,    icon: FileClock,    cls: "text-sky-600 bg-sky-50" },
     { label: "Aplicados ativos",value: indicators.applied,     icon: CheckCircle2, cls: "text-emerald-600 bg-emerald-50" },
     { label: "Retirada próxima",value: indicators.expiring,    icon: CalendarClock,cls: "text-amber-600 bg-amber-50" },
     { label: "Retirada vencida",value: indicators.overdue,     icon: AlertTriangle,cls: "text-red-600 bg-red-50" },
-    { label: "Lote vencendo",   value: indicators.lotExpiring, icon: PackageCheck, cls: "text-orange-600 bg-orange-50" },
     { label: "Retirados",       value: indicators.removed,     icon: Syringe,      cls: "text-slate-600 bg-slate-100" },
   ];
 
@@ -417,15 +426,26 @@ export default function ImplanonManager() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as situações</SelectItem>
+                <SelectItem value="pending">Aguardando liberação</SelectItem>
                 <SelectItem value="released">Liberado</SelectItem>
                 <SelectItem value="applied">Aplicado</SelectItem>
                 <SelectItem value="removed">Retirado</SelectItem>
               </SelectContent>
             </Select>
-            {(filterUnit !== "all" || filterStatus !== "all" || search) && (
+          </div>
+          <div className="flex flex-col md:flex-row gap-3 md:items-end">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">De</Label>
+              <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className="md:w-40" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Até</Label>
+              <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="md:w-40" />
+            </div>
+            {(filterUnit !== "all" || filterStatus !== "all" || search || filterFrom || filterTo) && (
               <Button
                 variant="ghost"
-                onClick={() => { setSearch(""); setFilterUnit("all"); setFilterStatus("all"); }}
+                onClick={() => { setSearch(""); setFilterUnit("all"); setFilterStatus("all"); setFilterFrom(""); setFilterTo(""); }}
               >
                 Limpar
               </Button>
@@ -486,7 +506,8 @@ export default function ImplanonManager() {
                               className={cn(
                                 "w-full h-1 md:h-auto md:w-1.5 shrink-0",
                                 r.status === "applied" ? "bg-emerald-500"
-                                  : r.status === "removed" ? "bg-slate-300" : "bg-primary",
+                                  : r.status === "removed" ? "bg-slate-300"
+                                  : r.status === "pending" ? "bg-amber-400" : "bg-primary",
                               )}
                               aria-hidden
                             />
@@ -538,11 +559,30 @@ export default function ImplanonManager() {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0 px-4 pb-4 md:py-4 md:pl-0">
-                              {r.status === "released" && (
-                                <Button size="sm" onClick={() => update.mutate({ id: r.id, updates: { applied_at: today() } })}>
-                                  Aplicar
+                            <div className="flex items-center gap-2 shrink-0 px-4 pb-4 md:py-4 md:pl-0 flex-wrap">
+                              {r.status === "pending" && (
+                                <Button size="sm" onClick={() => update.mutate({ id: r.id, updates: { released_at: today() } })}>
+                                  Liberar
                                 </Button>
+                              )}
+                              {r.status === "released" && (
+                                <>
+                                  <Input
+                                    type="date"
+                                    className="h-8 w-[140px] text-xs"
+                                    value={applyDates[r.id] ?? today()}
+                                    onChange={(e) => setApplyDates((p) => ({ ...p, [r.id]: e.target.value }))}
+                                    title="Data de aplicação informada pelo posto"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      update.mutate({ id: r.id, updates: { applied_at: applyDates[r.id] || today() } })
+                                    }
+                                  >
+                                    Aplicar
+                                  </Button>
+                                </>
                               )}
                               {r.status === "applied" && (
                                 <Button size="sm" variant="secondary" onClick={() => update.mutate({ id: r.id, updates: { removed_at: today() } })}>
@@ -705,15 +745,30 @@ export default function ImplanonManager() {
               </Select>
             </div>
 
-            {/* ── Data de liberação ─────────────────────────────────── */}
+            {/* ── Situação inicial ──────────────────────────────────── */}
             <div className="space-y-1">
-              <Label>Data de liberação</Label>
-              <Input
-                type="date"
-                value={releasedAt}
-                onChange={(e) => setReleasedAt(e.target.value)}
-              />
+              <Label>Situação inicial</Label>
+              <Select value={initialStatus} onValueChange={(v) => setInitialStatus(v as "pending" | "released")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Aguardando liberação (lista do posto)</SelectItem>
+                  <SelectItem value="released">Já liberado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {initialStatus === "released" && (
+              <div className="space-y-1">
+                <Label>Data de liberação</Label>
+                <Input
+                  type="date"
+                  value={releasedAt}
+                  onChange={(e) => setReleasedAt(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* ── Indicação ─────────────────────────────────────────── */}
             <div className="space-y-1">
