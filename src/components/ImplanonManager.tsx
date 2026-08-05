@@ -94,6 +94,7 @@ type PatientLite = {
 
 /* ─── Status badges ─────────────────────────────────────────────────────── */
 const STATUS_META: Record<string, { label: string; cls: string }> = {
+  pending:  { label: "Aguardando liberação", cls: "bg-amber-50 text-amber-700 border-amber-200" },
   released: { label: "Liberado", cls: "bg-sky-50 text-sky-700 border-sky-200" },
   applied:  { label: "Aplicado",  cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   removed:  { label: "Retirado",  cls: "bg-slate-100 text-slate-600 border-slate-200" },
@@ -126,6 +127,9 @@ export default function ImplanonManager() {
   const [search, setSearch]         = useState("");
   const [filterUnit, setFilterUnit] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo]     = useState("");
+  const [applyDates, setApplyDates] = useState<Record<string, string>>({});
   const [collapsedUnits, setCollapsedUnits] = useState<Set<string>>(new Set());
 
   /* ── form state ──────────────────────────────────────────────────── */
@@ -136,6 +140,7 @@ export default function ImplanonManager() {
   const [phone, setPhone]               = useState("");
   const [psf, setPsf]                   = useState("");
   const [releasedAt, setReleasedAt]     = useState(today());
+  const [initialStatus, setInitialStatus] = useState<"pending" | "released">("pending");
   const [indication, setIndication]     = useState("");
   const [saving, setSaving]             = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -176,6 +181,7 @@ export default function ImplanonManager() {
     const overdue    = applied.filter((r) => { const d = daysUntil(r.expected_removal_at); return d !== null && d < 0; });
     const lotExpiring = records.filter((r) => { const d = daysUntil(r.lot_expiry); return r.status !== "removed" && d !== null && d <= 60; });
     return {
+      pending:     records.filter((r) => r.status === "pending").length,
       released:    records.filter((r) => r.status === "released").length,
       applied:     applied.length,
       removed:     records.filter((r) => r.status === "removed").length,
@@ -193,6 +199,9 @@ export default function ImplanonManager() {
         if (unit !== filterUnit) return false;
       }
       if (filterStatus !== "all" && r.status !== filterStatus) return false;
+      const ref = r.applied_at ?? r.released_at ?? (r.created_at ?? "").slice(0, 10);
+      if (filterFrom && (!ref || ref < filterFrom)) return false;
+      if (filterTo && (!ref || ref > filterTo)) return false;
       if (t) return (
         r.patient?.name?.toLowerCase().includes(t) ||
         (r.lot ?? "").toLowerCase().includes(t) ||
@@ -202,7 +211,7 @@ export default function ImplanonManager() {
       );
       return true;
     });
-  }, [records, search, filterUnit, filterStatus]);
+  }, [records, search, filterUnit, filterStatus, filterFrom, filterTo]);
 
   const groupedFiltered = useMemo(() => groupByUnit(filtered), [filtered]);
 
@@ -234,6 +243,7 @@ export default function ImplanonManager() {
     setPhone("");
     setPsf("");
     setReleasedAt(today());
+    setInitialStatus("pending");
     setIndication("");
   };
 
