@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { formatValidLocalDate } from "@/lib/dateUtils";
 import { useDebounce } from "@/hooks/use-debounce";
 import { printImplanonReport } from "@/lib/printImplanon";
+import { printImplanonRecord } from "@/lib/printImplanon";
 import { toast } from "sonner";
 import {
   Syringe,
@@ -31,7 +32,6 @@ import {
   Search,
   AlertTriangle,
   CheckCircle2,
-  PackageCheck,
   CalendarClock,
   FileClock,
   Trash2,
@@ -47,6 +47,8 @@ import {
   FileDown,
   ClipboardList,
   Filter,
+  Printer,
+  Pencil,
 } from "lucide-react";
 
 const db = supabase as any;
@@ -72,6 +74,14 @@ function calcAge(dob: string | null | undefined): number | null {
 }
 
 /* ─── types ────────────────────────────────────────────────────────────── */
+function maskCpf(value: string): string {
+  const d = String(value ?? "").replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+}
+
 type PatientLite = {
   id: string;
   name: string;
@@ -86,6 +96,7 @@ type PatientLite = {
 
 /* ─── Status badges ─────────────────────────────────────────────────────── */
 const STATUS_META: Record<string, { label: string; cls: string }> = {
+  pending:  { label: "Aguardando liberação", cls: "bg-amber-50 text-amber-700 border-amber-200" },
   released: { label: "Liberado", cls: "bg-sky-50 text-sky-700 border-sky-200" },
   applied:  { label: "Aplicado",  cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   removed:  { label: "Retirado",  cls: "bg-slate-100 text-slate-600 border-slate-200" },
@@ -118,7 +129,13 @@ export default function ImplanonManager() {
   const [search, setSearch]         = useState("");
   const [filterUnit, setFilterUnit] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo]     = useState("");
+  const [applyDates, setApplyDates] = useState<Record<string, string>>({});
   const [collapsedUnits, setCollapsedUnits] = useState<Set<string>>(new Set());
+  const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<ImplanonRecord | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
 
   /* ── form state ──────────────────────────────────────────────────── */
   const [nameTerm, setNameTerm]         = useState("");        // o que o user está digitando
@@ -128,7 +145,11 @@ export default function ImplanonManager() {
   const [phone, setPhone]               = useState("");
   const [psf, setPsf]                   = useState("");
   const [releasedAt, setReleasedAt]     = useState(today());
+<<<<<<< HEAD
   const [appliedAt, setAppliedAt]       = useState("");
+=======
+  const [initialStatus, setInitialStatus] = useState<"pending" | "released">("pending");
+>>>>>>> 1fef830ca10e4feb044507b2023e4cd6a86838b7
   const [indication, setIndication]     = useState("");
   const [saving, setSaving]             = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -169,6 +190,7 @@ export default function ImplanonManager() {
     const overdue    = applied.filter((r) => { const d = daysUntil(r.expected_removal_at); return d !== null && d < 0; });
     const lotExpiring = records.filter((r) => { const d = daysUntil(r.lot_expiry); return r.status !== "removed" && d !== null && d <= 60; });
     return {
+      pending:     records.filter((r) => r.status === "pending").length,
       released:    records.filter((r) => r.status === "released").length,
       applied:     applied.length,
       removed:     records.filter((r) => r.status === "removed").length,
@@ -186,6 +208,9 @@ export default function ImplanonManager() {
         if (unit !== filterUnit) return false;
       }
       if (filterStatus !== "all" && r.status !== filterStatus) return false;
+      const ref = r.applied_at ?? r.released_at ?? (r.created_at ?? "").slice(0, 10);
+      if (filterFrom && (!ref || ref < filterFrom)) return false;
+      if (filterTo && (!ref || ref > filterTo)) return false;
       if (t) return (
         r.patient?.name?.toLowerCase().includes(t) ||
         (r.lot ?? "").toLowerCase().includes(t) ||
@@ -195,7 +220,7 @@ export default function ImplanonManager() {
       );
       return true;
     });
-  }, [records, search, filterUnit, filterStatus]);
+  }, [records, search, filterUnit, filterStatus, filterFrom, filterTo]);
 
   const groupedFiltered = useMemo(() => groupByUnit(filtered), [filtered]);
 
@@ -203,7 +228,7 @@ export default function ImplanonManager() {
   const selectPatient = (p: PatientLite) => {
     setMatchedPatient(p);
     setNameTerm(p.name);
-    setCpf(p.cpf ?? "");
+    setCpf(maskCpf(p.cpf ?? ""));
     setPhone(p.phone ?? "");
     setPsf(p.psf ?? "");
     setShowDropdown(false);
@@ -227,7 +252,11 @@ export default function ImplanonManager() {
     setPhone("");
     setPsf("");
     setReleasedAt(today());
+<<<<<<< HEAD
     setAppliedAt("");
+=======
+    setInitialStatus("pending");
+>>>>>>> 1fef830ca10e4feb044507b2023e4cd6a86838b7
     setIndication("");
   };
 
@@ -249,6 +278,54 @@ export default function ImplanonManager() {
     });
   };
 
+  const toggleRecord = (id: string) => {
+    setExpandedRecords((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const openEdit = (r: ImplanonRecord) => {
+    setEditing(r);
+    setEditForm({
+      status: r.status,
+      released_at: r.released_at ?? "",
+      applied_at: r.applied_at ?? "",
+      lot: r.lot ?? "",
+      lot_expiry: r.lot_expiry ?? "",
+      expected_removal_at: r.expected_removal_at ?? "",
+      removed_at: r.removed_at ?? "",
+      dum: r.dum ?? "",
+      professional: r.professional ?? "",
+      application_site: r.application_site ?? "",
+      notes: r.notes ?? "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const v = (k: string) => (editForm[k]?.trim() ? editForm[k].trim() : null);
+    await update.mutateAsync({
+      id: editing.id,
+      updates: {
+        status: (editForm.status as ImplanonRecord["status"]) || editing.status,
+        released_at: v("released_at"),
+        applied_at: v("applied_at"),
+        lot: v("lot"),
+        lot_expiry: v("lot_expiry"),
+        expected_removal_at: v("expected_removal_at"),
+        removed_at: v("removed_at"),
+        dum: v("dum"),
+        professional: v("professional"),
+        application_site: v("application_site"),
+        notes: v("notes"),
+      },
+    });
+    setEditing(null);
+  };
+
   /* ── submit ─────────────────────────────────────────────────────── */
   const submit = async () => {
     const nameClean  = nameTerm.trim();
@@ -263,10 +340,15 @@ export default function ImplanonManager() {
         patientId = matchedPatient.id;
         /* atualiza contato/unidade se o usuário mudou */
         const updates: Record<string, unknown> = {};
+        const cpfClean = cpf.replace(/\D/g, "") || null;
+        if (cpfClean && cpfClean !== (matchedPatient.cpf ?? "").replace(/\D/g, "")) {
+          updates.cpf = cpfClean;
+        }
         if (phone && phone !== matchedPatient.phone) updates.phone = phone.replace(/\D/g, "");
         if (psf  && psf  !== matchedPatient.psf)   updates.psf   = psf.trim();
         if (Object.keys(updates).length) {
-          await db.from("patients").update(updates).eq("id", patientId);
+          const { error: upErr } = await db.from("patients").update(updates).eq("id", patientId);
+          if (upErr) throw upErr;
         }
       } else {
         /* nova paciente — verifica duplicata por CPF antes de inserir */
@@ -286,6 +368,7 @@ export default function ImplanonManager() {
           patientId = existingId;
           await db.from("patients").update({
             name:  nameClean,
+            cpf:   cpfClean,
             phone: phone.replace(/\D/g, "") || null,
             psf:   psf.trim() || null,
           }).eq("id", existingId);
@@ -308,10 +391,15 @@ export default function ImplanonManager() {
       /* cria o registro de implanon */
       await create.mutateAsync({
         patient_id:  patientId,
+<<<<<<< HEAD
         released_at: releasedAt || null,
         applied_at:  appliedAt || null,
         expected_removal_at: appliedAt ? computedRemoval : null,
         status: appliedAt ? "applied" : "released",
+=======
+        released_at: initialStatus === "released" ? (releasedAt || today()) : null,
+        status: initialStatus,
+>>>>>>> 1fef830ca10e4feb044507b2023e4cd6a86838b7
         notes: indication.trim() || null,
         health_unit_id: healthUnits?.find((u) => u.name === psf)?.id ?? null,
       } as any);
@@ -327,11 +415,11 @@ export default function ImplanonManager() {
 
   /* ── KPI cards ──────────────────────────────────────────────────── */
   const kpiCards = [
+    { label: "Aguardando",      value: indicators.pending,     icon: ClipboardList,cls: "text-amber-600 bg-amber-50" },
     { label: "Liberados",       value: indicators.released,    icon: FileClock,    cls: "text-sky-600 bg-sky-50" },
     { label: "Aplicados ativos",value: indicators.applied,     icon: CheckCircle2, cls: "text-emerald-600 bg-emerald-50" },
     { label: "Retirada próxima",value: indicators.expiring,    icon: CalendarClock,cls: "text-amber-600 bg-amber-50" },
     { label: "Retirada vencida",value: indicators.overdue,     icon: AlertTriangle,cls: "text-red-600 bg-red-50" },
-    { label: "Lote vencendo",   value: indicators.lotExpiring, icon: PackageCheck, cls: "text-orange-600 bg-orange-50" },
     { label: "Retirados",       value: indicators.removed,     icon: Syringe,      cls: "text-slate-600 bg-slate-100" },
   ];
 
@@ -416,15 +504,26 @@ export default function ImplanonManager() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as situações</SelectItem>
+                <SelectItem value="pending">Aguardando liberação</SelectItem>
                 <SelectItem value="released">Liberado</SelectItem>
                 <SelectItem value="applied">Aplicado</SelectItem>
                 <SelectItem value="removed">Retirado</SelectItem>
               </SelectContent>
             </Select>
-            {(filterUnit !== "all" || filterStatus !== "all" || search) && (
+          </div>
+          <div className="flex flex-col md:flex-row gap-3 md:items-end">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">De</Label>
+              <Input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} className="md:w-40" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Até</Label>
+              <Input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} className="md:w-40" />
+            </div>
+            {(filterUnit !== "all" || filterStatus !== "all" || search || filterFrom || filterTo) && (
               <Button
                 variant="ghost"
-                onClick={() => { setSearch(""); setFilterUnit("all"); setFilterStatus("all"); }}
+                onClick={() => { setSearch(""); setFilterUnit("all"); setFilterStatus("all"); setFilterFrom(""); setFilterTo(""); }}
               >
                 Limpar
               </Button>
@@ -479,17 +578,24 @@ export default function ImplanonManager() {
                         const meta   = STATUS_META[r.status] ?? STATUS_META.released;
                         const d      = daysUntil(r.expected_removal_at);
                         const patAge = calcAge(r.patient?.dob);
+                        const isExpanded = expandedRecords.has(r.id);
+                        const timeline =
+                          r.status === "pending" ? null
+                          : r.status === "released" ? `Liberado em ${formatValidLocalDate(r.released_at, "dd/MM/yyyy")}`
+                          : r.status === "applied" ? `Aplicado em ${formatValidLocalDate(r.applied_at, "dd/MM/yyyy")} · Prev. retirada ${formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}`
+                          : `Retirado em ${formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}`;
                         return (
                           <article key={r.id} className="rounded-xl border border-border bg-white shadow-sm overflow-hidden flex flex-col md:flex-row">
                             <span
                               className={cn(
                                 "w-full h-1 md:h-auto md:w-1.5 shrink-0",
                                 r.status === "applied" ? "bg-emerald-500"
-                                  : r.status === "removed" ? "bg-slate-300" : "bg-primary",
+                                  : r.status === "removed" ? "bg-slate-300"
+                                  : r.status === "pending" ? "bg-amber-400" : "bg-primary",
                               )}
                               aria-hidden
                             />
-                            <div className="flex-1 min-w-0 p-4">
+                            <div className="flex-1 min-w-0 px-4 py-3">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h3 className="font-bold text-sm truncate">{r.patient?.name ?? "Paciente"}</h3>
                                 <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border", meta.cls)}>
@@ -507,48 +613,93 @@ export default function ImplanonManager() {
                                 )}
                               </div>
 
-                              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-muted-foreground">
-                                {r.patient?.cpf && <span className="flex items-center gap-1"><BadgeCheck className="w-3 h-3" />CPF: {r.patient.cpf}</span>}
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                                {r.patient?.cpf && <span className="flex items-center gap-1"><BadgeCheck className="w-3 h-3" />{maskCpf(r.patient.cpf)}</span>}
                                 {patAge !== null && <span className="flex items-center gap-1"><Cake className="w-3 h-3" />{patAge} anos</span>}
                                 {r.patient?.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{r.patient.phone}</span>}
-                                {(r.patient?.address || r.patient?.neighborhood) && (
-                                  <span className="flex items-center gap-1">
-                                    <MapPin className="w-3 h-3" />
-                                    {[r.patient.address, r.patient.neighborhood].filter(Boolean).join(", ")}
-                                  </span>
-                                )}
+                                {timeline && <span className="flex items-center gap-1"><CalendarClock className="w-3 h-3" />{timeline}</span>}
                               </div>
 
-                              <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                                <span>Liberação: {formatValidLocalDate(r.released_at, "dd/MM/yyyy")}</span>
-                                <span>Aplicação: {formatValidLocalDate(r.applied_at, "dd/MM/yyyy")}</span>
-                                <span>Lote: {r.lot ?? "—"}</span>
-                                <span>Validade: {formatValidLocalDate(r.lot_expiry, "dd/MM/yyyy")}</span>
-                                <span>Prev. retirada: {formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}</span>
-                                <span>Retirada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}</span>
-                                <span className="md:col-span-2">Prof.: {r.professional ?? "—"}</span>
-                              </div>
-
-                              {r.notes && (
-                                <p className="mt-2 flex items-start gap-1.5 text-[11px] text-foreground/80 bg-muted/50 border border-border rounded-lg px-2.5 py-1.5">
-                                  <ClipboardList className="w-3.5 h-3.5 mt-[1px] shrink-0 text-primary" />
-                                  <span><b className="font-semibold">Indicação:</b> {r.notes}</span>
+                              {r.notes && !isExpanded && (
+                                <p className="mt-1 text-[11px] text-foreground/70 truncate">
+                                  <span className="font-semibold">Indicação:</span> {r.notes}
                                 </p>
                               )}
+
+                              {isExpanded && (
+                                <div className="mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2 space-y-1.5">
+                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                                    <span>Liberação: {formatValidLocalDate(r.released_at, "dd/MM/yyyy")}</span>
+                                    <span>Aplicação: {formatValidLocalDate(r.applied_at, "dd/MM/yyyy")}</span>
+                                    <span>Prev. retirada: {formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}</span>
+                                    <span>Retirada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}</span>
+                                    <span>Lote: {r.lot ?? "—"}</span>
+                                    <span>Validade: {formatValidLocalDate(r.lot_expiry, "dd/MM/yyyy")}</span>
+                                    <span>DUM: {formatValidLocalDate(r.dum, "dd/MM/yyyy")}</span>
+                                    <span>Local: {r.application_site ?? "—"}</span>
+                                    <span>Prof.: {r.professional ?? "—"}</span>
+                                  </div>
+                                  {(r.patient?.address || r.patient?.neighborhood) && (
+                                    <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                      <MapPin className="w-3 h-3" />
+                                      {[r.patient.address, r.patient.neighborhood].filter(Boolean).join(", ")}
+                                    </p>
+                                  )}
+                                  {r.notes && (
+                                    <p className="flex items-start gap-1.5 text-[11px] text-foreground/80">
+                                      <ClipboardList className="w-3.5 h-3.5 mt-[1px] shrink-0 text-primary" />
+                                      <span><b className="font-semibold">Indicação:</b> {r.notes}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => toggleRecord(r.id)}
+                                className="mt-1.5 text-[11px] font-semibold text-primary hover:underline"
+                              >
+                                {isExpanded ? "Ocultar detalhes" : "Ver detalhes"}
+                              </button>
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0 px-4 pb-4 md:py-4 md:pl-0">
-                              {r.status === "released" && (
-                                <Button size="sm" onClick={() => update.mutate({ id: r.id, updates: { applied_at: today() } })}>
-                                  Aplicar
+                            <div className="flex items-center gap-1.5 shrink-0 px-4 pb-3 md:py-3 md:pl-0 flex-wrap">
+                              {r.status === "pending" && (
+                                <Button size="sm" onClick={() => update.mutate({ id: r.id, updates: { released_at: today() } })}>
+                                  Liberar
                                 </Button>
+                              )}
+                              {r.status === "released" && (
+                                <>
+                                  <Input
+                                    type="date"
+                                    className="h-8 w-[140px] text-xs"
+                                    value={applyDates[r.id] ?? today()}
+                                    onChange={(e) => setApplyDates((p) => ({ ...p, [r.id]: e.target.value }))}
+                                    title="Data de aplicação informada pelo posto"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      update.mutate({ id: r.id, updates: { applied_at: applyDates[r.id] || today() } })
+                                    }
+                                  >
+                                    Aplicar
+                                  </Button>
+                                </>
                               )}
                               {r.status === "applied" && (
                                 <Button size="sm" variant="secondary" onClick={() => update.mutate({ id: r.id, updates: { removed_at: today() } })}>
                                   Registrar retirada
                                 </Button>
                               )}
-                              <Button variant="ghost" size="icon" onClick={() => remove.mutate(r.id)} title="Excluir">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)} title="Editar registro">
+                                <Pencil className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => printImplanonRecord(r)} title="Imprimir ficha">
+                                <Printer className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove.mutate(r.id)} title="Excluir">
                                 <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </div>
@@ -664,9 +815,15 @@ export default function ImplanonManager() {
               <Input
                 placeholder="000.000.000-00"
                 value={cpf}
-                disabled={!!matchedPatient}
-                onChange={(e) => setCpf(e.target.value)}
+                inputMode="numeric"
+                maxLength={14}
+                onChange={(e) => setCpf(maskCpf(e.target.value))}
               />
+              {matchedPatient && (
+                <p className="text-[11px] text-muted-foreground">
+                  Alterar o CPF atualiza o cadastro da paciente.
+                </p>
+              )}
             </div>
 
             {/* ── Contato ───────────────────────────────────────────── */}
@@ -698,6 +855,7 @@ export default function ImplanonManager() {
               </Select>
             </div>
 
+<<<<<<< HEAD
             {/* ── Datas: liberação + aplicação ──────────────────────── */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -728,6 +886,30 @@ export default function ImplanonManager() {
                   {" — em "}
                   <b>{daysUntil(computedRemoval)} dias</b>
                 </span>
+=======
+            {/* ── Situação inicial ──────────────────────────────────── */}
+            <div className="space-y-1">
+              <Label>Situação inicial</Label>
+              <Select value={initialStatus} onValueChange={(v) => setInitialStatus(v as "pending" | "released")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Aguardando liberação (lista do posto)</SelectItem>
+                  <SelectItem value="released">Já liberado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {initialStatus === "released" && (
+              <div className="space-y-1">
+                <Label>Data de liberação</Label>
+                <Input
+                  type="date"
+                  value={releasedAt}
+                  onChange={(e) => setReleasedAt(e.target.value)}
+                />
+>>>>>>> 1fef830ca10e4feb044507b2023e4cd6a86838b7
               </div>
             )}
 
@@ -746,6 +928,79 @@ export default function ImplanonManager() {
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={submit} disabled={saving || !nameTerm.trim()}>
               {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════
+          Dialog — Editar registro
+      ══════════════════════════════════════════════════════════════ */}
+      <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-primary" />
+              Editar registro — {editing?.patient?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
+            <div className="space-y-1 md:col-span-2">
+              <Label>Situação</Label>
+              <Select
+                value={editForm.status ?? "pending"}
+                onValueChange={(v) => setEditForm((p) => ({ ...p, status: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Aguardando liberação</SelectItem>
+                  <SelectItem value="released">Liberado</SelectItem>
+                  <SelectItem value="applied">Aplicado</SelectItem>
+                  <SelectItem value="removed">Retirado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {[
+              { k: "released_at", l: "Data de liberação", t: "date" },
+              { k: "applied_at", l: "Data de aplicação", t: "date" },
+              { k: "expected_removal_at", l: "Previsão de retirada", t: "date" },
+              { k: "removed_at", l: "Data de retirada", t: "date" },
+              { k: "lot", l: "Lote", t: "text" },
+              { k: "lot_expiry", l: "Validade do lote", t: "date" },
+              { k: "dum", l: "DUM", t: "date" },
+              { k: "application_site", l: "Local de aplicação", t: "text" },
+              { k: "professional", l: "Profissional responsável", t: "text" },
+            ].map((f) => (
+              <div key={f.k} className="space-y-1">
+                <Label>{f.l}</Label>
+                <Input
+                  type={f.t}
+                  value={editForm[f.k] ?? ""}
+                  onChange={(e) => setEditForm((p) => ({ ...p, [f.k]: e.target.value }))}
+                />
+              </div>
+            ))}
+            <div className="space-y-1 md:col-span-2">
+              <Label>Indicação</Label>
+              <Input
+                value={editForm.notes ?? ""}
+                onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => editing && printImplanonRecord(editing)}
+            >
+              <Printer className="w-4 h-4" /> Imprimir
+            </Button>
+            <Button onClick={saveEdit} disabled={update.isPending}>
+              {update.isPending ? "Salvando..." : "Salvar alterações"}
             </Button>
           </DialogFooter>
         </DialogContent>

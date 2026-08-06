@@ -6,6 +6,7 @@
     <link rel="icon" href="/logo.png" type="image/png" />
     <link rel="shortcut icon" href="/logo.png" type="image/png" />
     <link rel="apple-touch-icon" href="/pwa-512x512.png" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#8c1d3f" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -43,21 +44,19 @@
     <script>
       // One-time cleanup for browsers left with the previously-broken
       // service worker/cache that kept re-serving a stale hashed bundle.
-      // Safe no-op if nothing is registered. Reloads at most once
-      // (sessionStorage guard) so there is no reload loop.
+       // Only removes the retired app-shell worker. Messaging workers and
+       // unrelated caches must remain untouched.
       (function () {
         if (!('serviceWorker' in navigator)) return;
         var GUARD = 'pwa-stale-cleanup-done';
         if (sessionStorage.getItem(GUARD) === '1') return;
         navigator.serviceWorker.getRegistrations().then(function (regs) {
-          var hadStale = regs.length > 0;
-          return Promise.all(regs.map(function (r) { return r.unregister(); })).then(function () {
-            if (!('caches' in window)) return hadStale;
-            return caches.keys().then(function (keys) {
-              return Promise.all(keys.map(function (k) { return caches.delete(k); })).then(function () {
-                return hadStale || keys.length > 0;
-              });
-            });
+          var staleRegs = regs.filter(function (r) {
+            var worker = r.active || r.waiting || r.installing;
+            return worker && new URL(worker.scriptURL).pathname === '/sw.js';
+          });
+          return Promise.all(staleRegs.map(function (r) { return r.unregister(); })).then(function () {
+            return staleRegs.length > 0;
           });
         }).then(function (didCleanup) {
           sessionStorage.setItem(GUARD, '1');

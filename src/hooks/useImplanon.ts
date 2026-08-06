@@ -5,7 +5,7 @@ import { syncPatientRegistry, type SharedPatientData } from "@/lib/patientRegist
 
 const db = supabase as any;
 
-export type ImplanonStatus = "released" | "applied" | "removed";
+export type ImplanonStatus = "pending" | "released" | "applied" | "removed";
 
 export type ImplanonRecord = {
   id: string;
@@ -65,11 +65,15 @@ export function useImplanon(patientId?: string) {
   const create = useMutation({
     mutationFn: async (payload: Partial<ImplanonRecord> & { patient_id: string; registry?: SharedPatientData }) => {
       const { registry, patient, ...rest } = payload as any;
-      const status: ImplanonStatus = rest.removed_at
-        ? "removed"
-        : rest.applied_at
-          ? "applied"
-          : "released";
+      const status: ImplanonStatus =
+        (rest.status as ImplanonStatus | undefined) ??
+        (rest.removed_at
+          ? "removed"
+          : rest.applied_at
+            ? "applied"
+            : rest.released_at
+              ? "released"
+              : "pending");
       const { data, error } = await db
         .from("implanon_records")
         .insert({ ...rest, status })
@@ -92,8 +96,11 @@ export function useImplanon(patientId?: string) {
   const update = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<ImplanonRecord> }) => {
       const patch: Record<string, unknown> = { ...updates };
-      if (patch.removed_at) patch.status = "removed";
-      else if (patch.applied_at) patch.status = "applied";
+      if (!updates.status) {
+        if (patch.removed_at) patch.status = "removed";
+        else if (patch.applied_at) patch.status = "applied";
+        else if (patch.released_at) patch.status = "released";
+      }
       const { error } = await db.from("implanon_records").update(patch).eq("id", id);
       if (error) throw error;
     },
