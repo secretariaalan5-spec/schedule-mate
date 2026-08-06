@@ -156,3 +156,90 @@ export function printImplanonReport(
     doPrint();
   }
 }
+/* ── Ficha individual (1 registro por folha A4) ────────────────────── */
+export function printImplanonRecord(r: ImplanonRecord) {
+  const row = (label: string, value: string) =>
+    `<div class="f"><span>${esc(label)}</span><b>${esc(value)}</b></div>`;
+
+  const now = new Date();
+  const generated = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8" />
+<title>Ficha Implanon — ${esc(r.patient?.name)}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  @page{size:A4 portrait;margin:14mm;}
+  body{font-family:Arial,Helvetica,sans-serif;color:#1f2430;font-size:11px;}
+  header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #0d4a7a;padding-bottom:10px;margin-bottom:14px;}
+  header img{height:56px;}
+  header .t{flex:1;text-align:right;}
+  header h1{font-size:16px;letter-spacing:.5px;}
+  header p{font-size:10px;color:#555;margin-top:2px;}
+  h2{font-size:10px;text-transform:uppercase;letter-spacing:.6px;background:#0d4a7a;color:#fff;padding:5px 8px;border-radius:4px;margin:14px 0 8px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;}
+  .f{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dotted #cbd5e1;padding:4px 2px;}
+  .f span{color:#64748b;}
+  .box{border:1px solid #dbe3ec;border-radius:6px;padding:8px 10px;background:#fafcfe;min-height:38px;}
+  .sign{display:flex;gap:40px;margin-top:46px;}
+  .sign div{flex:1;border-top:1px solid #64748b;text-align:center;padding-top:4px;font-size:9.5px;color:#475569;}
+  footer{margin-top:24px;border-top:1px solid #ddd;padding-top:6px;font-size:8.5px;color:#666;display:flex;justify-content:space-between;}
+  @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+</style></head>
+<body>
+  <header>
+    <img src="/logo-saude-horizontal.png" alt="Secretaria Municipal da Saúde" />
+    <div class="t">
+      <h1>FICHA DE IMPLANON</h1>
+      <p>Saúde da Mulher · Liberação, aplicação e retirada</p>
+      <p>Emitida em ${generated}</p>
+    </div>
+  </header>
+
+  <h2>Identificação da paciente</h2>
+  <div class="grid">
+    ${row("Nome", String(r.patient?.name ?? "—"))}
+    ${row("CPF", fmtCpf(r.patient?.cpf))}
+    ${row("Cartão SUS", String(r.patient?.sus_card ?? "—"))}
+    ${row("Contato", String(r.patient?.phone ?? "—"))}
+    ${row("Unidade de saúde", String(r.patient?.psf ?? "—"))}
+    ${row("Endereço", [r.patient?.address, r.patient?.neighborhood].filter(Boolean).join(", ") || "—")}
+  </div>
+
+  <h2>Dados do implante</h2>
+  <div class="grid">
+    ${row("Situação", STATUS_LABEL[r.status] ?? r.status)}
+    ${row("Data de liberação", fmt(r.released_at))}
+    ${row("Data de aplicação", fmt(r.applied_at))}
+    ${row("Lote", String(r.lot ?? "—"))}
+    ${row("Validade do lote", fmt(r.lot_expiry))}
+    ${row("Previsão de retirada", fmt(r.expected_removal_at))}
+    ${row("Data de retirada", fmt(r.removed_at))}
+    ${row("Local de aplicação", String(r.application_site ?? "—"))}
+    ${row("DUM", fmt(r.dum))}
+    ${row("Profissional responsável", String(r.professional ?? "—"))}
+  </div>
+
+  <h2>Indicação / Observações</h2>
+  <div class="box">${esc(r.notes)}</div>
+
+  <div class="sign">
+    <div>Assinatura da paciente</div>
+    <div>Assinatura do profissional</div>
+  </div>
+
+  <footer><span>Secretaria Municipal da Saúde de Camocim</span><span>Documento gerado pelo sistema Saúde da Mulher</span></footer>
+</body></html>`;
+
+  const w = window.open("", "_blank");
+  if (!w) {
+    toast.error("Popup bloqueado. Permita popups para imprimir.");
+    return;
+  }
+  w.document.write(html);
+  w.document.close();
+  const img = w.document.querySelector("img");
+  const doPrint = () => setTimeout(() => { w.focus(); w.print(); }, 300);
+  if (img && !img.complete) { img.onload = doPrint; img.onerror = doPrint; }
+  else doPrint();
+}

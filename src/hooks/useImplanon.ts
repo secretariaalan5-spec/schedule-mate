@@ -96,9 +96,11 @@ export function useImplanon(patientId?: string) {
   const update = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<ImplanonRecord> }) => {
       const patch: Record<string, unknown> = { ...updates };
-      if (patch.removed_at) patch.status = "removed";
-      else if (patch.applied_at) patch.status = "applied";
-      else if (patch.released_at) patch.status = "released";
+      if (!updates.status) {
+        if (patch.removed_at) patch.status = "removed";
+        else if (patch.applied_at) patch.status = "applied";
+        else if (patch.released_at) patch.status = "released";
+      }
       const { error } = await db.from("implanon_records").update(patch).eq("id", id);
       if (error) throw error;
     },
