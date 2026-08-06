@@ -142,14 +142,12 @@ export default function ImplanonManager() {
   const [matchedPatient, setMatchedPatient] = useState<PatientLite | null>(null); // paciente encontrada
   const [showDropdown, setShowDropdown] = useState(false);
   const [cpf, setCpf]                   = useState("");
+  const [dob, setDob]                   = useState("");
   const [phone, setPhone]               = useState("");
   const [psf, setPsf]                   = useState("");
+  const [initialStatus, setInitialStatus] = useState<"pending" | "released" | "applied">("pending");
   const [releasedAt, setReleasedAt]     = useState(today());
-<<<<<<< HEAD
   const [appliedAt, setAppliedAt]       = useState("");
-=======
-  const [initialStatus, setInitialStatus] = useState<"pending" | "released">("pending");
->>>>>>> 1fef830ca10e4feb044507b2023e4cd6a86838b7
   const [indication, setIndication]     = useState("");
   const [saving, setSaving]             = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -229,6 +227,7 @@ export default function ImplanonManager() {
     setMatchedPatient(p);
     setNameTerm(p.name);
     setCpf(maskCpf(p.cpf ?? ""));
+    setDob(p.dob ?? "");
     setPhone(p.phone ?? "");
     setPsf(p.psf ?? "");
     setShowDropdown(false);
@@ -239,6 +238,7 @@ export default function ImplanonManager() {
     setMatchedPatient(null);
     setNameTerm("");
     setCpf("");
+    setDob("");
     setPhone("");
     setPsf("");
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -249,21 +249,19 @@ export default function ImplanonManager() {
     setMatchedPatient(null);
     setNameTerm("");
     setCpf("");
+    setDob("");
     setPhone("");
     setPsf("");
-    setReleasedAt(today());
-<<<<<<< HEAD
-    setAppliedAt("");
-=======
     setInitialStatus("pending");
->>>>>>> 1fef830ca10e4feb044507b2023e4cd6a86838b7
+    setReleasedAt(today());
+    setAppliedAt("");
     setIndication("");
   };
 
   /* auto-compute expected removal: applied + 3 years */
   const computedRemoval = useMemo(() => {
-    if (!appliedAt) return null;
-    const d = new Date(`${appliedAt}T12:00:00`);
+    const refDate = appliedAt || today();
+    const d = new Date(`${refDate}T12:00:00`);
     if (!Number.isFinite(d.getTime())) return null;
     d.setFullYear(d.getFullYear() + 3);
     return d.toISOString().slice(0, 10);
@@ -290,6 +288,11 @@ export default function ImplanonManager() {
   const openEdit = (r: ImplanonRecord) => {
     setEditing(r);
     setEditForm({
+      name: r.patient?.name ?? "",
+      cpf: maskCpf(r.patient?.cpf ?? ""),
+      dob: r.patient?.dob ?? "",
+      psf: r.patient?.psf ?? "",
+      phone: r.patient?.phone ?? "",
       status: r.status,
       released_at: r.released_at ?? "",
       applied_at: r.applied_at ?? "",
@@ -307,6 +310,19 @@ export default function ImplanonManager() {
   const saveEdit = async () => {
     if (!editing) return;
     const v = (k: string) => (editForm[k]?.trim() ? editForm[k].trim() : null);
+
+    // Update patient table if patient exists
+    if (editing.patient_id) {
+      const patientUpdates: Record<string, any> = {};
+      if (editForm.name?.trim()) patientUpdates.name = editForm.name.trim();
+      const cpfClean = editForm.cpf ? editForm.cpf.replace(/\D/g, "") : null;
+      patientUpdates.cpf = cpfClean;
+      patientUpdates.dob = v("dob");
+      patientUpdates.psf = v("psf");
+      patientUpdates.phone = editForm.phone ? editForm.phone.replace(/\D/g, "") : null;
+      await db.from("patients").update(patientUpdates).eq("id", editing.patient_id);
+    }
+
     await update.mutateAsync({
       id: editing.id,
       updates: {
@@ -321,6 +337,7 @@ export default function ImplanonManager() {
         professional: v("professional"),
         application_site: v("application_site"),
         notes: v("notes"),
+        health_unit_id: healthUnits?.find((u) => u.name === editForm.psf)?.id ?? editing.health_unit_id,
       },
     });
     setEditing(null);
@@ -344,6 +361,7 @@ export default function ImplanonManager() {
         if (cpfClean && cpfClean !== (matchedPatient.cpf ?? "").replace(/\D/g, "")) {
           updates.cpf = cpfClean;
         }
+        if (dob && dob !== matchedPatient.dob) updates.dob = dob;
         if (phone && phone !== matchedPatient.phone) updates.phone = phone.replace(/\D/g, "");
         if (psf  && psf  !== matchedPatient.psf)   updates.psf   = psf.trim();
         if (Object.keys(updates).length) {
@@ -369,6 +387,7 @@ export default function ImplanonManager() {
           await db.from("patients").update({
             name:  nameClean,
             cpf:   cpfClean,
+            dob:   dob || null,
             phone: phone.replace(/\D/g, "") || null,
             psf:   psf.trim() || null,
           }).eq("id", existingId);
@@ -378,6 +397,7 @@ export default function ImplanonManager() {
             .insert({
               name:  nameClean,
               cpf:   cpfClean,
+              dob:   dob || null,
               phone: phone.replace(/\D/g, "") || null,
               psf:   psf.trim() || null,
             })
@@ -391,15 +411,10 @@ export default function ImplanonManager() {
       /* cria o registro de implanon */
       await create.mutateAsync({
         patient_id:  patientId,
-<<<<<<< HEAD
-        released_at: releasedAt || null,
-        applied_at:  appliedAt || null,
-        expected_removal_at: appliedAt ? computedRemoval : null,
-        status: appliedAt ? "applied" : "released",
-=======
-        released_at: initialStatus === "released" ? (releasedAt || today()) : null,
+        released_at: (initialStatus === "released" || initialStatus === "applied") ? (releasedAt || today()) : null,
+        applied_at:  initialStatus === "applied" ? (appliedAt || today()) : null,
+        expected_removal_at: initialStatus === "applied" ? computedRemoval : null,
         status: initialStatus,
->>>>>>> 1fef830ca10e4feb044507b2023e4cd6a86838b7
         notes: indication.trim() || null,
         health_unit_id: healthUnits?.find((u) => u.name === psf)?.id ?? null,
       } as any);
@@ -809,21 +824,26 @@ export default function ImplanonManager() {
               )}
             </div>
 
-            {/* ── CPF ──────────────────────────────────────────────── */}
-            <div className="space-y-1">
-              <Label>CPF</Label>
-              <Input
-                placeholder="000.000.000-00"
-                value={cpf}
-                inputMode="numeric"
-                maxLength={14}
-                onChange={(e) => setCpf(maskCpf(e.target.value))}
-              />
-              {matchedPatient && (
-                <p className="text-[11px] text-muted-foreground">
-                  Alterar o CPF atualiza o cadastro da paciente.
-                </p>
-              )}
+            {/* ── CPF e Data de Nascimento ─────────────────────────── */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>CPF</Label>
+                <Input
+                  placeholder="000.000.000-00"
+                  value={cpf}
+                  inputMode="numeric"
+                  maxLength={14}
+                  onChange={(e) => setCpf(maskCpf(e.target.value))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Data de Nascimento</Label>
+                <Input
+                  type="date"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                />
+              </div>
             </div>
 
             {/* ── Contato ───────────────────────────────────────────── */}
@@ -836,9 +856,9 @@ export default function ImplanonManager() {
               />
             </div>
 
-            {/* ── Unidade de Saúde ──────────────────────────────────── */}
+            {/* ── Unidade de Saúde (Posto de Saúde) ─────────────────── */}
             <div className="space-y-1">
-              <Label>Unidade de Saúde (PSF/UBS)</Label>
+              <Label>Unidade de Saúde (Posto de Saúde / PSF)</Label>
               <Select value={psf || "none"} onValueChange={(v) => setPsf(v === "none" ? "" : v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a unidade" />
@@ -855,29 +875,45 @@ export default function ImplanonManager() {
               </Select>
             </div>
 
-<<<<<<< HEAD
-            {/* ── Datas: liberação + aplicação ──────────────────────── */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Data de liberação</Label>
-                <Input
-                  type="date"
-                  value={releasedAt}
-                  onChange={(e) => setReleasedAt(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Data de aplicação</Label>
-                <Input
-                  type="date"
-                  value={appliedAt}
-                  onChange={(e) => setAppliedAt(e.target.value)}
-                />
-              </div>
+            {/* ── Situação inicial (Lista do posto) ────────────────── */}
+            <div className="space-y-1">
+              <Label>Situação inicial (Lista do posto)</Label>
+              <Select value={initialStatus} onValueChange={(v) => setInitialStatus(v as "pending" | "released" | "applied")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Aguardando liberação (lista do posto)</SelectItem>
+                  <SelectItem value="released">Já liberado</SelectItem>
+                  <SelectItem value="applied">Já aplicado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* ── Previsão de retirada — calculada automaticamente ─── */}
-            {computedRemoval && (
+            {(initialStatus === "released" || initialStatus === "applied") && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label>Data de liberação</Label>
+                  <Input
+                    type="date"
+                    value={releasedAt}
+                    onChange={(e) => setReleasedAt(e.target.value)}
+                  />
+                </div>
+                {initialStatus === "applied" && (
+                  <div className="space-y-1">
+                    <Label>Data de aplicação</Label>
+                    <Input
+                      type="date"
+                      value={appliedAt}
+                      onChange={(e) => setAppliedAt(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {initialStatus === "applied" && computedRemoval && (
               <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px]">
                 <CalendarClock className="w-4 h-4 text-amber-600 shrink-0" />
                 <span className="text-amber-900">
@@ -886,30 +922,6 @@ export default function ImplanonManager() {
                   {" — em "}
                   <b>{daysUntil(computedRemoval)} dias</b>
                 </span>
-=======
-            {/* ── Situação inicial ──────────────────────────────────── */}
-            <div className="space-y-1">
-              <Label>Situação inicial</Label>
-              <Select value={initialStatus} onValueChange={(v) => setInitialStatus(v as "pending" | "released")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Aguardando liberação (lista do posto)</SelectItem>
-                  <SelectItem value="released">Já liberado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {initialStatus === "released" && (
-              <div className="space-y-1">
-                <Label>Data de liberação</Label>
-                <Input
-                  type="date"
-                  value={releasedAt}
-                  onChange={(e) => setReleasedAt(e.target.value)}
-                />
->>>>>>> 1fef830ca10e4feb044507b2023e4cd6a86838b7
               </div>
             )}
 
@@ -917,7 +929,7 @@ export default function ImplanonManager() {
             <div className="space-y-1">
               <Label>Indicação</Label>
               <Input
-                placeholder="Ex.: planejamento familiar, contraindicação a estrogênio..."
+                placeholder="Ex.: 18 anos, situação de vulnerabilidade, planejamento familiar..."
                 value={indication}
                 onChange={(e) => setIndication(e.target.value)}
               />
@@ -946,15 +958,65 @@ export default function ImplanonManager() {
           </DialogHeader>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
+            {/* ── Dados da Paciente ─────────────────────────────────── */}
             <div className="space-y-1 md:col-span-2">
-              <Label>Situação</Label>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Dados da Paciente</Label>
+            </div>
+            <div className="space-y-1">
+              <Label>Nome</Label>
+              <Input
+                value={editForm.name ?? ""}
+                onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>CPF</Label>
+              <Input
+                value={editForm.cpf ?? ""}
+                maxLength={14}
+                onChange={(e) => setEditForm((p) => ({ ...p, cpf: maskCpf(e.target.value) }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Data de Nascimento</Label>
+              <Input
+                type="date"
+                value={editForm.dob ?? ""}
+                onChange={(e) => setEditForm((p) => ({ ...p, dob: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Posto de Saúde (PSF)</Label>
+              <Select
+                value={editForm.psf || "none"}
+                onValueChange={(v) => setEditForm((p) => ({ ...p, psf: v === "none" ? "" : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecione a unidade" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem unidade definida</SelectItem>
+                  {(healthUnits ?? []).map((u) => (
+                    <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+                  ))}
+                  {editForm.psf && !(healthUnits ?? []).some((u) => u.name === editForm.psf) && (
+                    <SelectItem value={editForm.psf}>{editForm.psf}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* ── Dados do Implanon ────────────────────────────────── */}
+            <div className="space-y-1 md:col-span-2 mt-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Dados do Implanon & Situação</Label>
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <Label>Situação (Lista do posto)</Label>
               <Select
                 value={editForm.status ?? "pending"}
                 onValueChange={(v) => setEditForm((p) => ({ ...p, status: v }))}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Aguardando liberação</SelectItem>
+                  <SelectItem value="pending">Aguardando liberação (lista do posto)</SelectItem>
                   <SelectItem value="released">Liberado</SelectItem>
                   <SelectItem value="applied">Aplicado</SelectItem>
                   <SelectItem value="removed">Retirado</SelectItem>
@@ -984,6 +1046,7 @@ export default function ImplanonManager() {
             <div className="space-y-1 md:col-span-2">
               <Label>Indicação</Label>
               <Input
+                placeholder="Ex.: 18 anos, situação de vulnerabilidade..."
                 value={editForm.notes ?? ""}
                 onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
               />
