@@ -1,21 +1,25 @@
-// Recovery worker for installations that still run the former Workbox PWA.
-// It intentionally owns no cache: once the browser checks /sw.js for an
-// update, this worker removes the stale registrations/caches and releases the
-// page so the current Vite bundle is fetched from the network.
-self.addEventListener("install", () => {
-  self.skipWaiting();
-});
+// Recovery worker for installations still controlled by the former Workbox
+// PWA. Keep this file at the original /sw.js path for one release cycle.
+function isAppWorkboxCache(name) {
+  const isWorkboxBucket = /(^|-)precache-v\d+-|(^|-)runtime-|(^|-)googleAnalytics-/.test(name);
+  return isWorkboxBucket && name.endsWith(self.registration.scope);
+}
+
+self.addEventListener("install", () => self.skipWaiting());
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
-      self.registration.unregister(),
-    ]).then(() => self.clients.matchAll({ type: "window", includeUncontrolled: true }))
-      .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url)))),
+    (async () => {
+      try {
+        const cacheNames = await caches.keys();
+        const staleAppCaches = cacheNames.filter(isAppWorkboxCache);
+        await Promise.allSettled(staleAppCaches.map((name) => caches.delete(name)));
+        await self.clients.claim();
+        const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        await Promise.allSettled(clients.map((client) => client.navigate(client.url)));
+      } finally {
+        await self.registration.unregister();
+      }
+    })(),
   );
-});
-
-self.addEventListener("fetch", (event) => {
-  event.respondWith(fetch(event.request));
 });
