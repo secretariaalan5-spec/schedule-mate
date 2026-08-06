@@ -258,7 +258,6 @@ export default function ImplanonManager() {
       if (filterTo && (!ref || ref > filterTo)) return false;
       if (t) return (
         r.patient?.name?.toLowerCase().includes(t) ||
-        (r.professional ?? "").toLowerCase().includes(t) ||
         (r.notes ?? "").toLowerCase().includes(t) ||
         (r.patient?.psf ?? "").toLowerCase().includes(t)
       );
@@ -344,9 +343,6 @@ export default function ImplanonManager() {
       applied_at: r.applied_at ?? "",
       expected_removal_at: r.expected_removal_at ?? "",
       removed_at: r.removed_at ?? "",
-      dum: r.dum ?? "",
-      professional: r.professional ?? "",
-      application_site: r.application_site ?? "",
       notes: r.notes ?? "",
     });
   };
@@ -355,7 +351,6 @@ export default function ImplanonManager() {
     if (!editing) return;
     const v = (k: string) => (editForm[k]?.trim() ? editForm[k].trim() : null);
 
-    // Update patient table if patient exists
     if (editing.patient_id) {
       const patientUpdates: Record<string, any> = {};
       if (editForm.name?.trim()) patientUpdates.name = editForm.name.trim();
@@ -375,9 +370,6 @@ export default function ImplanonManager() {
         applied_at: v("applied_at"),
         expected_removal_at: v("expected_removal_at"),
         removed_at: v("removed_at"),
-        dum: v("dum"),
-        professional: v("professional"),
-        application_site: v("application_site"),
         notes: v("notes"),
         health_unit_id: healthUnits?.find((u) => u.name === editForm.psf)?.id ?? editing.health_unit_id,
       },
@@ -533,7 +525,7 @@ export default function ImplanonManager() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Buscar por paciente, profissional, indicação ou unidade..."
+                placeholder="Buscar por paciente, indicação ou unidade..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -694,9 +686,6 @@ export default function ImplanonManager() {
                                     <span>Aplicação: {formatValidLocalDate(r.applied_at, "dd/MM/yyyy")}</span>
                                     <span>Validade (3 anos): {formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}</span>
                                     <span>Retirada realizada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}</span>
-                                    <span>DUM: {formatValidLocalDate(r.dum, "dd/MM/yyyy")}</span>
-                                    <span>Local: {r.application_site ?? "—"}</span>
-                                    <span>Prof.: {r.professional ?? "—"}</span>
                                   </div>
                                   {(r.patient?.address || r.patient?.neighborhood) && (
                                     <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -1103,9 +1092,6 @@ export default function ImplanonManager() {
               { k: "applied_at", l: "Data de aplicação", t: "date" },
               { k: "expected_removal_at", l: "Validade (Previsão de retirada 3 anos)", t: "date" },
               { k: "removed_at", l: "Data de retirada", t: "date" },
-              { k: "dum", l: "DUM", t: "date" },
-              { k: "application_site", l: "Local de aplicação", t: "text" },
-              { k: "professional", l: "Profissional responsável", t: "text" },
             ].map((f) => (
               <div key={f.k} className="space-y-1">
                 <Label>{f.l}</Label>

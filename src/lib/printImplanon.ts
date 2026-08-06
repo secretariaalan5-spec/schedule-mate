@@ -15,6 +15,17 @@ function daysUntil(date: string | null | undefined): number | null {
   return Math.round((d.getTime() - Date.now()) / 86400000);
 }
 
+function calcAge(dob: string | null | undefined): number | null {
+  if (!dob) return null;
+  const birth = new Date(`${dob}T12:00:00`);
+  if (!Number.isFinite(birth.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+  return age >= 0 ? age : null;
+}
+
 /** Returns removal urgency class name for PDF styling */
 function removalClass(record: ImplanonRecord): string {
   if (record.status !== "applied") return "";
@@ -83,10 +94,13 @@ export function printImplanonReport(
           const rc = removalClass(r);
           const rl = removalLabel(r);
           const d  = daysUntil(r.expected_removal_at);
+          const age = calcAge(r.patient?.dob);
+          const nameWithAge = `${esc(r.patient?.name)}${age !== null ? ` <span style="color:#64748b;font-weight:normal;">(${age} anos)</span>` : ""}`;
+
           return `
       <tr class="${rc}">
         <td class="c">${i + 1}</td>
-        <td><b>${esc(r.patient?.name)}</b></td>
+        <td><b>${nameWithAge}</b></td>
         <td>${esc(fmtCpf(r.patient?.cpf))}</td>
         <td>${esc(r.patient?.phone)}</td>
         <td class="c">${fmt(r.released_at)}</td>
@@ -130,7 +144,7 @@ export function printImplanonReport(
         <thead>
           <tr>
             <th class="c" style="width:24px">Nº</th>
-            <th>Paciente</th>
+            <th>Paciente (Idade)</th>
             <th style="width:90px">CPF</th>
             <th style="width:84px">Contato</th>
             <th class="c" style="width:60px">Liberação</th>
@@ -257,6 +271,7 @@ export function printImplanonRecord(r: ImplanonRecord) {
 
   const now = new Date();
   const generated = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  const age = calcAge(r.patient?.dob);
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="utf-8" />
@@ -294,7 +309,8 @@ export function printImplanonRecord(r: ImplanonRecord) {
   <div class="grid">
     ${row("Nome", String(r.patient?.name ?? "—"))}
     ${row("CPF", fmtCpf(r.patient?.cpf))}
-    ${row("Cartão SUS", String(r.patient?.sus_card ?? "—"))}
+    ${row("Data de Nascimento", fmt(r.patient?.dob))}
+    ${row("Idade", age !== null ? `${age} anos` : "—")}
     ${row("Contato", String(r.patient?.phone ?? "—"))}
     ${row("Unidade de saúde", String(r.patient?.psf ?? "—"))}
     ${row("Endereço", [r.patient?.address, r.patient?.neighborhood].filter(Boolean).join(", ") || "—")}
@@ -307,9 +323,6 @@ export function printImplanonRecord(r: ImplanonRecord) {
     ${row("Data de aplicação", fmt(r.applied_at))}
     ${row("Previsão de retirada (3 anos)", fmt(r.expected_removal_at))}
     ${row("Data de retirada", fmt(r.removed_at))}
-    ${row("Local de aplicação", String(r.application_site ?? "—"))}
-    ${row("DUM", fmt(r.dum))}
-    ${row("Profissional responsável", String(r.professional ?? "—"))}
   </div>
 
   <h2>Indicação / Observações</h2>
