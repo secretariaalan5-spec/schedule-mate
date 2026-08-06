@@ -70,6 +70,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { usePatients } from "@/hooks/usePatients";
 import { useHealthUnits } from "@/hooks/useHealthUnits";
 import type { Patient } from "@/hooks/useScheduling";
+import { parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
 
 function fmtBR(d?: string | null) {
   if (!d) return "—";
@@ -1149,10 +1150,10 @@ function RenewLoanModal({
   useEffect(() => {
     if (loan) {
       const today = new Date();
-      const currentExpected = new Date(loan.expected_return_date + "T12:00:00");
-      const baseDate = currentExpected > today ? currentExpected : today;
+      const currentExpected = parseValidLocalDate(loan.expected_return_date);
+      const baseDate = currentExpected && currentExpected > today ? currentExpected : today;
       baseDate.setDate(baseDate.getDate() + 14);
-      setNewDate(baseDate.toISOString().split("T")[0]);
+      setNewDate(toLocalDateKey(baseDate) ?? "");
     }
   }, [loan, open]);
 
