@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { formatValidLocalDate } from "@/lib/dateUtils";
 import { useDebounce } from "@/hooks/use-debounce";
 import { printImplanonReport } from "@/lib/printImplanon";
+import { printImplanonRecord } from "@/lib/printImplanon";
 import { toast } from "sonner";
 import {
   Syringe,
@@ -46,6 +47,8 @@ import {
   FileDown,
   ClipboardList,
   Filter,
+  Printer,
+  Pencil,
 } from "lucide-react";
 
 const db = supabase as any;
