@@ -875,6 +875,79 @@ export default function ImplanonManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ══════════════════════════════════════════════════════════════
+          Dialog — Editar registro
+      ══════════════════════════════════════════════════════════════ */}
+      <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-primary" />
+              Editar registro — {editing?.patient?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 py-1">
+            <div className="space-y-1 md:col-span-2">
+              <Label>Situação</Label>
+              <Select
+                value={editForm.status ?? "pending"}
+                onValueChange={(v) => setEditForm((p) => ({ ...p, status: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Aguardando liberação</SelectItem>
+                  <SelectItem value="released">Liberado</SelectItem>
+                  <SelectItem value="applied">Aplicado</SelectItem>
+                  <SelectItem value="removed">Retirado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {[
+              { k: "released_at", l: "Data de liberação", t: "date" },
+              { k: "applied_at", l: "Data de aplicação", t: "date" },
+              { k: "expected_removal_at", l: "Previsão de retirada", t: "date" },
+              { k: "removed_at", l: "Data de retirada", t: "date" },
+              { k: "lot", l: "Lote", t: "text" },
+              { k: "lot_expiry", l: "Validade do lote", t: "date" },
+              { k: "dum", l: "DUM", t: "date" },
+              { k: "application_site", l: "Local de aplicação", t: "text" },
+              { k: "professional", l: "Profissional responsável", t: "text" },
+            ].map((f) => (
+              <div key={f.k} className="space-y-1">
+                <Label>{f.l}</Label>
+                <Input
+                  type={f.t}
+                  value={editForm[f.k] ?? ""}
+                  onChange={(e) => setEditForm((p) => ({ ...p, [f.k]: e.target.value }))}
+                />
+              </div>
+            ))}
+            <div className="space-y-1 md:col-span-2">
+              <Label>Indicação</Label>
+              <Input
+                value={editForm.notes ?? ""}
+                onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => editing && printImplanonRecord(editing)}
+            >
+              <Printer className="w-4 h-4" /> Imprimir
+            </Button>
+            <Button onClick={saveEdit} disabled={update.isPending}>
+              {update.isPending ? "Salvando..." : "Salvar alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
