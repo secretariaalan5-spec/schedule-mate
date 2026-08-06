@@ -36,6 +36,7 @@ import MergePatientsDialog from "@/components/MergePatientsDialog";
 import PatientTimeline from "@/components/PatientTimeline";
 import { useLoans } from "@/hooks/useLoans";
 import { HandCoins } from "lucide-react";
+import { parseValidLocalDate } from "@/lib/dateUtils";
 
 function PatientLoansSection({ patientId }: { patientId: string }) {
   const { data = [] } = useLoans(patientId);
@@ -48,11 +49,12 @@ function PatientLoansSection({ patientId }: { patientId: string }) {
         <HandCoins className="w-3.5 h-3.5" /> Empréstimos
       </div>
       {active.map((l) => {
-        const [y, m, d] = l.expected_return_date.split("T")[0].split("-").map(Number);
-        const target = new Date(y, (m ?? 1) - 1, d ?? 1);
+        const target = parseValidLocalDate(l.expected_return_date);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const diff = target
+          ? Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+          : null;
 
         return (
           <div key={l.id} className="text-xs flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -63,14 +65,18 @@ function PatientLoansSection({ patientId }: { patientId: string }) {
               variant="outline"
               className={cn(
                 "text-[10px] py-0 px-1.5 font-bold",
-                diff < 0
+                diff === null
+                  ? "text-muted-foreground border-border bg-muted"
+                  : diff < 0
                   ? "text-rose-700 border-rose-300 bg-rose-50"
                   : diff === 0
                   ? "text-amber-700 border-amber-300 bg-amber-50"
                   : "text-emerald-700 border-emerald-300 bg-emerald-50"
               )}
             >
-              {diff < 0
+              {diff === null
+                ? "Data inválida"
+                : diff < 0
                 ? `Vencido há ${Math.abs(diff)}d`
                 : diff === 0
                 ? "Vence hoje"
