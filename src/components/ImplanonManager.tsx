@@ -133,6 +133,9 @@ export default function ImplanonManager() {
   const [filterTo, setFilterTo]     = useState("");
   const [applyDates, setApplyDates] = useState<Record<string, string>>({});
   const [collapsedUnits, setCollapsedUnits] = useState<Set<string>>(new Set());
+  const [expandedRecords, setExpandedRecords] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<ImplanonRecord | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
 
   /* ── form state ──────────────────────────────────────────────────── */
   const [nameTerm, setNameTerm]         = useState("");        // o que o user está digitando
@@ -256,6 +259,54 @@ export default function ImplanonManager() {
       else next.add(unit);
       return next;
     });
+  };
+
+  const toggleRecord = (id: string) => {
+    setExpandedRecords((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const openEdit = (r: ImplanonRecord) => {
+    setEditing(r);
+    setEditForm({
+      status: r.status,
+      released_at: r.released_at ?? "",
+      applied_at: r.applied_at ?? "",
+      lot: r.lot ?? "",
+      lot_expiry: r.lot_expiry ?? "",
+      expected_removal_at: r.expected_removal_at ?? "",
+      removed_at: r.removed_at ?? "",
+      dum: r.dum ?? "",
+      professional: r.professional ?? "",
+      application_site: r.application_site ?? "",
+      notes: r.notes ?? "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    const v = (k: string) => (editForm[k]?.trim() ? editForm[k].trim() : null);
+    await update.mutateAsync({
+      id: editing.id,
+      updates: {
+        status: (editForm.status as ImplanonRecord["status"]) || editing.status,
+        released_at: v("released_at"),
+        applied_at: v("applied_at"),
+        lot: v("lot"),
+        lot_expiry: v("lot_expiry"),
+        expected_removal_at: v("expected_removal_at"),
+        removed_at: v("removed_at"),
+        dum: v("dum"),
+        professional: v("professional"),
+        application_site: v("application_site"),
+        notes: v("notes"),
+      },
+    });
+    setEditing(null);
   };
 
   /* ── submit ─────────────────────────────────────────────────────── */
