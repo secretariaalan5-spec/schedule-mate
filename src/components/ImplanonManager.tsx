@@ -23,8 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatValidLocalDate } from "@/lib/dateUtils";
 import { useDebounce } from "@/hooks/use-debounce";
-import { printImplanonReport } from "@/lib/printImplanon";
-import { printImplanonRecord } from "@/lib/printImplanon";
+import { printImplanonReport, printImplanonRecord } from "@/lib/printImplanon";
 import { toast } from "sonner";
 import {
   Syringe,
@@ -71,6 +70,56 @@ function calcAge(dob: string | null | undefined): number | null {
   const m = now.getMonth() - birth.getMonth();
   if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
   return age >= 0 ? age : null;
+}
+
+function formatRemainingTime(dateStr: string | null | undefined): { text: string; isExpired: boolean; isSoon: boolean; days: number } | null {
+  if (!dateStr) return null;
+  const target = new Date(`${dateStr}T12:00:00`);
+  if (!Number.isFinite(target.getTime())) return null;
+
+  const now = new Date();
+  now.setHours(12, 0, 0, 0);
+
+  const diffTime = target.getTime() - now.getTime();
+  const days = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  if (days < 0) {
+    const absDays = Math.abs(days);
+    if (absDays >= 365) {
+      const years = Math.floor(absDays / 365);
+      const months = Math.floor((absDays % 365) / 30);
+      const yearStr = years > 1 ? `${years} anos` : `${years} ano`;
+      const monthStr = months > 0 ? ` e ${months} ${months > 1 ? "meses" : "mês"}` : "";
+      return { text: `Vencido há ${yearStr}${monthStr} (${absDays} dias)`, isExpired: true, isSoon: false, days };
+    }
+    if (absDays >= 30) {
+      const months = Math.floor(absDays / 30);
+      const monthStr = months > 1 ? `${months} meses` : `${months} mês`;
+      return { text: `Vencido há ${monthStr} (${absDays} dias)`, isExpired: true, isSoon: false, days };
+    }
+    return { text: `Vencido há ${absDays} ${absDays === 1 ? "dia" : "dias"}`, isExpired: true, isSoon: false, days };
+  }
+
+  if (days === 0) {
+    return { text: "Vence hoje!", isExpired: false, isSoon: true, days: 0 };
+  }
+
+  if (days >= 365) {
+    const years = Math.floor(days / 365);
+    const months = Math.floor((days % 365) / 30);
+    const yearStr = years > 1 ? `${years} anos` : `${years} ano`;
+    const monthStr = months > 0 ? ` e ${months} ${months > 1 ? "meses" : "mês"}` : "";
+    return { text: `Faltam ${yearStr}${monthStr} (${days} dias)`, isExpired: false, isSoon: false, days };
+  }
+
+  if (days >= 30) {
+    const months = Math.floor(days / 30);
+    const remainingDays = days % 30;
+    const dayStr = remainingDays > 0 ? ` e ${remainingDays}d` : "";
+    return { text: `Faltam ${months} ${months > 1 ? "meses" : "mês"}${dayStr} (${days} dias)`, isExpired: false, isSoon: days <= 90, days };
+  }
+
+  return { text: `Faltam ${days} ${days === 1 ? "dia" : "dias"}`, isExpired: false, isSoon: true, days };
 }
 
 /* ─── types ────────────────────────────────────────────────────────────── */
@@ -138,8 +187,8 @@ export default function ImplanonManager() {
   const [editForm, setEditForm] = useState<Record<string, string>>({});
 
   /* ── form state ──────────────────────────────────────────────────── */
-  const [nameTerm, setNameTerm]         = useState("");        // o que o user está digitando
-  const [matchedPatient, setMatchedPatient] = useState<PatientLite | null>(null); // paciente encontrada
+  const [nameTerm, setNameTerm]         = useState("");
+  const [matchedPatient, setMatchedPatient] = useState<PatientLite | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [cpf, setCpf]                   = useState("");
   const [dob, setDob]                   = useState("");
@@ -183,18 +232,16 @@ export default function ImplanonManager() {
   }, [records, healthUnits]);
 
   const indicators = useMemo(() => {
-    const applied    = records.filter((r) => r.status === "applied");
-    const expiring   = applied.filter((r) => { const d = daysUntil(r.expected_removal_at); return d !== null && d >= 0 && d <= 90; });
-    const overdue    = applied.filter((r) => { const d = daysUntil(r.expected_removal_at); return d !== null && d < 0; });
-    const lotExpiring = records.filter((r) => { const d = daysUntil(r.lot_expiry); return r.status !== "removed" && d !== null && d <= 60; });
+    const applied  = records.filter((r) => r.status === "applied");
+    const expiring = applied.filter((r) => { const d = daysUntil(r.expected_removal_at); return d !== null && d >= 0 && d <= 90; });
+    const overdue  = applied.filter((r) => { const d = daysUntil(r.expected_removal_at); return d !== null && d < 0; });
     return {
-      pending:     records.filter((r) => r.status === "pending").length,
-      released:    records.filter((r) => r.status === "released").length,
-      applied:     applied.length,
-      removed:     records.filter((r) => r.status === "removed").length,
-      expiring:    expiring.length,
-      overdue:     overdue.length,
-      lotExpiring: lotExpiring.length,
+      pending:  records.filter((r) => r.status === "pending").length,
+      released: records.filter((r) => r.status === "released").length,
+      applied:  applied.length,
+      removed:  records.filter((r) => r.status === "removed").length,
+      expiring: expiring.length,
+      overdue:  overdue.length,
     };
   }, [records]);
 
@@ -211,7 +258,6 @@ export default function ImplanonManager() {
       if (filterTo && (!ref || ref > filterTo)) return false;
       if (t) return (
         r.patient?.name?.toLowerCase().includes(t) ||
-        (r.lot ?? "").toLowerCase().includes(t) ||
         (r.professional ?? "").toLowerCase().includes(t) ||
         (r.notes ?? "").toLowerCase().includes(t) ||
         (r.patient?.psf ?? "").toLowerCase().includes(t)
@@ -296,8 +342,6 @@ export default function ImplanonManager() {
       status: r.status,
       released_at: r.released_at ?? "",
       applied_at: r.applied_at ?? "",
-      lot: r.lot ?? "",
-      lot_expiry: r.lot_expiry ?? "",
       expected_removal_at: r.expected_removal_at ?? "",
       removed_at: r.removed_at ?? "",
       dum: r.dum ?? "",
@@ -329,8 +373,6 @@ export default function ImplanonManager() {
         status: (editForm.status as ImplanonRecord["status"]) || editing.status,
         released_at: v("released_at"),
         applied_at: v("applied_at"),
-        lot: v("lot"),
-        lot_expiry: v("lot_expiry"),
         expected_removal_at: v("expected_removal_at"),
         removed_at: v("removed_at"),
         dum: v("dum"),
@@ -353,9 +395,7 @@ export default function ImplanonManager() {
       let patientId: string;
 
       if (matchedPatient) {
-        /* paciente já existe — usa o ID dela */
         patientId = matchedPatient.id;
-        /* atualiza contato/unidade se o usuário mudou */
         const updates: Record<string, unknown> = {};
         const cpfClean = cpf.replace(/\D/g, "") || null;
         if (cpfClean && cpfClean !== (matchedPatient.cpf ?? "").replace(/\D/g, "")) {
@@ -369,7 +409,6 @@ export default function ImplanonManager() {
           if (upErr) throw upErr;
         }
       } else {
-        /* nova paciente — verifica duplicata por CPF antes de inserir */
         const cpfClean = cpf.replace(/\D/g, "") || null;
         let existingId: string | null = null;
 
@@ -408,7 +447,6 @@ export default function ImplanonManager() {
         }
       }
 
-      /* cria o registro de implanon */
       await create.mutateAsync({
         patient_id:  patientId,
         released_at: (initialStatus === "released" || initialStatus === "applied") ? (releasedAt || today()) : null,
@@ -430,12 +468,12 @@ export default function ImplanonManager() {
 
   /* ── KPI cards ──────────────────────────────────────────────────── */
   const kpiCards = [
-    { label: "Aguardando",      value: indicators.pending,     icon: ClipboardList,cls: "text-amber-600 bg-amber-50" },
-    { label: "Liberados",       value: indicators.released,    icon: FileClock,    cls: "text-sky-600 bg-sky-50" },
-    { label: "Aplicados ativos",value: indicators.applied,     icon: CheckCircle2, cls: "text-emerald-600 bg-emerald-50" },
-    { label: "Retirada próxima",value: indicators.expiring,    icon: CalendarClock,cls: "text-amber-600 bg-amber-50" },
-    { label: "Retirada vencida",value: indicators.overdue,     icon: AlertTriangle,cls: "text-red-600 bg-red-50" },
-    { label: "Retirados",       value: indicators.removed,     icon: Syringe,      cls: "text-slate-600 bg-slate-100" },
+    { label: "Aguardando liberação", value: indicators.pending,  icon: ClipboardList, cls: "text-amber-600 bg-amber-50" },
+    { label: "Liberados",            value: indicators.released, icon: FileClock,     cls: "text-sky-600 bg-sky-50" },
+    { label: "Aplicados ativos",     value: indicators.applied,  icon: CheckCircle2,  cls: "text-emerald-600 bg-emerald-50" },
+    { label: "Vencendo (até 90d)",   value: indicators.expiring, icon: CalendarClock, cls: "text-amber-600 bg-amber-50" },
+    { label: "Retirada vencida",     value: indicators.overdue,  icon: AlertTriangle, cls: "text-red-600 bg-red-50" },
+    { label: "Retirados",            value: indicators.removed,  icon: Syringe,       cls: "text-slate-600 bg-slate-100" },
   ];
 
   /* ══════════════════════════════════════════════════════════════════
@@ -450,7 +488,7 @@ export default function ImplanonManager() {
           <Syringe className="w-5 h-5 text-primary" />
           <div>
             <h2 className="font-bold text-lg leading-tight">Implanon</h2>
-            <p className="text-xs text-muted-foreground">Liberação, aplicação e retirada por unidade de saúde</p>
+            <p className="text-xs text-muted-foreground">Liberação, aplicação (validade de 3 anos) e retirada por unidade de saúde</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -495,7 +533,7 @@ export default function ImplanonManager() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 className="pl-9"
-                placeholder="Buscar por paciente, lote, profissional, indicação ou unidade..."
+                placeholder="Buscar por paciente, profissional, indicação ou unidade..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -591,13 +629,13 @@ export default function ImplanonManager() {
                     <div className="space-y-2 pl-1">
                       {unitRecords.map((r) => {
                         const meta   = STATUS_META[r.status] ?? STATUS_META.released;
-                        const d      = daysUntil(r.expected_removal_at);
+                        const remaining = r.status === "applied" ? formatRemainingTime(r.expected_removal_at) : null;
                         const patAge = calcAge(r.patient?.dob);
                         const isExpanded = expandedRecords.has(r.id);
                         const timeline =
                           r.status === "pending" ? null
                           : r.status === "released" ? `Liberado em ${formatValidLocalDate(r.released_at, "dd/MM/yyyy")}`
-                          : r.status === "applied" ? `Aplicado em ${formatValidLocalDate(r.applied_at, "dd/MM/yyyy")} · Prev. retirada ${formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}`
+                          : r.status === "applied" ? `Aplicado em ${formatValidLocalDate(r.applied_at, "dd/MM/yyyy")} · Validade (3 anos) até ${formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}`
                           : `Retirado em ${formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}`;
                         return (
                           <article key={r.id} className="rounded-xl border border-border bg-white shadow-sm overflow-hidden flex flex-col md:flex-row">
@@ -616,21 +654,29 @@ export default function ImplanonManager() {
                                 <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border", meta.cls)}>
                                   {meta.label}
                                 </span>
-                                {r.status === "applied" && d !== null && d < 0 && (
-                                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-red-50 text-red-700 border-red-200">
-                                    Retirada vencida
-                                  </span>
-                                )}
-                                {r.status === "applied" && d !== null && d >= 0 && d <= 90 && (
-                                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
-                                    Retirada em {d}d
+                                {r.status === "applied" && remaining && (
+                                  <span className={cn(
+                                    "text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5",
+                                    remaining.isExpired
+                                      ? "bg-red-50 text-red-700 border-red-200"
+                                      : remaining.isSoon
+                                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  )}>
+                                    <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+                                    {remaining.text}
                                   </span>
                                 )}
                               </div>
 
                               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
                                 {r.patient?.cpf && <span className="flex items-center gap-1"><BadgeCheck className="w-3 h-3" />{maskCpf(r.patient.cpf)}</span>}
-                                {patAge !== null && <span className="flex items-center gap-1"><Cake className="w-3 h-3" />{patAge} anos</span>}
+                                {patAge !== null && (
+                                  <span className="flex items-center gap-1 font-medium text-foreground/80">
+                                    <Cake className="w-3 h-3 text-emerald-600" />
+                                    <b>{patAge} anos</b>
+                                  </span>
+                                )}
                                 {r.patient?.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{r.patient.phone}</span>}
                                 {timeline && <span className="flex items-center gap-1"><CalendarClock className="w-3 h-3" />{timeline}</span>}
                               </div>
@@ -646,10 +692,8 @@ export default function ImplanonManager() {
                                   <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                                     <span>Liberação: {formatValidLocalDate(r.released_at, "dd/MM/yyyy")}</span>
                                     <span>Aplicação: {formatValidLocalDate(r.applied_at, "dd/MM/yyyy")}</span>
-                                    <span>Prev. retirada: {formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}</span>
-                                    <span>Retirada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}</span>
-                                    <span>Lote: {r.lot ?? "—"}</span>
-                                    <span>Validade: {formatValidLocalDate(r.lot_expiry, "dd/MM/yyyy")}</span>
+                                    <span>Validade (3 anos): {formatValidLocalDate(r.expected_removal_at, "dd/MM/yyyy")}</span>
+                                    <span>Retirada realizada: {formatValidLocalDate(r.removed_at, "dd/MM/yyyy")}</span>
                                     <span>DUM: {formatValidLocalDate(r.dum, "dd/MM/yyyy")}</span>
                                     <span>Local: {r.application_site ?? "—"}</span>
                                     <span>Prof.: {r.professional ?? "—"}</span>
@@ -695,9 +739,23 @@ export default function ImplanonManager() {
                                   />
                                   <Button
                                     size="sm"
-                                    onClick={() =>
-                                      update.mutate({ id: r.id, updates: { applied_at: applyDates[r.id] || today() } })
-                                    }
+                                    onClick={() => {
+                                      const appliedDate = applyDates[r.id] || today();
+                                      const d = new Date(`${appliedDate}T12:00:00`);
+                                      let expectedRemoval = null;
+                                      if (Number.isFinite(d.getTime())) {
+                                        d.setFullYear(d.getFullYear() + 3);
+                                        expectedRemoval = d.toISOString().slice(0, 10);
+                                      }
+                                      update.mutate({
+                                        id: r.id,
+                                        updates: {
+                                          applied_at: appliedDate,
+                                          expected_removal_at: expectedRemoval,
+                                          status: "applied",
+                                        },
+                                      });
+                                    }}
                                   >
                                     Aplicar
                                   </Button>
@@ -749,7 +807,6 @@ export default function ImplanonManager() {
               <Label>Nome da paciente <span className="text-destructive">*</span></Label>
 
               {matchedPatient ? (
-                /* Paciente selecionada — exibe card compacto */
                 <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
                   <UserCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -767,7 +824,6 @@ export default function ImplanonManager() {
                   </button>
                 </div>
               ) : (
-                /* Campo de busca + dropdown */
                 <div className="relative">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -783,7 +839,6 @@ export default function ImplanonManager() {
                     />
                   </div>
 
-                  {/* Dropdown de sugestões */}
                   {showDropdown && (suggestions ?? []).length > 0 && (
                     <div className="absolute z-50 w-full mt-1 rounded-lg border border-border bg-white shadow-lg divide-y overflow-hidden">
                       <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40">
@@ -813,7 +868,6 @@ export default function ImplanonManager() {
                     </div>
                   )}
 
-                  {/* Indicador de nova paciente */}
                   {nameTerm.trim().length >= 2 && (suggestions ?? []).length === 0 && (
                     <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                       <UserPlus className="w-3.5 h-3.5 text-primary" />
@@ -843,6 +897,12 @@ export default function ImplanonManager() {
                   value={dob}
                   onChange={(e) => setDob(e.target.value)}
                 />
+                {calcAge(dob) !== null && (
+                  <p className="text-[11px] font-bold text-emerald-700 flex items-center gap-1 mt-1 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5 w-fit">
+                    <Cake className="w-3.5 h-3.5 text-emerald-600" />
+                    {calcAge(dob)} anos de idade
+                  </p>
+                )}
               </div>
             </div>
 
@@ -914,14 +974,22 @@ export default function ImplanonManager() {
             )}
 
             {initialStatus === "applied" && computedRemoval && (
-              <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px]">
-                <CalendarClock className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="text-amber-900">
-                  Previsão de retirada:{" "}
-                  <b>{new Date(`${computedRemoval}T12:00:00`).toLocaleDateString("pt-BR")}</b>
-                  {" — em "}
-                  <b>{daysUntil(computedRemoval)} dias</b>
-                </span>
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs space-y-1">
+                <div className="flex items-center gap-2 text-emerald-900 font-semibold">
+                  <CalendarClock className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Validade do Implanon (3 anos)</span>
+                </div>
+                <p className="text-[11px] text-emerald-800">
+                  Data limite: <b>{formatValidLocalDate(computedRemoval, "dd/MM/yyyy")}</b>
+                </p>
+                {(() => {
+                  const rem = formatRemainingTime(computedRemoval);
+                  return rem ? (
+                    <p className="text-[11px] font-bold text-emerald-900 mt-1">
+                      ⏳ {rem.text}
+                    </p>
+                  ) : null;
+                })()}
               </div>
             )}
 
@@ -984,6 +1052,12 @@ export default function ImplanonManager() {
                 value={editForm.dob ?? ""}
                 onChange={(e) => setEditForm((p) => ({ ...p, dob: e.target.value }))}
               />
+              {calcAge(editForm.dob) !== null && (
+                <p className="text-[11px] font-bold text-emerald-700 flex items-center gap-1 mt-1 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5 w-fit">
+                  <Cake className="w-3.5 h-3.5 text-emerald-600" />
+                  {calcAge(editForm.dob)} anos de idade
+                </p>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Posto de Saúde (PSF)</Label>
@@ -1023,13 +1097,12 @@ export default function ImplanonManager() {
                 </SelectContent>
               </Select>
             </div>
+
             {[
               { k: "released_at", l: "Data de liberação", t: "date" },
               { k: "applied_at", l: "Data de aplicação", t: "date" },
-              { k: "expected_removal_at", l: "Previsão de retirada", t: "date" },
+              { k: "expected_removal_at", l: "Validade (Previsão de retirada 3 anos)", t: "date" },
               { k: "removed_at", l: "Data de retirada", t: "date" },
-              { k: "lot", l: "Lote", t: "text" },
-              { k: "lot_expiry", l: "Validade do lote", t: "date" },
               { k: "dum", l: "DUM", t: "date" },
               { k: "application_site", l: "Local de aplicação", t: "text" },
               { k: "professional", l: "Profissional responsável", t: "text" },
@@ -1039,10 +1112,59 @@ export default function ImplanonManager() {
                 <Input
                   type={f.t}
                   value={editForm[f.k] ?? ""}
-                  onChange={(e) => setEditForm((p) => ({ ...p, [f.k]: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditForm((p) => {
+                      const next = { ...p, [f.k]: val };
+                      if (f.k === "applied_at" && val) {
+                        const d = new Date(`${val}T12:00:00`);
+                        if (Number.isFinite(d.getTime())) {
+                          d.setFullYear(d.getFullYear() + 3);
+                          next.expected_removal_at = d.toISOString().slice(0, 10);
+                        }
+                      }
+                      return next;
+                    });
+                  }}
                 />
               </div>
             ))}
+
+            {editForm.status === "applied" && (
+              <div className="space-y-1 md:col-span-2">
+                {(() => {
+                  const rem = formatRemainingTime(editForm.expected_removal_at);
+                  return (
+                    <div className={cn(
+                      "rounded-lg border px-3 py-2 text-xs flex items-center justify-between gap-2 mt-1",
+                      rem?.isExpired
+                        ? "border-red-200 bg-red-50 text-red-900"
+                        : rem?.isSoon
+                          ? "border-amber-200 bg-amber-50 text-amber-900"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        <CalendarClock className="w-4 h-4 shrink-0" />
+                        <div>
+                          <p className="font-semibold">Validade do Implanon (3 anos)</p>
+                          {editForm.expected_removal_at && (
+                            <p className="text-[11px] opacity-80">
+                              Data limite: <b>{formatValidLocalDate(editForm.expected_removal_at, "dd/MM/yyyy")}</b>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {rem && (
+                        <span className="font-bold px-2 py-1 rounded bg-white/80 border shadow-xs">
+                          {rem.text}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             <div className="space-y-1 md:col-span-2">
               <Label>Indicação</Label>
               <Input

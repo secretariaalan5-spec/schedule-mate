@@ -107,7 +107,6 @@ export function printImplanonReport(
   const body = ordered
     .map(
       ([unit, list]) => {
-        /* count alerts for unit summary */
         const overdueCount = list.filter(r => {
           if (r.status !== "applied") return false;
           const d = daysUntil(r.expected_removal_at);
@@ -152,7 +151,6 @@ export function printImplanonReport(
   const now = new Date();
   const generated = `${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 
-  /* tally totals for summary bar */
   const totalOverdue = records.filter(r => { const d = daysUntil(r.expected_removal_at); return r.status === "applied" && d !== null && d < 0; }).length;
   const totalSoon    = records.filter(r => { const d = daysUntil(r.expected_removal_at); return r.status === "applied" && d !== null && d >= 0 && d <= 90; }).length;
   const totalApplied = records.filter(r => r.status === "applied").length;
@@ -174,7 +172,6 @@ export function printImplanonReport(
   .chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
   .chips span{font-size:8.5px;border:1px solid #cbd5e1;background:#f1f5f9;border-radius:99px;padding:2px 7px;color:#334155;}
 
-  /* summary bar */
   .summary{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
   .sum-card{padding:5px 10px;border-radius:6px;border:1px solid;font-size:8.5px;font-weight:bold;text-align:center;}
   .sum-card span{display:block;font-size:15px;font-weight:900;}
@@ -194,7 +191,6 @@ export function printImplanonReport(
   th{background:#eef3f8;border:1px solid #cdd8e3;padding:3px 5px;text-align:left;font-size:8px;text-transform:uppercase;letter-spacing:.3px;}
   td{border:1px solid #dbe3ec;padding:3px 5px;vertical-align:middle;}
   tbody tr:nth-child(even){background:#fafcfe;}
-  /* urgency row highlights */
   tbody tr.overdue td{background:#fff5f5;}
   tbody tr.soon td{background:#fffdf0;}
   .c{text-align:center;}
@@ -225,7 +221,6 @@ export function printImplanonReport(
 
   <div class="chips">${chips.map((c) => `<span>${esc(c)}</span>`).join("")}</div>
 
-  <!-- summary bar -->
   <div class="summary">
     <div class="sum-card sum-applied"><span>${totalApplied}</span>Aplicados</div>
     <div class="sum-card sum-soon"><span>${totalSoon}</span>Retirada próx.</div>
@@ -254,6 +249,7 @@ export function printImplanonReport(
     doPrint();
   }
 }
+
 /* ── Ficha individual (1 registro por folha A4) ────────────────────── */
 export function printImplanonRecord(r: ImplanonRecord) {
   const row = (label: string, value: string) =>
@@ -309,9 +305,7 @@ export function printImplanonRecord(r: ImplanonRecord) {
     ${row("Situação", STATUS_LABEL[r.status] ?? r.status)}
     ${row("Data de liberação", fmt(r.released_at))}
     ${row("Data de aplicação", fmt(r.applied_at))}
-    ${row("Lote", String(r.lot ?? "—"))}
-    ${row("Validade do lote", fmt(r.lot_expiry))}
-    ${row("Previsão de retirada", fmt(r.expected_removal_at))}
+    ${row("Previsão de retirada (3 anos)", fmt(r.expected_removal_at))}
     ${row("Data de retirada", fmt(r.removed_at))}
     ${row("Local de aplicação", String(r.application_site ?? "—"))}
     ${row("DUM", fmt(r.dum))}
