@@ -338,21 +338,21 @@ export default function Dashboard() {
   return (
     <>
     <div className="flex h-[100dvh] overflow-hidden bg-background">
-      <Sidebar activeTab={tab} onTabChange={(t) => setTab(t as Tab)} onSignOut={signOut} />
+      {!isMobile && <Sidebar activeTab={tab} onTabChange={(t) => setTab(t as Tab)} onSignOut={signOut} />}
       
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
         
         {/* Mobile Top App Bar */}
         {isMobile && (
-          <header className="h-14 w-full bg-gradient-to-r from-[#0369a1] to-[#0284c7] flex justify-between items-center px-4 border-b border-sky-400/30 shrink-0 shadow-md z-30">
+          <header className="h-12 w-full bg-[#0369a1] flex justify-between items-center px-3 shrink-0 z-30">
             <div className="flex items-center gap-2">
-              <img src="/logo.png" className="w-7 h-7 object-contain bg-white rounded-full p-0.5 shadow-xs" alt="Logo Saúde da Mulher" />
-              <h1 className="text-sm font-bold text-white uppercase tracking-wider">Saúde da Mulher</h1>
+              <img src="/logo.png" width={24} height={24} loading="lazy" decoding="async" className="w-6 h-6 object-contain bg-white rounded-full p-0.5" alt="Logo Saúde da Mulher" />
+              <h1 className="text-[13px] font-bold text-white uppercase tracking-wide">Saúde da Mulher</h1>
             </div>
             <button
               onClick={handleExport}
-              className="bg-white/20 hover:bg-white/30 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-all shadow-xs backdrop-blur-sm border border-white/20"
+              className="bg-white/15 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 active:opacity-80"
             >
               <Download className="w-3.5 h-3.5" />
               Exportar
