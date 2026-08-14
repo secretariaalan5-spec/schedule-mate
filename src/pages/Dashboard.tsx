@@ -467,29 +467,22 @@ export default function Dashboard() {
         {tab === "agenda" && (
           isMobile ? (
             /* MOBILE AGENDA VIEW — Scrollable single page */
-            <div className="flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden box-border p-4 space-y-6 pb-28 bg-slate-50/50">
+            <div className="flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden box-border p-3 space-y-3 pb-24 bg-slate-50/50">
               {/* Header Section */}
-              <div className="w-full max-w-full overflow-hidden">
-                <p className="text-label-bold text-on-surface-variant uppercase tracking-widest mb-1 text-[10px]">Agenda Selecionada</p>
-                <h2 className="text-headline-md font-headline-md text-on-surface uppercase font-bold text-lg leading-tight truncate">
-                  {sched.selectedDate ? formatDateFull(sched.selectedDate) : "Selecione uma data"}
-                </h2>
-              </div>
-
               {/* Horizontal Scrollable Date Picker */}
-              <div className="mb-4 w-full max-w-full overflow-hidden">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-title-sm text-on-surface text-sm capitalize font-bold">{currentMonthLabel}</span>
-                  <div className="flex gap-2">
-                    <button onClick={handlePrevWeek} className="p-1 hover:bg-surface-container rounded-full border border-outline-variant bg-white active:scale-95 transition-all shadow-xs">
+              <div className="w-full max-w-full overflow-hidden">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm capitalize font-bold text-on-surface">{currentMonthLabel}</span>
+                  <div className="flex gap-1.5">
+                    <button onClick={handlePrevWeek} className="p-1 rounded-full border border-outline-variant bg-white active:opacity-70">
                       <ChevronLeft className="w-4 h-4 text-on-surface" />
                     </button>
-                    <button onClick={handleNextWeek} className="p-1 hover:bg-surface-container rounded-full border border-outline-variant bg-white active:scale-95 transition-all shadow-xs">
+                    <button onClick={handleNextWeek} className="p-1 rounded-full border border-outline-variant bg-white active:opacity-70">
                       <ChevronLeft className="w-4 h-4 text-on-surface rotate-180" />
                     </button>
                   </div>
                 </div>
-                <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-2 w-full max-w-full">
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 w-full max-w-full">
                   {mobileDays.map((day) => {
                     const isSelected = day.dateStr === sched.selectedDate;
                     return (
@@ -497,68 +490,54 @@ export default function Dashboard() {
                         key={day.dateStr}
                         onClick={() => sched.setSelectedDate(day.dateStr)}
                         className={cn(
-                          "flex-shrink-0 flex flex-col items-center justify-center w-12 h-16 rounded-xl border transition-all cursor-pointer shadow-xs",
+                          "flex-shrink-0 flex flex-col items-center justify-center w-11 h-14 rounded-xl border cursor-pointer",
                           isSelected
-                            ? "bg-primary text-white shadow-md scale-105 ring-2 ring-primary/30 border-primary font-bold"
+                            ? "bg-primary text-white border-primary font-bold"
                             : day.isOccupied
-                              ? "bg-emerald-50/60 border-emerald-300 text-emerald-900 font-bold"
-                              : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                              ? "bg-emerald-50 border-emerald-300 text-emerald-900 font-bold"
+                              : "bg-white border-slate-200 text-slate-600"
                         )}
                       >
                         <span className={cn("text-[9px] font-bold tracking-wider", isSelected ? "text-white" : "text-slate-500")}>
                           {day.dayLabel}
                         </span>
                         <span className="text-sm font-black mt-0.5">{day.dayNum}</span>
-                        {day.isOccupied && !isSelected && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
-                        )}
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Occupancy Summary Card with 3D Depth */}
-              <article className="bg-white rounded-xl border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] p-4.5 w-full max-w-full box-border">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-title-sm text-primary text-sm font-bold">Status de Ocupação</h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-primary-fixed text-on-primary-fixed rounded">
-                    {Math.round((totalOccupied / (totalSlots || 32)) * 100)}%
+              {/* Compact occupancy summary */}
+              <div className="bg-white rounded-xl border border-slate-200 p-3 w-full max-w-full box-border">
+                <div className="flex items-baseline justify-between mb-2">
+                  <span className="text-xs font-bold text-on-surface-variant uppercase truncate">
+                    {sched.selectedDate ? formatDateFull(sched.selectedDate) : "Selecione uma data"}
+                  </span>
+                  <span className="text-xs font-black text-primary shrink-0 ml-2">
+                    {totalOccupied}/{totalSlots || 32}
                   </span>
                 </div>
-                <div className="flex items-baseline gap-1 mb-2">
-                  <span className="text-2xl font-black text-primary">{totalOccupied}</span>
-                  <span className="text-sm font-bold text-on-surface-variant">/ {totalSlots || 32}</span>
-                </div>
-                <div className="w-full bg-surface-container rounded-full h-2 mb-4 relative overflow-hidden">
+                <div className="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
                   <div
-                    className="bg-primary h-full rounded-full transition-all duration-300"
+                    className="bg-primary h-full rounded-full"
                     style={{ width: `${Math.min(100, Math.round((totalOccupied / (totalSlots || 32)) * 100))}%` }}
-                  ></div>
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-surface-container-low rounded-lg p-2.5 text-center">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase mb-0.5">Manhã</p>
-                    <p className="text-sm font-bold text-primary">{morningTotal - morningOccupied}</p>
-                    <p className="text-[9px] text-on-surface-variant font-medium">vagas livres</p>
-                  </div>
-                  <div className="bg-surface-container-low rounded-lg p-2.5 text-center">
-                    <p className="text-[10px] font-bold text-on-surface-variant uppercase mb-0.5">Tarde</p>
-                    <p className="text-sm font-bold text-secondary">{afternoonTotal - afternoonOccupied}</p>
-                    <p className="text-[9px] text-on-surface-variant font-medium">vagas livres</p>
-                  </div>
-                </div>
-              </article>
+                <p className="mt-2 text-[10px] font-bold text-on-surface-variant">
+                  Manhã: {morningTotal - morningOccupied} livres · Tarde: {afternoonTotal - afternoonOccupied} livres
+                </p>
+              </div>
 
               {/* Segmented Control for Turnos */}
-              <div className="flex bg-surface-container-high p-1 rounded-xl">
+              <div className="flex bg-surface-container-low p-1 rounded-xl">
                 <button
                   onClick={() => setMobileShift("morning")}
                   className={cn(
-                    "flex-1 py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                    "flex-1 py-1.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5",
                     mobileShift === "morning"
-                      ? "bg-white text-primary shadow-sm"
-                      : "text-on-surface-variant hover:bg-white/40"
+                      ? "bg-white text-primary"
+                      : "text-on-surface-variant"
                   )}
                 >
                   <Sun className="w-3.5 h-3.5" />
@@ -567,10 +546,10 @@ export default function Dashboard() {
                 <button
                   onClick={() => setMobileShift("afternoon")}
                   className={cn(
-                    "flex-1 py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                    "flex-1 py-1.5 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5",
                     mobileShift === "afternoon"
-                      ? "bg-white text-primary shadow-sm"
-                      : "text-on-surface-variant hover:bg-white/40"
+                      ? "bg-white text-primary"
+                      : "text-on-surface-variant"
                 )}
                 >
                   <Moon className="w-3.5 h-3.5" />
