@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useMemo, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, UserPlus, Printer, Clock, Edit2 } from "lucide-react";
@@ -28,14 +28,19 @@ interface Props {
   onOpenEditDialog: (appt: Appointment, variant: string) => void;
 }
 
-export default function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment, preselectedPatient, onClearPreselectedPatient, onOpenNewDialog, onOpenEditDialog }: Props) {
+function SlotPanel({ title, slots, appointments, date, variant, defaultTime, vacancies, onAdd, onRemove, onPatientsChanged, onRefresh, onUpdateTime, onUpdateAppointment, preselectedPatient, onClearPreselectedPatient, onOpenNewDialog, onOpenEditDialog }: Props) {
   const isMobile = useIsMobile();
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
   const [editTimeValue, setEditTimeValue] = useState("");
 
-  const getAppointment = (slot: number) => appointments.find(a => a.slot === slot);
+  const bySlot = useMemo(() => {
+    const m = new Map<number, Appointment>();
+    appointments.forEach(a => m.set(a.slot, a));
+    return m;
+  }, [appointments]);
+  const getAppointment = (slot: number) => bySlot.get(slot);
 
   const occupied = slots.filter(s => getAppointment(s)).length;
   const printedCount = appointments.filter(a => a.printed).length;
@@ -85,10 +90,10 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
   return (
     <div className="flex flex-col h-full overflow-hidden bg-transparent">
       {/* Header */}
-      <header className="p-4 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 bg-transparent">
+      <header className="p-2 sm:p-4 pb-2 sm:pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 shrink-0 bg-transparent">
         <div className="flex items-center gap-2">
           <div className={cn(
-            "w-2.5 h-2.5 rounded-full shrink-0 animate-pulse",
+            "w-2.5 h-2.5 rounded-full shrink-0",
             variant === "morning" ? "bg-orange-500" : "bg-primary"
           )} />
           <h3 className="text-title-sm font-bold uppercase text-on-surface">{title}</h3>
@@ -131,7 +136,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
       </header>
 
       {/* Cards */}
-      <div className="flex-1 overflow-y-auto no-scrollbar p-1 pb-10 space-y-3">
+      <div className="flex-1 overflow-y-auto no-scrollbar p-1 pb-10 space-y-1.5 sm:space-y-3">
         {slots.map(slot => {
           const appt = getAppointment(slot);
           const slotNum = String(slot).padStart(2, "0");
@@ -143,7 +148,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
               {appt ? (
                 <div
                   className={cn(
-                    "border rounded-lg shadow-sm flex gap-2.5 sm:gap-4 p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer group border-l-4",
+                    "border rounded-lg sm:shadow-sm flex gap-2.5 sm:gap-4 p-2.5 sm:p-4 sm:hover:shadow-md transition-colors cursor-pointer group border-l-4",
                     isPrinted
                       ? "bg-emerald-50/30 border-emerald-200 border-l-emerald-600"
                       : "bg-amber-50/40 border-amber-200 border-l-amber-500",
@@ -151,7 +156,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                   )}
                   onClick={(e) => handlePatientClick(e, appt)}
                 >
-                  <div className="flex flex-col items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                  <div className="flex flex-col items-center gap-1.5 sm:gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -185,7 +190,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2.5">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2.5">
                       <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                         {editingTimeId === appt.id ? (
                           <Input
@@ -223,7 +228,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                             : "bg-amber-100 text-amber-900 border border-amber-300"
                         )}
                       >
-                        <span className={cn("w-1.5 h-1.5 rounded-full", isPrinted ? "bg-emerald-600" : "bg-amber-500 animate-pulse")} />
+                        <span className={cn("w-1.5 h-1.5 rounded-full", isPrinted ? "bg-emerald-600" : "bg-amber-500")} />
                         {isPrinted ? "Impresso" : "Pendente"}
                       </span>
                     </div>
@@ -268,7 +273,7 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
                 /* Free Slot */
                 <div
                   onClick={() => onOpenNewDialog(slot, variant)}
-                  className="bg-white/50 border border-dashed border-outline-variant rounded-lg p-3.5 flex items-center justify-between text-on-surface-variant/60 hover:border-primary hover:text-primary hover:bg-white transition-all cursor-pointer group"
+                  className="bg-white/50 border border-dashed border-outline-variant rounded-lg p-2 sm:p-3.5 flex items-center justify-between text-on-surface-variant/60 hover:border-primary hover:text-primary hover:bg-white transition-colors cursor-pointer group"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-bold opacity-45">{slotNum}</span>
@@ -284,3 +289,5 @@ export default function SlotPanel({ title, slots, appointments, date, variant, d
     </div>
   );
 }
+
+export default memo(SlotPanel);
