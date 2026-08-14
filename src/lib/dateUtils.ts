@@ -57,3 +57,14 @@ export function toLocalDateKey(date: Date): string | null {
     return null;
   }
 }
+
+export function addYearsToLocalDateKey(
+  value: string | null | undefined,
+  years: number,
+): string | null {
+  const date = parseValidLocalDate(value);
+  if (!date || !Number.isInteger(years)) return null;
+
+  date.setFullYear(date.getFullYear() + years);
+  return toLocalDateKey(date);
+}

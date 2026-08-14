@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatValidLocalDate, parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
+import { addYearsToLocalDateKey, formatValidLocalDate, parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
 
 describe("dateUtils", () => {
   it("rejects legacy years outside the supported range", () => {
@@ -18,5 +18,11 @@ describe("dateUtils", () => {
   it("formats valid local dates", () => {
     expect(formatValidLocalDate("2026-08-04", "dd/MM/yyyy")).toBe("04/08/2026");
     expect(toLocalDateKey(new Date(2026, 7, 4, 12))).toBe("2026-08-04");
+  });
+
+  it("adds years without accepting malformed legacy values", () => {
+    expect(addYearsToLocalDateKey("2026-08-04", 3)).toBe("2029-08-04");
+    expect(addYearsToLocalDateKey("20001-09-11", 3)).toBeNull();
+    expect(addYearsToLocalDateKey("2026-02-31", 3)).toBeNull();
   });
 });

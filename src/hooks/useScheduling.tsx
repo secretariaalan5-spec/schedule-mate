@@ -4,7 +4,7 @@ import { DEFAULT_SHIFTS, useShifts } from "./useShifts";
 import { supabase } from "@/integrations/supabase/client";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { formatValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
+import { formatValidLocalDate, parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
 
 export interface Patient {
   id: string;
@@ -54,7 +54,10 @@ export function useScheduling() {
       }
       const counts: Record<string, number> = {};
       (data ?? []).forEach((row: any) => {
-        counts[row.date] = row.count;
+        if (typeof row.date !== "string" || !parseValidLocalDate(row.date)) return;
+        const count = Number(row.count);
+        if (!Number.isFinite(count) || count < 0) return;
+        counts[row.date.slice(0, 10)] = count;
       });
       return counts;
     },
