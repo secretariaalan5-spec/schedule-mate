@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { formatValidLocalDate } from "@/lib/dateUtils";
+import { addYearsToLocalDateKey, formatValidLocalDate, parseValidLocalDate } from "@/lib/dateUtils";
 import { useDebounce } from "@/hooks/use-debounce";
 import { printImplanonReport, printImplanonRecord } from "@/lib/printImplanon";
 import { toast } from "sonner";
@@ -55,16 +55,14 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /* ─── helpers ─────────────────────────────────────────────────────────── */
 function daysUntil(date: string | null) {
-  if (!date) return null;
-  const d = new Date(`${date}T12:00:00`);
-  if (!Number.isFinite(d.getTime())) return null;
+  const d = parseValidLocalDate(date);
+  if (!d) return null;
   return Math.round((d.getTime() - Date.now()) / 86400000);
 }
 
 function calcAge(dob: string | null | undefined): number | null {
-  if (!dob) return null;
-  const birth = new Date(`${dob}T12:00:00`);
-  if (!Number.isFinite(birth.getTime())) return null;
+  const birth = parseValidLocalDate(dob);
+  if (!birth) return null;
   const now = new Date();
   let age = now.getFullYear() - birth.getFullYear();
   const m = now.getMonth() - birth.getMonth();
@@ -73,9 +71,8 @@ function calcAge(dob: string | null | undefined): number | null {
 }
 
 function formatRemainingTime(dateStr: string | null | undefined): { text: string; isExpired: boolean; isSoon: boolean; days: number } | null {
-  if (!dateStr) return null;
-  const target = new Date(`${dateStr}T12:00:00`);
-  if (!Number.isFinite(target.getTime())) return null;
+  const target = parseValidLocalDate(dateStr);
+  if (!target) return null;
 
   const now = new Date();
   now.setHours(12, 0, 0, 0);
@@ -306,10 +303,7 @@ export default function ImplanonManager() {
   /* auto-compute expected removal: applied + 3 years */
   const computedRemoval = useMemo(() => {
     const refDate = appliedAt || today();
-    const d = new Date(`${refDate}T12:00:00`);
-    if (!Number.isFinite(d.getTime())) return null;
-    d.setFullYear(d.getFullYear() + 3);
-    return d.toISOString().slice(0, 10);
+    return addYearsToLocalDateKey(refDate, 3);
   }, [appliedAt]);
 
   const toggleUnit = (unit: string) => {
@@ -730,12 +724,7 @@ export default function ImplanonManager() {
                                     size="sm"
                                     onClick={() => {
                                       const appliedDate = applyDates[r.id] || today();
-                                      const d = new Date(`${appliedDate}T12:00:00`);
-                                      let expectedRemoval = null;
-                                      if (Number.isFinite(d.getTime())) {
-                                        d.setFullYear(d.getFullYear() + 3);
-                                        expectedRemoval = d.toISOString().slice(0, 10);
-                                      }
+                                      const expectedRemoval = addYearsToLocalDateKey(appliedDate, 3);
                                       update.mutate({
                                         id: r.id,
                                         updates: {
@@ -1103,11 +1092,7 @@ export default function ImplanonManager() {
                     setEditForm((p) => {
                       const next = { ...p, [f.k]: val };
                       if (f.k === "applied_at" && val) {
-                        const d = new Date(`${val}T12:00:00`);
-                        if (Number.isFinite(d.getTime())) {
-                          d.setFullYear(d.getFullYear() + 3);
-                          next.expected_removal_at = d.toISOString().slice(0, 10);
-                        }
+                        next.expected_removal_at = addYearsToLocalDateKey(val, 3) ?? "";
                       }
                       return next;
                     });

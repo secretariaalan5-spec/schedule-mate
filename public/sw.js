@@ -1,9 +1,7 @@
 // Recovery worker for installations still controlled by the former Workbox
-// PWA. Keep this file at the original /sw.js path for one release cycle.
-function isAppWorkboxCache(name) {
-  const isWorkboxBucket = /(^|-)precache-v\d+-|(^|-)runtime-|(^|-)googleAnalytics-/.test(name);
-  return isWorkboxBucket && name.endsWith(self.registration.scope);
-}
+// PWA. Cache Storage is isolated by origin, so clearing every bucket here is
+// the reliable way to remove app-shell caches whose generated names varied
+// between Workbox releases.
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -12,8 +10,7 @@ self.addEventListener("activate", (event) => {
     (async () => {
       try {
         const cacheNames = await caches.keys();
-        const staleAppCaches = cacheNames.filter(isAppWorkboxCache);
-        await Promise.allSettled(staleAppCaches.map((name) => caches.delete(name)));
+        await Promise.allSettled(cacheNames.map((name) => caches.delete(name)));
         await self.clients.claim();
         const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
         await Promise.allSettled(clients.map((client) => client.navigate(client.url)));
