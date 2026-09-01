@@ -467,7 +467,7 @@ export default function Dashboard() {
         {tab === "agenda" && (
           isMobile ? (
             /* MOBILE AGENDA VIEW — Scrollable single page */
-            <div className="flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden box-border p-3 space-y-3 pb-24 bg-slate-50/50">
+            <div className="flex-1 min-h-0 overflow-y-auto w-full max-w-full overflow-x-hidden box-border p-3 space-y-3 pb-28 bg-slate-50/50 [-webkit-overflow-scrolling:touch]">
               {/* Header Section */}
               {/* Horizontal Scrollable Date Picker */}
               <div className="w-full max-w-full overflow-hidden">
@@ -692,8 +692,8 @@ export default function Dashboard() {
 
         {/* Patients tab */}
         {tab === "pacientes" && (
-          <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
-            <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden p-3 md:p-6 pb-28 md:pb-6 [-webkit-overflow-scrolling:touch]">
+            <div className="md:h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-visible md:overflow-hidden">
               <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
                 <PatientManager onGetHistory={sched.getPatientHistory} />
               </Suspense>
@@ -703,8 +703,8 @@ export default function Dashboard() {
 
         {/* Health Units tab */}
         {tab === "unidades" && (
-          <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
-            <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden p-3 md:p-6 pb-28 md:pb-6 [-webkit-overflow-scrolling:touch]">
+            <div className="md:h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-visible md:overflow-hidden">
               <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
                 <HealthUnitsManager />
               </Suspense>
@@ -714,8 +714,8 @@ export default function Dashboard() {
 
         {/* Implanon tab */}
         {tab === "implanon" && (
-          <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
-            <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden p-3 md:p-6 pb-28 md:pb-6 [-webkit-overflow-scrolling:touch]">
+            <div className="md:h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-visible md:overflow-hidden">
               <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
                 <ImplanonManager />
               </Suspense>
@@ -725,8 +725,8 @@ export default function Dashboard() {
 
         {/* Loans tab */}
         {tab === "emprestimos" && (
-          <div className="flex-1 overflow-hidden p-6 pb-28 md:pb-6">
-            <div className="h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto md:overflow-hidden p-3 md:p-6 pb-28 md:pb-6 [-webkit-overflow-scrolling:touch]">
+            <div className="md:h-full bg-white rounded-xl border border-outline-variant shadow-sm overflow-visible md:overflow-hidden">
               <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: "#871e47" }}></div></div>}>
                 <LoanManager />
               </Suspense>
