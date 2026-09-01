@@ -44,7 +44,7 @@ function PatientLoansSection({ patientId }: { patientId: string }) {
   const active = data.filter((l) => !l.returned_at);
   const past = data.filter((l) => l.returned_at);
   return (
-    <div className="mb-3 p-3 rounded-lg border bg-primary/5 space-y-2">
+    <div className="p-3 rounded-xl border bg-primary/5 space-y-2">
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
         <HandCoins className="w-3.5 h-3.5" /> Empréstimos
       </div>
