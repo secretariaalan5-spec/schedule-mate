@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tansta
 import { supabase } from "@/integrations/supabase/client";
 import type { Patient } from "./useScheduling";
 import { toast } from "sonner";
+import { validLocalDateKeyOrNull } from "@/lib/dateUtils";
 
 const PAGE_SIZE = 50;
 
@@ -95,7 +96,10 @@ export function usePatients(search: string, filter: PatientsFilter = "all") {
         toast.error("Não foi possível carregar pacientes");
         return [];
       }
-      return data as Patient[];
+      return (data as Patient[]).map((patient) => ({
+        ...patient,
+        dob: validLocalDateKeyOrNull(patient.dob),
+      }));
     },
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === PAGE_SIZE ? allPages.length : undefined,

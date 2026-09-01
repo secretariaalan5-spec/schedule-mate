@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { syncPatientRegistry, type SharedPatientData } from "@/lib/patientRegistry";
+import { validLocalDateKeyOrNull } from "@/lib/dateUtils";
 
 const db = supabase as any;
 
@@ -52,7 +53,18 @@ export function useImplanon(patientId?: string) {
       if (patientId) q = q.eq("patient_id", patientId);
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as ImplanonRecord[];
+      return ((data ?? []) as ImplanonRecord[]).map((record) => ({
+        ...record,
+        released_at: validLocalDateKeyOrNull(record.released_at),
+        applied_at: validLocalDateKeyOrNull(record.applied_at),
+        lot_expiry: validLocalDateKeyOrNull(record.lot_expiry),
+        expected_removal_at: validLocalDateKeyOrNull(record.expected_removal_at),
+        removed_at: validLocalDateKeyOrNull(record.removed_at),
+        dum: validLocalDateKeyOrNull(record.dum),
+        patient: record.patient
+          ? { ...record.patient, dob: validLocalDateKeyOrNull(record.patient.dob) }
+          : record.patient,
+      }));
     },
   });
 

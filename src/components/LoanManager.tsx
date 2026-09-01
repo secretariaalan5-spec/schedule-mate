@@ -73,25 +73,24 @@ import type { Patient } from "@/hooks/useScheduling";
 import { parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
 
 function fmtBR(d?: string | null) {
-  if (!d) return "—";
-  const [y, m, day] = d.split("T")[0].split("-");
-  return y && m && day ? `${day}/${m}/${y}` : d;
+  const parsed = parseValidLocalDate(d);
+  if (!parsed) return "—";
+  return `${String(parsed.getDate()).padStart(2, "0")}/${String(parsed.getMonth() + 1).padStart(2, "0")}/${parsed.getFullYear()}`;
 }
 
 function daysDiff(dateStr: string) {
+  const target = parseValidLocalDate(dateStr);
+  if (!target) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const [y, m, d] = dateStr.split("T")[0].split("-").map(Number);
-  const target = new Date(y, (m ?? 1) - 1, d ?? 1);
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function totalLoanDays(startDateStr: string, endDateStr: string) {
   if (!startDateStr || !endDateStr) return 0;
-  const [y1, m1, d1] = startDateStr.split("T")[0].split("-").map(Number);
-  const [y2, m2, d2] = endDateStr.split("T")[0].split("-").map(Number);
-  const start = new Date(y1, (m1 ?? 1) - 1, d1 ?? 1);
-  const end = new Date(y2, (m2 ?? 1) - 1, d2 ?? 1);
+  const start = parseValidLocalDate(startDateStr);
+  const end = parseValidLocalDate(endDateStr);
+  if (!start || !end) return 0;
   const diffTime = end.getTime() - start.getTime();
   return Math.max(0, Math.round(diffTime / (1000 * 60 * 60 * 24)));
 }
@@ -127,7 +126,10 @@ export default function LoanManager() {
 
   const available = gluc.filter((g) => g.status === "available").length;
   const loanedCount = active.length;
-  const overdue = active.filter((l) => daysDiff(l.expected_return_date) < 0);
+  const overdue = active.filter((l) => {
+    const diff = daysDiff(l.expected_return_date);
+    return diff !== null && diff < 0;
+  });
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -347,9 +349,12 @@ export default function LoanManager() {
 
                 let statusColor = "emerald";
                 let StatusIcon = CheckCircle2;
-                let statusLabel = `Vence em ${diff} dias`;
+                let statusLabel = diff === null ? "Data de devolução inválida" : `Vence em ${diff} dias`;
 
-                if (diff < 0) {
+                if (diff === null) {
+                  statusColor = "slate";
+                  StatusIcon = AlertTriangle;
+                } else if (diff < 0) {
                   statusColor = "rose";
                   StatusIcon = AlertTriangle;
                   statusLabel = `Vencido há ${Math.abs(diff)} ${Math.abs(diff) === 1 ? "dia" : "dias"}`;
@@ -842,11 +847,10 @@ function NewLoanDialog({
 
   const loanDurationDays = useMemo(() => {
     if (!expected) return null;
+    const target = parseValidLocalDate(expected);
+    if (!target) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const [y, m, d] = expected.split("-").map(Number);
-    if (!y || !m || !d) return null;
-    const target = new Date(y, m - 1, d);
     const diffTime = target.getTime() - today.getTime();
     return Math.round(diffTime / (1000 * 60 * 60 * 24));
   }, [expected]);
@@ -876,9 +880,8 @@ function NewLoanDialog({
   };
 
   const calcAge = (dobStr: string | null) => {
-    if (!dobStr) return null;
-    const d = new Date(dobStr + "T12:00:00");
-    if (isNaN(d.getTime())) return null;
+    const d = parseValidLocalDate(dobStr);
+    if (!d) return null;
     const now = new Date();
     let age = now.getFullYear() - d.getFullYear();
     const m = now.getMonth() - d.getMonth();
@@ -1159,11 +1162,10 @@ function RenewLoanModal({
 
   const durationDays = useMemo(() => {
     if (!newDate) return null;
+    const target = parseValidLocalDate(newDate);
+    if (!target) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const [y, m, d] = newDate.split("-").map(Number);
-    if (!y || !m || !d) return null;
-    const target = new Date(y, m - 1, d);
     const diffTime = target.getTime() - today.getTime();
     return Math.round(diffTime / (1000 * 60 * 60 * 24));
   }, [newDate]);

@@ -1,7 +1,6 @@
-// Recovery worker for installations still controlled by the former Workbox
-// PWA. Cache Storage is isolated by origin, so clearing every bucket here is
-// the reliable way to remove app-shell caches whose generated names varied
-// between Workbox releases.
+// Recovery worker for installations still controlled by the former Workbox PWA.
+// Cache Storage belongs to this web origin, so removing every bucket guarantees
+// that an obsolete app shell cannot keep loading a deleted hashed bundle.
 
 self.addEventListener("install", () => self.skipWaiting());
 

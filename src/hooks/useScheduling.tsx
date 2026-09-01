@@ -4,7 +4,7 @@ import { DEFAULT_SHIFTS, useShifts } from "./useShifts";
 import { supabase } from "@/integrations/supabase/client";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { formatValidLocalDate, parseValidLocalDate, toLocalDateKey } from "@/lib/dateUtils";
+import { formatValidLocalDate, parseValidLocalDate, toLocalDateKey, validLocalDateKeyOrNull } from "@/lib/dateUtils";
 
 export interface Patient {
   id: string;
@@ -79,7 +79,13 @@ export function useScheduling() {
         toast.error("Não foi possível carregar a agenda");
         return [];
       }
-      return (data as any) || [];
+      return ((data as any[]) || []).map((appointment) => ({
+        ...appointment,
+        date: validLocalDateKeyOrNull(appointment.date) ?? selectedDate,
+        patients: appointment.patients
+          ? { ...appointment.patients, dob: validLocalDateKeyOrNull(appointment.patients.dob) }
+          : appointment.patients,
+      }));
     },
     enabled: !!selectedDate,
     staleTime: 1000 * 30, // 30s — refreshed by realtime
