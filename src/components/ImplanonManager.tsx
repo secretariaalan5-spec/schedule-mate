@@ -466,7 +466,7 @@ export default function ImplanonManager() {
      RENDER
   ════════════════════════════════════════════════════════════════════ */
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="md:h-full flex flex-col overflow-visible md:overflow-hidden">
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <header className="px-5 py-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">

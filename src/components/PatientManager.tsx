@@ -244,7 +244,7 @@ export default function PatientManager({ onGetHistory }: Props) {
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col md:h-full">
       {/* Stats bar */}
       <div className="p-4 border-b bg-card">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-3">

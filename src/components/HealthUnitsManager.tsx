@@ -212,7 +212,7 @@ export default function HealthUnitsManager() {
   );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background">
+    <div className="flex flex-col md:h-full overflow-visible md:overflow-hidden bg-background">
       {/* Title Header */}
       <div className="p-4 border-b bg-card flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 flex-shrink-0">
         <div>

@@ -182,7 +182,7 @@ export default function LoanManager() {
   }, [gluc, searchQuery]);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background">
+    <div className="flex flex-col md:h-full overflow-visible md:overflow-hidden bg-background">
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="p-4 md:p-6 border-b bg-card space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
