@@ -95,11 +95,11 @@ function totalLoanDays(startDateStr: string, endDateStr: string) {
   return Math.max(0, Math.round(diffTime / (1000 * 60 * 60 * 24)));
 }
 
-/** Formata numero de telefone para link do WhatsApp (remove tudo que não é dígito, adiciona 55 se necessário) */
+/** Formata numero de telefone para link do WhatsApp (abre app no celular ou WhatsApp Web no desktop) */
 function whatsappLink(phone: string) {
   const digits = phone.replace(/\D/g, "");
   const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
-  return `https://wa.me/${withCountry}`;
+  return `https://api.whatsapp.com/send?phone=${withCountry}`;
 }
 
 export default function LoanManager() {
