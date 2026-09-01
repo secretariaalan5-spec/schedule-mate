@@ -126,7 +126,10 @@ export default function LoanManager() {
 
   const available = gluc.filter((g) => g.status === "available").length;
   const loanedCount = active.length;
-  const overdue = active.filter((l) => daysDiff(l.expected_return_date) < 0);
+  const overdue = active.filter((l) => {
+    const diff = daysDiff(l.expected_return_date);
+    return diff !== null && diff < 0;
+  });
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -346,9 +349,12 @@ export default function LoanManager() {
 
                 let statusColor = "emerald";
                 let StatusIcon = CheckCircle2;
-                let statusLabel = `Vence em ${diff} dias`;
+                let statusLabel = diff === null ? "Data de devolução inválida" : `Vence em ${diff} dias`;
 
-                if (diff < 0) {
+                if (diff === null) {
+                  statusColor = "slate";
+                  StatusIcon = AlertTriangle;
+                } else if (diff < 0) {
                   statusColor = "rose";
                   StatusIcon = AlertTriangle;
                   statusLabel = `Vencido há ${Math.abs(diff)} ${Math.abs(diff) === 1 ? "dia" : "dias"}`;
