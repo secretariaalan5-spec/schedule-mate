@@ -491,63 +491,73 @@ export default function PatientManager({ onGetHistory }: Props) {
         </AlertDialogContent>
       </AlertDialog>
       <Dialog open={!!historyPatient} onOpenChange={() => setHistoryPatient(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-primary">Histórico: {historyPatient?.name}</DialogTitle>
+        <DialogContent className="max-w-lg p-0 overflow-hidden">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b bg-muted/30">
+            <DialogTitle className="text-primary text-base flex items-center gap-2">
+              <History className="w-4 h-4" />
+              <span className="truncate">{historyPatient?.name}</span>
+            </DialogTitle>
           </DialogHeader>
-          {historyPatient && (
-            <div className="mb-3 p-3 bg-muted/50 rounded-lg text-sm space-y-1">
-              <p><span className="font-medium">Cartão SUS:</span> {historyPatient.sus_card || "—"}</p>
-              <p><span className="font-medium">PSF:</span> {historyPatient.psf || "—"}</p>
-              <p><span className="font-medium">Nascimento:</span> {historyPatient.dob ? formatDateBR(historyPatient.dob) : "—"}</p>
-            </div>
-          )}
-          {historyPatient && <PatientLoansSection patientId={historyPatient.id} />}
-          <div className="mb-2">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-2">
-              Prontuário unificado
-            </p>
-            <ScrollArea className="max-h-72 pr-2">
-              <PatientTimeline patientId={historyPatient?.id} />
-            </ScrollArea>
-          </div>
-          <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground mb-1">
-            Consultas
-          </p>
-          <ScrollArea className="max-h-80">
-            {history.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">Sem consultas registradas</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Vaga</TableHead>
-                    <TableHead>Turno</TableHead>
-                    <TableHead>Motivo</TableHead>
-                    <TableHead>Tipo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.map(h => (
-                    <TableRow key={h.id}>
-                      <TableCell>{formatDateBR(h.date)}</TableCell>
-                      <TableCell>{String(h.slot).padStart(2, "0")}</TableCell>
-                      <TableCell>{h.slot <= 15 ? "Manhã" : "Tarde"}</TableCell>
-                      <TableCell>{h.reason || "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant={h.type === "RETORNO" ? "outline" : "secondary"} className="text-xs">
-                          {h.type}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
+
+          <ScrollArea className="max-h-[70vh]">
+            <div className="p-5 space-y-5">
+              {historyPatient && (
+                <div className="rounded-xl border bg-card p-3 grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Cartão SUS", value: historyPatient.sus_card || "—" },
+                    { label: "PSF", value: historyPatient.psf || "—" },
+                    { label: "Nascimento", value: historyPatient.dob ? formatDateBR(historyPatient.dob) : "—" },
+                  ].map((f) => (
+                    <div key={f.label} className="min-w-0">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{f.label}</p>
+                      <p className="text-sm font-medium text-foreground truncate">{f.value}</p>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
-            )}
+                </div>
+              )}
+
+              {historyPatient && <PatientLoansSection patientId={historyPatient.id} />}
+
+              <section className="space-y-2">
+                <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  Prontuário unificado
+                </p>
+                <PatientTimeline patientId={historyPatient?.id} />
+              </section>
+
+              <section className="space-y-2">
+                <p className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                  Consultas
+                </p>
+                {history.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6 rounded-xl border bg-card">
+                    Sem consultas registradas
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {history.map(h => (
+                      <div key={h.id} className="rounded-xl border bg-card p-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold text-foreground">{formatDateBR(h.date)}</span>
+                          <Badge variant={h.type === "RETORNO" ? "outline" : "secondary"} className="text-[10px] font-bold">
+                            {h.type}
+                          </Badge>
+                        </div>
+                        <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                          <span>Vaga {String(h.slot).padStart(2, "0")}</span>
+                          <span>{h.slot <= 15 ? "Manhã" : "Tarde"}</span>
+                          <span>{h.reason || "—"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
 
       <MergePatientsDialog
         open={!!mergePrimaryPatient}
