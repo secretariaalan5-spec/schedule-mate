@@ -68,15 +68,16 @@ export default function PatientTimeline({ patientId, className }: Props) {
         const mod = MODULES[ev.module] ?? MODULES.agenda;
         const Icon = mod.icon;
         return (
-          <li key={`${ev.module}-${ev.id}`} className="relative pb-4 last:pb-0">
+          <li key={`${ev.module}-${ev.id}`} className="relative pb-3 last:pb-0">
             <span
               className={cn(
-                "absolute -left-6 top-3 w-[15px] h-[15px] rounded-full ring-4 ring-white",
+                "absolute -left-6 top-3 w-[13px] h-[13px] rounded-full ring-4 ring-background",
                 mod.dot,
               )}
               aria-hidden
             />
-            <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2 min-w-0">
                   <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
