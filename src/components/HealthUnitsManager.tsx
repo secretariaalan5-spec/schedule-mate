@@ -228,7 +228,7 @@ export default function HealthUnitsManager() {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="md:flex-1 p-4">
         <div className="space-y-6 pb-12">
           {/* Stats Bar */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

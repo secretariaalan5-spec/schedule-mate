@@ -323,7 +323,7 @@ export default function PatientManager({ onGetHistory }: Props) {
         )}
       </div>
 
-      <ScrollArea className="flex-1 -mx-4 px-4 md:mx-0 md:px-0">
+      <ScrollArea className="md:flex-1 -mx-4 px-4 md:mx-0 md:px-0">
         <div className="space-y-3 pb-8">
           {isLoading ? (
             <div className="space-y-3 py-4">

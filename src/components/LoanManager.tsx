@@ -290,7 +290,7 @@ export default function LoanManager() {
       </div>
 
       {/* ── Tabs ─────────────────────────────────────────────────────── */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="md:flex-1 flex flex-col overflow-visible md:overflow-hidden">
         <div className="bg-card border-b px-4 md:px-6 py-0.5 overflow-x-auto no-scrollbar">
           <TabsList className="bg-transparent h-10 p-0 justify-start gap-4 flex shrink-0 whitespace-nowrap">
             <TabsTrigger
@@ -329,7 +329,7 @@ export default function LoanManager() {
         </div>
 
         {/* ── Tab 1: Active Loans — CARD GRID ─────────────────────────── */}
-        <TabsContent value="active" className="flex-1 overflow-auto p-4 md:p-6 m-0">
+        <TabsContent value="active" className="md:flex-1 md:overflow-auto p-3 md:p-6 m-0">
           {filteredActive.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 border rounded-xl bg-card border-dashed text-center gap-2">
               <SlidersHorizontal className="w-9 h-9 text-muted-foreground/40" />
@@ -545,7 +545,7 @@ export default function LoanManager() {
         </TabsContent>
 
         {/* ── Tab 2: History — TABLE ───────────────────────────────────── */}
-        <TabsContent value="history" className="flex-1 overflow-auto p-4 md:p-6 m-0">
+        <TabsContent value="history" className="md:flex-1 md:overflow-auto p-3 md:p-6 m-0">
           {filteredHistory.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 border rounded-xl bg-card border-dashed text-center gap-2">
               <History className="w-9 h-9 text-muted-foreground/40" />
@@ -637,7 +637,7 @@ export default function LoanManager() {
         </TabsContent>
 
         {/* ── Tab 3: Glucometers Stock ─────────────────────────────────── */}
-        <TabsContent value="stock" className="flex-1 overflow-auto p-4 md:p-6 m-0 space-y-6">
+        <TabsContent value="stock" className="md:flex-1 md:overflow-auto p-3 md:p-6 m-0 space-y-6">
           <div className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-1">
               <AddGlucometerCard />
