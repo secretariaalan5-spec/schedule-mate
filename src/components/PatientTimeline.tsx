@@ -8,22 +8,23 @@ const MODULES: Record<TimelineModule, { label: string; icon: any; dot: string; c
   agenda: {
     label: "Agenda",
     icon: CalendarDays,
-    dot: "bg-sky-500",
-    chip: "bg-sky-50 text-sky-700 border-sky-200",
+    dot: "bg-primary",
+    chip: "bg-primary/10 text-primary border-primary/20",
   },
   emprestimos: {
     label: "Empréstimos",
     icon: HandCoins,
     dot: "bg-amber-500",
-    chip: "bg-amber-50 text-amber-700 border-amber-200",
+    chip: "bg-amber-500/10 text-amber-700 border-amber-500/20",
   },
   implanon: {
     label: "Implanon",
     icon: Syringe,
-    dot: "bg-emerald-500",
-    chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    dot: "bg-secondary",
+    chip: "bg-secondary/10 text-secondary border-secondary/20",
   },
 };
+
 
 interface Props {
   patientId?: string;
