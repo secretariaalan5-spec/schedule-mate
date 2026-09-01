@@ -48,6 +48,13 @@ export function formatValidLocalDate(
   }
 }
 
+/** Keeps malformed imported/legacy values away from date UI components. */
+export function validLocalDateKeyOrNull(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return parseValidLocalDate(trimmed) ? trimmed.slice(0, 10) : null;
+}
+
 export function toLocalDateKey(date: Date): string | null {
   if (!isValidDate(date)) return null;
   try {

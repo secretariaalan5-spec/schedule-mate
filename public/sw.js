@@ -1,7 +1,10 @@
-// Recovery worker for installations still controlled by the former Workbox
-// PWA. Cache Storage is isolated by origin, so clearing every bucket here is
-// the reliable way to remove app-shell caches whose generated names varied
-// between Workbox releases.
+// Recovery worker for installations still controlled by the former Workbox PWA.
+// Only this app worker's Workbox buckets are removed; unrelated workers remain intact.
+
+function isWorkboxCacheForThisRegistration(name) {
+  const hasWorkboxBucket = /(^|-)precache-v\d+-|(^|-)runtime-|(^|-)googleAnalytics-/.test(name);
+  return hasWorkboxBucket && name.endsWith(self.registration.scope);
+}
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -10,7 +13,8 @@ self.addEventListener("activate", (event) => {
     (async () => {
       try {
         const cacheNames = await caches.keys();
-        await Promise.allSettled(cacheNames.map((name) => caches.delete(name)));
+        const appCacheNames = cacheNames.filter(isWorkboxCacheForThisRegistration);
+        await Promise.allSettled(appCacheNames.map((name) => caches.delete(name)));
         await self.clients.claim();
         const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
         await Promise.allSettled(clients.map((client) => client.navigate(client.url)));
