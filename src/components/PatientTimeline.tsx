@@ -8,22 +8,23 @@ const MODULES: Record<TimelineModule, { label: string; icon: any; dot: string; c
   agenda: {
     label: "Agenda",
     icon: CalendarDays,
-    dot: "bg-sky-500",
-    chip: "bg-sky-50 text-sky-700 border-sky-200",
+    dot: "bg-primary",
+    chip: "bg-primary/10 text-primary border-primary/20",
   },
   emprestimos: {
     label: "Empréstimos",
     icon: HandCoins,
     dot: "bg-amber-500",
-    chip: "bg-amber-50 text-amber-700 border-amber-200",
+    chip: "bg-amber-500/10 text-amber-700 border-amber-500/20",
   },
   implanon: {
     label: "Implanon",
     icon: Syringe,
-    dot: "bg-emerald-500",
-    chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    dot: "bg-secondary",
+    chip: "bg-secondary/10 text-secondary border-secondary/20",
   },
 };
+
 
 interface Props {
   patientId?: string;
@@ -67,15 +68,16 @@ export default function PatientTimeline({ patientId, className }: Props) {
         const mod = MODULES[ev.module] ?? MODULES.agenda;
         const Icon = mod.icon;
         return (
-          <li key={`${ev.module}-${ev.id}`} className="relative pb-4 last:pb-0">
+          <li key={`${ev.module}-${ev.id}`} className="relative pb-3 last:pb-0">
             <span
               className={cn(
-                "absolute -left-6 top-3 w-[15px] h-[15px] rounded-full ring-4 ring-white",
+                "absolute -left-6 top-3 w-[13px] h-[13px] rounded-full ring-4 ring-background",
                 mod.dot,
               )}
               aria-hidden
             />
-            <div className="rounded-xl border border-border bg-white p-3 shadow-sm">
+            <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2 min-w-0">
                   <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
