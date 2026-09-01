@@ -244,7 +244,7 @@ export default function PatientManager({ onGetHistory }: Props) {
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col md:h-full">
       {/* Stats bar */}
       <div className="p-4 border-b bg-card">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-3">
@@ -323,7 +323,7 @@ export default function PatientManager({ onGetHistory }: Props) {
         )}
       </div>
 
-      <ScrollArea className="flex-1 -mx-4 px-4 md:mx-0 md:px-0">
+      <ScrollArea className="md:flex-1 -mx-4 px-4 md:mx-0 md:px-0">
         <div className="space-y-3 pb-8">
           {isLoading ? (
             <div className="space-y-3 py-4">

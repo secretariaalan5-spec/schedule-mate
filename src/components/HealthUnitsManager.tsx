@@ -212,7 +212,7 @@ export default function HealthUnitsManager() {
   );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-background">
+    <div className="flex flex-col md:h-full overflow-visible md:overflow-hidden bg-background">
       {/* Title Header */}
       <div className="p-4 border-b bg-card flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 flex-shrink-0">
         <div>
@@ -228,7 +228,7 @@ export default function HealthUnitsManager() {
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="md:flex-1 p-4">
         <div className="space-y-6 pb-12">
           {/* Stats Bar */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

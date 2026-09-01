@@ -466,7 +466,7 @@ export default function ImplanonManager() {
      RENDER
   ════════════════════════════════════════════════════════════════════ */
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="md:h-full flex flex-col overflow-visible md:overflow-hidden">
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <header className="px-5 py-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">
@@ -491,7 +491,7 @@ export default function ImplanonManager() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto p-5 space-y-5">
+      <div className="md:flex-1 md:overflow-auto p-3 md:p-5 space-y-5">
 
         {/* ── KPI Cards ───────────────────────────────────────────────── */}
         <section className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
